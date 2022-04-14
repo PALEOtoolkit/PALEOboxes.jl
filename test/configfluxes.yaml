@@ -1,0 +1,57 @@
+model1:
+    parameters:
+        CIsotope: IsotopeLinear
+
+    domains:
+        global:
+            
+            reactions:
+                transferred_flux:
+                    class: ReactionFluxTarget
+                    parameters:
+                        fluxlist:             ["B", "C::CIsotope"]
+                        target_prefix:        "tflux_"
+                    variable_attributes:                       
+                        
+
+                flux_transfer:
+                    class: ReactionFluxTransfer
+                    parameters:
+                        input_fluxes:         ocean.flux_$fluxname$
+                        output_fluxes:        tflux_$fluxname$
+                        transfer_matrix:      Distribute
+                        transfer_multiplier:  -1.0
+
+        ocean:
+
+            reactions:
+                const_flux:
+                    class: ReactionFluxTarget
+                    parameters:
+                        fluxlist:             ["A", "B", "C::CIsotope"]
+                        const_stub:           true
+                    variable_attributes:                       
+                        flux_A:initial_value:      10.0
+                        flux_B:initial_value:      20.0
+                        flux_C:initial_value:      2.0
+                        flux_C:initial_delta:      -1.0
+
+                transferred_flux:
+                    class: ReactionFluxTarget
+                    parameters:
+                        fluxlist:             ["A", "C::CIsotope"]
+                        target_prefix:        "tflux_"
+                        flux_totals:          true
+                    variable_attributes:                       
+                        
+
+                flux_transfer:
+                    class: ReactionFluxTransfer
+                    parameters:
+                        input_fluxes:         flux_$fluxname$
+                        output_fluxes:        tflux_$fluxname$
+                        transfer_matrix:      Identity
+                        transfer_multiplier:  2.0
+
+
+                      

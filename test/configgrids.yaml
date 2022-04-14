@@ -1,0 +1,63 @@
+
+cartesiangrid:
+    
+    domains:
+        
+        ocean:
+                        
+            reactions:
+                grid:
+                    class: ReactionCartesianGrid
+                    parameters:
+                        dimnames: ["z", "lat", "lon"]
+                        dims: [2, 3, 4]
+
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                        par1:          0.15
+                    variable_links:
+                        phy*:      mock_phy*
+
+
+cartesianlinear2D:
+    
+    domains:
+        
+        surface:
+                        
+            reactions:
+                grid2D:
+                    class: ReactionGrid2DNetCDF
+                    parameters:
+                        grid_type: CartesianLinearGrid
+                        grid_file: coords.nc
+                        coordinate_names: ["longitude", "latitude"]
+                        equalspacededges: true
+                        area_var: ""
+                        planet_radius: 6.371229e6
+
+cartesianarray2D:
+    
+    domains:
+        
+        surface:
+                        
+            reactions:
+                grid2D:
+                    class: ReactionGrid2DNetCDF
+                    parameters:
+                        grid_type: CartesianArrayGrid
+                        grid_file: coords.nc
+                        coordinate_names: ["longitude", "latitude"]
+                        equalspacededges: true
+                        area_var: ""
+                        planet_radius: 6.371229e6
+
+                        
+
+                
+                        
+                    
+
+                    

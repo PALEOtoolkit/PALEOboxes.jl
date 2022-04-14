@@ -1,0 +1,83 @@
+model1:
+    parameters:
+        CIsotope: IsotopeLinear # ScalarData
+
+    domains:
+        global:
+            
+            reactions:
+                reservoir_A:
+                    class: ReactionReservoirScalar
+                
+                    parameters:
+                        field_data: external%CIsotope
+
+                    variable_links:
+                        R*: A*
+                    variable_attributes:
+                        R:norm_value:           3.193e17
+                        R:initial_value:        3.193e18
+                        R:initial_delta: 2.0  # per mil
+
+                reservoir_O:
+                    class: ReactionReservoirScalar
+                   
+                    variable_links:
+                        R*: O*
+                    variable_attributes:
+                        R:norm_value:           3.7e18
+                        R:initial_value:        3.7e19
+
+                reservoir_ConstS:
+                    class: ReactionReservoirScalar
+                   
+                    parameters:
+                        const:                  true
+                    variable_links:
+                        R*: ConstS*
+                    variable_attributes:
+                        R:norm_value:           10.0
+                        R:initial_value:        1.0
+
+                scalar_sum:
+                    class: ReactionSum
+                    parameters:
+                        vars_to_add: [1e-4*ocean.vectorsum, ConstS] # 3 + 1 = 4
+                    variable_links:
+                        sum: scalarsum
+
+        ocean:
+            
+            reactions:
+                const_volume:
+                    class: ReactionConst
+                    parameters:
+                        constnames: ["volume"]
+                    variable_attributes:                       
+                        volume:initial_value:        10.0
+
+                reservoir_const:
+                    class: ReactionReservoirConst
+                    parameters:
+                        field_data: IsotopeLinear
+                    variable_attributes:
+                        R_conc:initial_value: 0.1
+                        R_conc:initial_delta: -2.0
+                    variable_links:
+                        R_conc:         const_conc
+
+                reservoir_tracer:
+                    class: ReactionReservoirTotal
+                    variable_links:
+                        R*: T*
+                    variable_attributes:
+                        R:norm_value:           10.0  # concentration m-3                  
+                        R:initial_value:        1.0  # concentration m-3
+
+                vector_sum:
+                    class: ReactionVectorSum
+                    parameters:
+                        vars_to_add: [volume, 2*T]
+                    variable_links:
+                        sum: vectorsum # 30.0
+                      

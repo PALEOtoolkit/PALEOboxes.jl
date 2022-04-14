@@ -1,0 +1,66 @@
+# Tests for yaml.jl handling of merge keys (<<:) and duplicate keys.
+# 
+# Merge key example from https://yaml.org/type/merge.html
+# NB: merge keys would appear to be incompletely specified
+# (a draft for yaml 1.1, not included in 1.2):
+# https://ktomk.github.io/writing/yaml-anchor-alias-and-merge-key.html
+# https://stackoverflow.com/questions/47168718/yaml-merge-level/
+#
+# yaml.jl 0.4.7 behaviour:
+# - merge keys don't overwrite earlier explicit keys (as required by spec?)
+# - multiple merge keys within <<: [ *BIG, *LEFT, *SMALL ] later don't overwrite earlier (as required by spec)
+# - [not really merge,  but related]: duplicate keys are allowed, later keys overwrite earlier ones
+# - [special case of 'duplicate keys allowed' ?]: multiple merge keys <<: are allowed, later ones override earlier ones
+#  (surely a bug !)
+#
+# NB: quick test adding a haskey check before
+#  mapping[key] = value
+# in constructor.jl,  construct_mapping (line 193 in yaml.jl 0.4.7)
+# shows it is not this simple (interacts somehow with merge keys and fails merging multiple keys)
+
+---
+- &CENTER { x: 1, y: 2 }
+- &LEFT { x: 0, y: 2 }
+- &BIG { r: 10 }
+- &SMALL { r: 1 }
+
+# All the following maps are equal:
+
+- # Explicit keys
+  x: 1
+  y: 2
+  r: 10
+  label: center/big
+
+- # Merge one map
+  << : *CENTER
+  r: 10
+  label: center/big
+
+- # Merge multiple maps
+  << : [ *CENTER, *BIG ]
+  label: center/big
+
+- # Override
+  << : [ *BIG, *LEFT, *SMALL ]
+  x: 1
+  label: center/big
+
+# SD added: testing key yaml.jl key override and merge
+
+- # SD added: testing merge keys respect earlier keys
+  # yaml.jl merge keys don't override explicit keys
+  r: 10
+  << : *SMALL  # SMALL doesn't override r:
+
+- # yaml.jl issue ? duplicates are allowed, and later keys override earlier ones
+  r: 1
+  r: 10
+
+- # yaml.jl issue ? allows duplicate merge keys, and later ones override earlier ones !
+  << : *BIG
+  << : *SMALL  # SMALL overrides BIG
+
+
+
+

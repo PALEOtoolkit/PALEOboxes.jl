@@ -1,0 +1,1015 @@
+import Infiltrator
+
+using BenchmarkTools
+
+
+"""
+    Model
+
+A biogeochemical model consisting of [`Domain`](@ref)s, created from a [YAML](https://en.wikipedia.org/wiki/YAML)
+configuration file using [`create_model_from_config`](@ref).
+"""
+Base.@kwdef mutable struct Model
+    name::String
+    config_files::Vector{String}
+    parameters::Dict{String, Any}                    
+    domains::Vector{AbstractDomain}                 = Vector{AbstractDomain}()
+    sorted_methods_setup                            = nothing
+    sorted_methods_initialize                       = nothing
+    sorted_methods_do                               = nothing
+end
+
+
+
+"Get number of model domains"
+function get_num_domains(model::Model)
+    return length(model.domains)
+end
+
+"""
+    get_domain(model::Model, name::AbstractString) -> Domain or nothing
+    get_domain(model::Model, domainid) -> Domain
+
+Get Domain by `name` (may be nothing if `name` not matched)
+or `domainid` (range 1:num_domains).
+"""
+function get_domain(model::Model, name::AbstractString)
+
+    domainidx = findfirst(d -> d.name==name, model.domains)
+    
+    if isnothing(domainidx)
+        return nothing
+    else
+        return model.domains[domainidx]
+    end
+end
+
+function get_domain(model::Model, domainid)
+    if domainid > length(model.domains)
+        error("get_domain invalid domainid=", domainid)
+    end
+
+    return model.domains[domainid]    
+end
+
+function get_mesh(model::Model, domainname::AbstractString)
+    dom = get_domain(model, domainname)
+    !isnothing(dom) ||
+        throw(ArgumentError("no Domain $domainname"))
+    return dom.grid
+end
+
+"""
+    get_reaction(model::Model, domainname, reactionname) -> Reaction or nothing
+
+Get Reaction by domainname and reaction name
+"""
+function get_reaction(model::Model, domainname, reactionname)
+    domain = get_domain(model, domainname)
+    if !isnothing(domain)
+        return get_reaction(domain, reactionname)
+    end
+    return nothing
+end
+
+"""
+    get_variable(model::Model, varnamefull) -> VariableDomain or nothing
+
+Get Variable by name of form `<domainname>.<variablename>`
+"""
+function get_variable(model::Model, varnamefull::AbstractString)
+
+    varsplit = split(varnamefull, ".")
+    length(varsplit) == 2 || 
+        throw(ArgumentError("varnamefull $varnamefull is not of form <domainname>.<variablename>"))
+    domainname, variablename = varsplit
+
+    domain = get_domain(model, domainname)
+    if !isnothing(domain)
+        return get_variable(domain, variablename)
+    end
+    return nothing
+end
+
+"""
+    get_field(model::Model, modeldata, varnamefull) -> Field
+
+Get [`Field`](@ref) by Variable name
+"""
+function get_field(model::Model, modeldata::AbstractModelData, varnamefull::AbstractString)
+    var = get_variable(model, varnamefull)
+    !isnothing(var) ||
+        throw(ArgumentError("Variable $varnamefull not found"))
+    return get_field(var, modeldata)
+end
+
+"""
+    get_array(model::Model, modeldata, varnamefull; selectargs...) -> FieldArray
+
+Get [`FieldArray`](@ref) by Variable name, for spatial region defined by `selectargs`
+(which are passed to `Grids.get_region`).
+"""
+function get_array(model::Model, modeldata::AbstractModelData, varnamefull::AbstractString; selectargs...)
+    var = get_variable(model, varnamefull)
+    !isnothing(var) ||
+        throw(ArgumentError("Variable $varnamefull not found"))
+    f = get_field(var, modeldata)
+    attrbs = deepcopy(var.attributes)
+    attrbs[:var_name] = var.name
+    attrbs[:domain_name] = var.domain.name
+    return get_array(f; attributes=attrbs, selectargs...)
+end
+
+"""
+    set_variable_attribute!(model::Model, varnamefull, attributename::Symbol, value)
+
+Set `varnamefull` (of form <domain name>.<var name>) `attributename` to `value`.
+"""
+function set_variable_attribute!(
+    model::Model, 
+    varnamefull::AbstractString,
+    attributename::Symbol,
+    value
+)
+    domvar = get_variable(model, varnamefull)
+    !isnothing(domvar) || 
+        throw(ArgumentError("Variable $varnamefull not found"))
+
+    set_attribute!(domvar, attributename, value)  
+    
+    return nothing
+end
+
+set_variable_attribute!(
+    model::Model, 
+    domainname::AbstractString,
+    variablename::AbstractString,
+    attributename::Symbol,
+    value
+) = set_variable_attribute!(model, domainname*"."*variablename, attributename, value)
+
+"convenience function to get VariableReaction with 'localname' from all ReactionMethods of 'reactionname'"
+function get_reaction_variables(
+    model::Model, domainname::AbstractString, reactionname::AbstractString, localname::AbstractString
+)
+
+    react = get_reaction(model, domainname, reactionname)
+    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+
+    return get_variables(react, localname)
+end
+
+"convenience function to get VariableReaction matching 'filterfn' from all ReactionMethods of 'reactionname'"
+function get_reaction_variables(
+    model::Model, domainname::AbstractString, reactionname::AbstractString;
+    filterfn = v -> true,
+)
+
+    react = get_reaction(model, domainname, reactionname)
+    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+
+    return get_variables(react, filterfn=filterfn)
+end
+
+
+"""
+    set_parameter_value!(model::Model, domainname, reactionname, parname, value)
+
+Convenience function to set Parameter value.
+"""
+function set_parameter_value!(
+    model::Model, 
+    domainname::AbstractString,
+    reactionname::AbstractString,
+    parname::AbstractString,
+    value
+)
+    react = get_reaction(model, domainname, reactionname)
+    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+
+    set_parameter_value!(react, parname, value)  
+    
+    return nothing
+end
+
+###################################
+# creation from _cfg.yaml
+##################################
+
+"""
+    create_model_from_config(
+        config_file::AbstractString, configmodel::AbstractString;
+        modelpars::Dict = Dict()
+    ) -> model::Model
+    
+    create_model_from_config(
+        config_files,
+        configmodel::AbstractString;
+        modelpars::Dict = Dict()
+    ) -> model::Model
+
+Construct model from a single [YAML](https://en.wikipedia.org/wiki/YAML) `config_file`, or from a collection of `config_files`, 
+which are read in order and concatenated before being parsed as yaml.
+
+Optional argument `modelpars` provides parameters that override those in `<configmodel>:` `parameters:` section.
+"""
+function create_model_from_config(
+    config_file::AbstractString,
+    configmodel::AbstractString; 
+    kwargs...
+)
+    return create_model_from_config([config_file], configmodel; kwargs...)
+end
+
+function create_model_from_config(
+    config_files, 
+    configmodel::AbstractString;
+    modelpars::Dict=Dict(),
+    sort_methods_algorithm=group_methods,
+)
+
+    @info lpad("", 80, "=")
+    @info "create_model_from_config file(s) $(abspath.(config_files)) configmodel $configmodel"
+    @info lpad("", 80, "=")
+    yamltext = ""
+    for fn in config_files
+        isfile(fn) || error("config file $(abspath(fn)) not found")
+        yamltext *= read(fn, String)
+    end
+        
+    data = YAML.load(yamltext)
+
+    conf_model = data[configmodel]
+    for k in keys(conf_model)
+        if !(k in ("parameters", "domains", "geometry_precedence"))
+            error("Model configuration error invalid key '$k'")
+        end
+    end
+    
+    parameters = get(conf_model, "parameters", Dict{String, Any}())  
+    if isnothing(parameters)
+        @warn "empty Model.parameters"
+        parameters = Dict{String,Any}()
+    end
+    # extrapars can override parameter from configuration file, but not create new parameters (to catch typos)
+    for (parname, value) in modelpars
+        if haskey(parameters, parname)
+            @info "    Resetting Model parameter $(rpad(parname, 20)) = $value (configuration file had value=$value)"
+            parameters[parname] = value
+        else
+            error("configuration error: modelpars parameter $parname not present in configuration file for Model parameters:")
+        end
+    end
+    for (parname, value) in parameters
+        @info "    Model parameter: $(rpad(parname,20)) = $value"
+    end
+    model = Model(
+        config_files=[abspath(fn) for fn in config_files],
+        name=configmodel,
+        parameters=parameters
+    )
+
+    conf_domains = conf_model["domains"]
+
+    # create domains
+    for (name, conf_domain) in conf_domains
+        nextDomainID = length(model.domains) + 1
+        @info "creating domain '$(name)' ID=$nextDomainID" 
+        if isnothing(conf_domain) # empty domain will return nothing
+            conf_domain = Dict()
+        end       
+        push!(
+            model.domains, 
+            create_domain_from_config(name, nextDomainID, conf_domain, model.parameters)
+        )     
+    end
+
+    # request configuration of Domain sizes, Subdomains
+    for dom in model.domains
+        for react in dom.reactions
+            set_model_geometry(react, model)
+        end
+    end
+
+    # register methods
+    _register_reaction_methods!(model)
+
+    # Link variables
+    _link_variables!(model)
+
+    # sort methods
+    _sort_method_dispatch!(model, sort_methods_algorithm=sort_methods_algorithm)
+
+    return model
+end
+
+
+###################################
+# setup
+##################################
+
+"""
+    create_modeldata(model::Model [, eltype] [; threadsafe]) -> modeldata::ModelData
+
+Create a new [`ModelData`](@ref) struct for model variables of element type `eltype`.
+"""
+function create_modeldata(
+    model::Model, eltype::DataType=Float64;
+    threadsafe=false,
+    allocatenans=true, # fill Arrays with NaN when first allocated
+)
+    modeldata = ModelData{eltype}(model=model, threadsafe=threadsafe, allocatenans=allocatenans)
+
+    for dom in model.domains
+        push!(modeldata.domain_data, DomainData(dom))      
+    end
+
+    modeldata.cellranges_all = create_default_cellrange(model)
+
+    return modeldata
+end
+
+"""
+    create_default_cellrange(model::Model [; operatorID=0]) -> Vector{AbstractCellRange}
+
+Create a `Vector` of `CellRange` instances covering the entire model.
+"""
+function create_default_cellrange(model::Model ; operatorID=0)
+    cellranges_all = Vector{AbstractCellRange}()
+
+    for dom in model.domains       
+        push!(cellranges_all, Grids.create_default_cellrange(dom, dom.grid, operatorID=operatorID))
+    end
+
+    return cellranges_all
+end
+
+"""
+    allocate_variables!(model, modeldata; [hostdep] [,eltypemap])
+    
+Allocate memory for Domain variables for every Domain in `model`.
+
+See [`allocate_variables!(domain::Domain, modeldata::AbstractModelData)`](@ref).
+"""
+function allocate_variables!(
+    model::Model, modeldata::AbstractModelData; 
+    hostdep::Union{Bool,Nothing}=nothing,
+    eltypemap=Dict{String, DataType}()
+)
+    @info lpad("", 80, "=")
+    @info "allocate_variables!"
+    @info lpad("", 80, "=")
+
+    check_modeldata(model, modeldata)
+    for dom in model.domains
+        allocate_variables!(dom, modeldata, hostdep=hostdep, eltypemap=eltypemap)
+    end
+   
+    return nothing
+end
+
+
+"""
+    create_solver_view(model, modeldata; [verbose=true]) 
+        -> SolverView
+    create_solver_view(model, modeldata, cellranges; [verbose=false], [indices_from_cellranges=true])
+        -> SolverView
+
+Create a [`SolverView`](@ref) for the entire model, or for a subset of Model Variables defined by
+the Domains and operatorIDs of `cellranges`. 
+
+# Keywords
+- `indices_from_cellranges=true`: true to restrict to the index ranges from `cellranges`, false to just use `cellranges` to define Domains
+and take the whole of each Domain.
+- `hostdep_all=true`: true to include host dependent not-state Variables from all Domains
+- `reallocate_hostdep_eltype=Float64`: a data type to reallocate `hostdep` Variables eg to replace any
+AD types.
+"""
+create_solver_view(
+    model, modeldata::AbstractModelData;
+    verbose=true,
+) = create_solver_view(
+        model, modeldata, modeldata.cellranges_all,
+        indices_from_cellranges=false, verbose=verbose,
+    )
+
+function create_solver_view(
+    model, modeldata::AbstractModelData, cellranges;
+    verbose=false,
+    indices_from_cellranges=true,
+    exclude_var_nameroots=[],
+    hostdep_all=true,
+    reallocate_hostdep_eltype=Float64,
+)
+ 
+    verbose && @info "create_solver_view:"
+    
+    check_domains = [cr.domain for cr in cellranges]
+    length(check_domains) == length(unique(check_domains)) ||
+        throw(ArgumentError("cellranges contain duplicate Domains"))
+
+    stateexplicit, stateexplicit_deriv, stateexplicit_cr = VariableDomain[], VariableDomain[], []
+    total, total_deriv, total_cr = VariableDomain[], VariableDomain[], []
+    constraint, constraint_cr = VariableDomain[], []
+    state, state_cr = VariableDomain[], []
+    hostdep = VariableDomain[]
+
+    for cr in cellranges
+        dom = cr.domain
+              
+        verbose && @info "  Domain $(dom.name) operatorID $(cr.operatorID)"
+        vreport = []
+        for (vfunction, var_vec, cr_vec, var_deriv_vec, deriv_suffix) in [
+            (VF_StateExplicit,  stateexplicit,  stateexplicit_cr,   stateexplicit_deriv,    "_sms"),
+            (VF_Total,          total,          total_cr,           total_deriv,            "_sms"),
+            (VF_Constraint,     constraint,     constraint_cr,      nothing,                ""),
+            (VF_State,          state,          state_cr,           nothing,                ""),
+            (VF_Undefined,      hostdep,        nothing,            nothing,                ""),
+        ]
+
+            (vars, vars_deriv) = 
+                get_host_variables(
+                    dom, vfunction,
+                    match_deriv_suffix=deriv_suffix,
+                    operatorID=cr.operatorID,
+                    exclude_var_nameroots=exclude_var_nameroots
+                )
+
+            append!(var_vec, vars)
+            if !isnothing(var_deriv_vec)
+                append!(var_deriv_vec, vars_deriv)
+            end
+            if !isnothing(cr_vec)
+                append!(cr_vec, [indices_from_cellranges ? cr : nothing for v in vars])
+            end
+
+            push!(vreport, (vfunction, length(vars)))
+        end
+        verbose && @info "    $vreport"
+    end    
+
+    n_state_vars = length(stateexplicit) + length(state)
+    n_equations = length(stateexplicit) + length(total) + length(constraint)
+       
+    verbose && @info "  n_state_vars $n_state_vars  (stateexplicit $(length(stateexplicit)) "*
+        "+ state $(length(state)))"
+    verbose && @info "  n_equations $n_equations  (stateexplicit $(length(stateexplicit)) "*
+        "+ total $(length(total)) + constraint $(length(constraint)))"
+   
+    n_state_vars == n_equations || 
+        error("create_solver_view: n_state_vars != n_equations")
+
+    if hostdep_all
+        verbose && @info "  including all host-dependent non-state Variables"
+        empty!(hostdep)
+        for dom in model.domains
+            dv, _ = get_host_variables(dom, VF_Undefined)
+            append!(hostdep, dv )
+        end
+    end
+    verbose && @info "  host-dependent non-state Variables (:vfunction VF_Undefined): $([fullname(v) for v in hostdep])"
+
+    sv = SolverView(
+        eltype(modeldata),
+        stateexplicit = VariableAggregator(stateexplicit, stateexplicit_cr, modeldata),
+        stateexplicit_deriv = VariableAggregator(stateexplicit_deriv, stateexplicit_cr, modeldata),
+        total = VariableAggregator(total, total_cr, modeldata),
+        total_deriv = VariableAggregator(total_deriv, total_cr, modeldata),
+        constraints = VariableAggregator(constraint, constraint_cr, modeldata),
+        state = VariableAggregator(state, state_cr, modeldata),
+        hostdep = VariableAggregatorNamed(hostdep, modeldata, reallocate_hostdep_eltype=reallocate_hostdep_eltype)
+    )
+
+    return sv
+end
+
+"""
+    set_default_solver_view!(model, modeldata)
+
+(Optional, used to set `modeldata.solver_view_all` to a [`SolverView`](@ref)) for the whole
+model, and set `modeldata.hostdep_data` to any non-state-variable host dependent Variables)
+
+`reallocate_hostdep_eltype` a data type to reallocate `hostdep_data` eg to replace any
+AD types.
+"""
+function set_default_solver_view!(
+    model::Model, modeldata::AbstractModelData,
+)
+    check_modeldata(model, modeldata)  
+
+    # create a default SolverView for the entire model (from modeldata.cellranges_all)
+    sv = create_solver_view(model, modeldata)
+   
+    modeldata.solver_view_all = sv
+    
+    return nothing
+end
+
+"""
+    check_ready(model, modeldata; [throw_on_error=true] [, check_hostdep_varnames=true] [, expect_hostdep_varnames=["global.tforce"]]) -> ready
+
+Check all variable pointers set, and no unexpected host-dependent non-state Variables (ie unlinked Variables)
+"""
+function check_ready(
+    model::Model, modeldata::AbstractModelData;
+    throw_on_error=true,
+    check_hostdep_varnames=true,
+    expect_hostdep_varnames=["global.tforce"],
+)
+    check_modeldata(model, modeldata)
+    ready = true
+    for dom in model.domains
+        # don't exit on first error so display report from all Domains
+        ready = ready && check_ready(dom, modeldata, throw_on_error=false)
+    
+        if check_hostdep_varnames
+            dom_hdv, _ = get_host_variables(dom, VF_Undefined)
+            for hv in dom_hdv
+                fullname_hv = fullname(hv)
+                if !(fullname_hv in expect_hostdep_varnames)
+                    @warn "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a 
+                    missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either
+                    in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)"
+                    ready = false
+                end
+            end
+        end
+    end    
+
+    if !ready 
+        @error "check_ready failed"
+        throw_on_error && error("check_ready failed")
+    end
+
+    return ready
+end
+
+"Check configuration"
+function check_configuration(
+    model::Model;
+    throw_on_error=true
+)
+    configok = true
+    for dom in model.domains
+        configok = configok && check_configuration(dom, model)
+    end
+
+    if !configok
+        @error "check_configuration failed"
+        throw_on_error && error("check_configuration failed")
+    end
+
+    return configok
+end
+
+
+"""
+    initialize_reactiondata!(model::Model, modeldata::AbstractModelData)
+    
+Processes `VarList_...`s from ReactionMethods and populates `modeldata.sorted_methodsdata_...`
+with sorted lists of ReactionMethods and corresponding Variable accessors.
+
+Calls `create_dispatch_methodlists(model, modeldata, modeldata.cellranges_all)`
+to set `modeldata.dispatchlists_all` to (optional) default  ReactionMethodDispatchLists for entire model.
+"""
+function initialize_reactiondata!(
+    model::Model, modeldata::AbstractModelData;
+    method_barrier=nothing
+)
+    @info lpad("", 80, "=")
+    @info "initialize_reactiondata!"
+    @info lpad("", 80, "=")
+
+    check_modeldata(model, modeldata)
+
+    function prepfn(m , modeldata)
+        if isnothing(m.preparefn)
+            return create_accessors(m, modeldata)
+        else
+            return m.preparefn(m, create_accessors(m, modeldata))
+        end
+    end
+
+    modeldata.sorted_methodsdata_setup = 
+        Tuple(
+            (m, Ref(prepfn(m, modeldata))) 
+            for m in get_methods(model.sorted_methods_setup)
+        )
+
+    modeldata.sorted_methodsdata_initialize = 
+        Tuple(
+            (m, Ref(prepfn(m, modeldata))) 
+            for m in get_methods(model.sorted_methods_initialize, method_barrier=method_barrier)
+        )
+
+    modeldata.sorted_methodsdata_do = 
+        Tuple(
+            (m, Ref(prepfn(m, modeldata)))
+            for m in get_methods(model.sorted_methods_do, method_barrier=method_barrier)
+        )
+
+    # create default dispatchlists_all corresponding to cellranges_all
+    modeldata.dispatchlists_all =
+        create_dispatch_methodlists(model, modeldata, modeldata.cellranges_all)
+
+    return nothing
+end
+
+
+"""
+    dispatch_setup(model, attribute_value, modeldata, cellranges=modeldata.cellranges_all)
+
+Call setup methods, eg to initialize data arrays (including state variables).
+
+`attribute_value` (`:initial_value` or `:norm_value`) defines the Variable attribute to read from the configuration file
+and use to set data arrays. Usually `dispatch_setup` is called twice, first to get `:norm_value` and then to get `:initial_value`. 
+"""
+function dispatch_setup(
+    model::Model, attribute_value, modeldata::AbstractModelData, cellranges=modeldata.cellranges_all
+)
+    @info lpad("", 80, "=")
+    @info "dispatch_setup :$attribute_value"
+    @info lpad("", 80, "=")
+
+    check_modeldata(model, modeldata) 
+
+    for (method, vardata) in modeldata.sorted_methodsdata_setup
+        @info "    $(fullname(method))"
+        for cr in cellranges
+            if (cr.operatorID == 0 || cr.operatorID in method.operatorID) &&
+                (cr.domain === method.domain)
+                method.methodfn(method, vardata[], cr, attribute_value)
+            end
+        end
+    end
+
+    return nothing  
+end
+
+"""
+    create_dispatch_methodlists(model::Model, modeldata::AbstractModelData, cellranges) 
+        -> (;list_initialize::ReactionMethodDispatchList, list_do::ReactionMethodDispatchList)
+ 
+Compile lists of `initialize` and `do` methods + corresponding `cellrange` for main loop [`do_deriv`](@ref).
+
+Subset of methods and cellrange to operate on are generated from supplied `cellranges`.
+"""
+function create_dispatch_methodlists(
+    model::Model, modeldata::AbstractModelData, cellranges;
+    verbose=false
+)
+    check_modeldata(model, modeldata)
+
+    verbose && @info "list_initialize:\n"
+    list_initialize = _create_dispatch_methodlist(
+        modeldata.sorted_methodsdata_initialize,
+        cellranges,
+        verbose=verbose
+    )
+    verbose && @info "list_do:\n"
+    list_do = _create_dispatch_methodlist(
+        modeldata.sorted_methodsdata_do,
+        cellranges,
+        verbose=verbose
+    )
+    
+    return (;list_initialize, list_do)
+end
+
+
+function _create_dispatch_methodlist(methodsdata, cellranges; verbose=false)
+    fns, methods, vardatas, crs = [], [], [], []
+   
+    for (method, vardata) in methodsdata
+        if is_do_barrier(method)
+            # thread barrier 
+            verbose && @info "   $method"
+            push!(fns, method.methodfn)
+            push!(methods, method)
+            push!(vardatas, vardata)
+            push!(crs, nothing)
+        else
+            for cr in cellranges
+                if ((cr.operatorID == 0 || cr.operatorID in method.operatorID) 
+                    && (cr.domain === method.domain))
+
+                    verbose && @info "   $method"
+                    push!(fns, method.methodfn)
+                    push!(methods, method)
+                    push!(vardatas, vardata)
+                    push!(crs, cr)
+                end
+            end
+        end
+    end
+
+    return ReactionMethodDispatchList(Tuple(fns), Tuple(methods), Tuple(vardatas), Tuple(crs))
+end
+
+
+####################################
+# Main loop methods
+#####################################
+
+"""
+    do_deriv(dispatchlists, deltat::Float64=0.0)
+
+Wrapper function to calculate entire derivative (initialize and do methods) in one call.
+`dispatchlists` is from [`create_dispatch_methodlists`](@ref).
+"""
+function do_deriv(dispatchlists, deltat::Float64=0.0)
+
+    dispatch_methodlist(dispatchlists.list_initialize)
+    
+    dispatch_methodlist(dispatchlists.list_do, deltat)
+
+    return nothing
+end
+
+
+"""
+    dispatch_methodlist(dl::ReactionMethodDispatchList, deltat::Float64=0.0)
+
+Dispatch to a list of methods.
+
+# Implementation
+
+As an optimisation, uses @generated for Type stability
+and to avoid dynamic dispatch, instead of iterating over lists.
+
+[`ReactionMethodDispatchList`](@ref) fields are Tuples hence are fully Typed, the @generated
+function emits unrolled code with a function call for each Tuple element. 
+"""
+@generated function dispatch_methodlist(
+    dl::ReactionMethodDispatchList{MF, M, V, C}, 
+    deltat::Float64=0.0
+) where {MF, M, V, C}
+
+    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
+     
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(MF)
+        push!(ex.args,
+            quote
+                dl.methodfns[$j](dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+            end
+            )
+    end
+    push!(ex.args, quote; return nothing; end)
+    
+    return ex
+end
+
+
+#################################
+# Pretty printing
+################################
+
+"compact form"
+function Base.show(io::IO, model::Model)
+    print(io, "Model(config_files='", model.config_files,"', name='", model.name,"')")
+end
+"multiline form"
+function Base.show(io::IO, ::MIME"text/plain", model::Model)
+    println(io, "Model")
+    println(io, "\tname='", model.name,"'")
+    println(io, "\tconfig_files='", model.config_files,"'")  
+    println(io, "\tdomains=", model.domains)
+end
+
+"display reaction order"
+function show_methods_setup(model::Model)
+    println("All methods_setup:")
+    println(model.sorted_methods_setup)
+    return nothing    
+end
+
+"display reaction order"
+function show_methods_initialize(model::Model)
+    println("All methods_initialize:")
+    println(model.sorted_methods_initialize)
+    return nothing    
+end
+
+"display reaction order"
+function show_methods_do(model::Model)
+    println("All methods_do:")
+    println(model.sorted_methods_do)
+    return nothing    
+end
+
+"""
+    show_variables(model::Model; [attributes], [filter], showlinks=false, modeldata=nothing) -> DataFrame
+    show_variables(model::Model, domainname; [attributes], [filter], showlinks=false, modeldata=nothing) -> DataFrame
+
+Show table of Domain Variables. Optionally get variable links, data.
+
+# Keywords:
+See [`show_variables(domain::Domain, kwargs...)`](@ref) 
+
+# Examples:
+Display all model Variables using VS Code table viewer:
+
+    julia> vscodedisplay(PB.show_variables(run.model))
+
+Write out all model Variables as csv for import to a spreadsheet:
+
+    julia> CSV.write("vars.csv", PB.show_variables(run.model, modeldata=modeldata, showlinks=true))
+"""
+function show_variables(model::Model; kwargs...)
+    df = DataFrames.DataFrame()
+    for dom in model.domains
+        dfdom = show_variables(dom; kwargs...)
+        # prepend domain name
+        DataFrames.insertcols!(dfdom, 1, :domain=>fill(dom.name, size(dfdom,1)))
+        # append to df
+        df = vcat(df, dfdom)
+    end
+    DataFrames.sort!(df, [:domain, :name])
+    return df
+end
+
+function show_variables(model::Model, domainname::AbstractString; kwargs...)
+    dom = get_domain(model, domainname)
+    !isnothing(dom) ||
+        throw(ArgumentError("no Domain $domainname"))
+    return show_variables(dom; kwargs...)
+end
+
+"""
+    show_parameters(model) -> DataFrame
+
+Get parameters for all reactions in model.
+
+# Examples:
+Show all model parameters using VS Code table viewer:
+
+    julia> vscodedisplay(PB.show_parameters(run.model))
+
+Write out all model parameters as csv for import to a spreadsheet:
+
+    julia> CSV.write("pars.csv", PB.show_parameters(run.model))
+"""
+function show_parameters(model::Model)
+    df = DataFrames.DataFrame()
+    for dom in model.domains
+        for react in dom.reactions
+            dfreact = show_parameters(react)
+            DataFrames.insertcols!(dfreact, 1, :reaction=>fill(react.name, size(dfreact,1)))
+            DataFrames.insertcols!(dfreact, 2, :classname=>fill(react.classname, size(dfreact,1)))
+            DataFrames.insertcols!(dfreact, 1, :domain=>fill(dom.name, size(dfreact,1)))
+            
+            # append to df
+            df = vcat(df, dfreact)
+        end
+    end
+    DataFrames.sort!(df, [:domain, :reaction, :name])
+    return df
+end
+    
+######################################
+# Variable linking
+#######################################
+
+"""
+    _link_variables!(model::Model) -> nothing
+
+Populate `Domain` variable lists, renaming and linking Reaction variables
+"""
+function _link_variables!(model::Model)
+
+    # First pass - variables defined in config file    
+    foreach(_link_clear!, model.domains)
+
+    @info "link_variables first pass"
+    # _link_variables!(model, _link_print)
+    _link_variables!(model, _link_create, false)
+    _link_variables!(model, _link_create_contrib, false)
+    _link_variables!(model, _link_create_dep, false)
+    _link_variables!(model, _link_link, false)
+
+    # Allow reactions to define additional variables, based on 
+    # the model structure
+    @info "link_variables initialize dynamic variables"
+    _register_reaction_dynamic_methods!(model)
+
+    # Second pass including additional variables
+    foreach(_link_clear!, model.domains)
+
+    @info "link_variables second pass:"
+    _link_variables!(model, _link_print, true)
+    _link_variables!(model, _link_create, true)
+    _link_variables!(model, _link_create_contrib, true)
+    _link_variables!(model, _link_create_dep, true)
+    _link_variables!(model, _link_link, true)
+    @info "link_variables unlinked variables:"
+    _link_variables!(model, _link_print_not_linked, true)
+    # 
+   
+    return nothing
+end
+
+"""
+    relink_variables!(model::Model) -> nothing
+
+Optional relink `Reaction` variables and repopulate `Domain` Variable lists.
+Only needed if modifying `variable_links` after calling [`create_model_from_config`](@ref)
+
+NB: dynamic Variables are not recreated, so will not reflect any changes
+"""
+function relink_variables!(model::Model)
+    foreach(_link_clear!, model.domains)
+
+    @info "relink_variables!:"
+    _link_variables!(model, _link_print, true)
+    _link_variables!(model, _link_create, true)
+    _link_variables!(model, _link_create_contrib, true)
+    _link_variables!(model, _link_create_dep, true)
+    _link_variables!(model, _link_link, true)
+    @info "relink_variables! unlinked variables:"
+    _link_variables!(model, _link_print_not_linked, true)
+    # 
+   
+    return nothing
+end
+
+function _link_variables!(model::Model, oper, dolog)
+    for dom in model.domains
+        _link_variables!(dom, model, oper, dolog)
+    end
+end
+
+############################
+# Method registration and ordering
+##############################
+
+function _register_reaction_methods!(model::Model)
+    
+    for dom in model.domains
+        for r in dom.reactions            
+            _register_methods!(r, model)
+            # not all methods registered and ReactionVariables available, so no error if missing
+            _configure_variables(r; allow_missing=true, dolog=false)
+        end
+    end
+
+    return nothing
+end
+
+function _register_reaction_dynamic_methods!(model::Model)
+    
+    for dom in model.domains
+        for r in dom.reactions            
+            register_dynamic_methods!(r, model)
+            _configure_variables(r; allow_missing=false, dolog=true)
+        end
+    end
+
+    return nothing
+end
+
+get_methods_setup(model; kwargs...) = _get_methods(model, :methods_setup)
+get_methods_initialize(model; kwargs...) = _get_methods(model, :methods_initialize)
+get_methods_do(model; kwargs...) = _get_methods(model, :methods_do)
+
+function _get_methods(model::Model, mfield::Symbol; filterfn=m->!is_do_nothing(m))
+    methods=ReactionMethod[]
+    for dom in model.domains
+        for r in dom.reactions
+            append!(methods, filter(filterfn, getproperty(r, mfield)))
+        end
+    end
+    return methods
+end
+
+"""
+    _sort_method_dispatch!(model::Model) -> nothing
+
+Sort methods into dispatch order, based on variable dependencies
+"""
+function _sort_method_dispatch!(model::Model; sort_methods_algorithm=group_methods)
+    # create unsorted list of all Reactions in model
+    all_reacts = Vector{AbstractReaction}()
+    for dom in model.domains
+        append!(all_reacts, dom.reactions)
+    end
+      
+    # get all domain Variables
+    all_domvars = Vector{VariableDomain}()
+    for dom in model.domains
+        append!(all_domvars, get_variables(dom))
+    end
+
+    methods_setup = get_methods_setup(model)
+    model.sorted_methods_setup = sort_methods_algorithm(methods_setup, all_domvars)
+    
+    methods_initialize = get_methods_initialize(model)
+    # TODO no sort needed as no dependencies allowed
+    model.sorted_methods_initialize = sort_methods_algorithm(methods_initialize, all_domvars)
+
+    methods_do = get_methods_do(model)
+    model.sorted_methods_do = sort_methods_algorithm(methods_do, all_domvars)
+
+    return nothing
+end
+

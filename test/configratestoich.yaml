@@ -1,0 +1,38 @@
+model1:
+  parameters:
+    Sisotope: IsotopeLinear
+
+  domains:
+    ocean:
+      
+      reactions:
+        const_volume:
+            class: ReactionConst
+            parameters:
+                constnames: ["volume"]
+            variable_attributes:                       
+                volume:initial_value:        10.0
+
+        reservoir_H2S:
+            class: ReactionReservoirTotal
+            
+            parameters:
+                field_data: external%Sisotope
+            variable_links:
+                R*: H2S*
+            variable_attributes:                      
+                R:initial_value:        1.0  # concentration m-3
+                R:initial_delta:        -30.0
+
+        reservoir_SO4:
+            class: ReactionReservoirTotal
+            parameters:
+                field_data: external%Sisotope       
+            variable_links:
+                R*: SO4*
+            variable_attributes:                      
+                R:initial_value:        1.0  # concentration m-3
+                R:initial_delta:        0.0
+                      
+        redox_H2S_O2:
+            class: ReactionRateStoichMock

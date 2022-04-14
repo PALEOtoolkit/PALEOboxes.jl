@@ -1,0 +1,62 @@
+model1:
+    parameters:
+        model_par1: 0.15
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                        par1:          external%model_par1           # double parameter
+                    variable_links:
+                        phy*:      mock_phy*
+
+                julia_paleo_mock2:
+                    class: ReactionPaleoMock
+                    
+                    parameters:
+                        par1:          external%model_par1           # double parameter
+                    variable_links:
+                        scalar_dep:     julia_paleo_mock/scalar_prop
+                        phy*:    mock2_phy*
+
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
+
+
+
+# two reactions that depend on each other - sort_reactions! should fail
+model_with_loop:
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock1:
+                    class: ReactionPaleoMock
+                    
+                    parameters:
+                        par1:          0.15           # double parameter
+                    variable_links:
+                        phy: phy1
+                        scalar_dep: julia_paleo_mock2/scalar_prop
+                        
+
+                julia_paleo_mock2:
+                    class: ReactionPaleoMock
+                    
+                    parameters:
+                        par1:          0.15           # double parameter
+                    variable_links:
+                        phy: phy2
+                        scalar_dep: julia_paleo_mock1/scalar_prop
+                        
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
+
