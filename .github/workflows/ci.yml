@@ -1,6 +1,8 @@
+name: CI
+
 # https://discourse.julialang.org/t/easy-workflow-file-for-setting-up-github-actions-ci-for-your-julia-package/49765
 #
-name: CI
+
 on:
   pull_request:
     branches:
