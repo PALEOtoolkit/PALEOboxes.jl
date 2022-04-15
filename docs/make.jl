@@ -4,7 +4,7 @@ import PALEOboxes
 
 using DocumenterCitations
 
-bib = CitationBibliography("src/paleo_references.bib")
+bib = CitationBibliography(joinpath(@__DIR__, "src/paleo_references.bib"))
 
 makedocs(bib, sitename="PALEOboxes Documentation", 
         pages = [
