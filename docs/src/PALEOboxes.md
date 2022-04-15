@@ -20,7 +20,7 @@ create_model_from_config(config_file::AbstractString, configmodel::AbstractStrin
 create_modeldata(model::Model, vectype::DataType=Array{Float64,1})
 ModelData
 allocate_variables!
-set_default_solver_view!
+
 check_ready(model::Model, modeldata::AbstractModelData; throw_on_error=true)
 check_configuration(model::Model)
 initialize_reactiondata!(model::Model, modeldata::AbstractModelData)
@@ -35,6 +35,8 @@ SolverView
 VariableAggregator
 VariableAggregator(vars, cellranges, modeldata)
 create_solver_view
+set_default_solver_view!
+copy_norm!
 set_statevar!
 get_statevar_sms!
 ```
@@ -96,6 +98,7 @@ CurrentModule = PALEOboxes
 AbstractCellRange
 CellRange
 CellRangeColumns
+create_default_cellrange
 ```
 ```@meta
 CurrentModule = PALEOboxes.Grids
@@ -234,6 +237,7 @@ ReactionBase
 ```
 ### Registering with PALEOboxes framework
 ```@docs
+reaction_factories
 add_reaction_factory
 reaction_factory
 ```

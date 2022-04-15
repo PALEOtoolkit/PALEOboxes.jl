@@ -5,18 +5,15 @@ import Printf
 
 Dictionary of reaction factories.
 
-Each ReactionXXX type should register a function that returns
-an instance of a `ReactionXXX <: AbstractReaction`, eg:
+A module containing Reactions should define a module `__init__()` function that includes a call
+to [`add_reaction_factory`] for each Reaction. This registers functions that then return instances of the Reaction structs.
 
-    function create_my_reactionXXX(base::ReactionBase)
-        newrj = my_new_reactionXXX_instance(base)
-        return newrj
+    "Install create_reactionXXX factories when module imported"
+    function __init__()
+        PB.add_reaction_factory(ReactionReservoirScalar)
     end
 
-    PC.reactionfactories[\"ReactionXXX\"] = create_my_reactionXXX
-
-A default function can be created using [`reaction_factory`](@ref).
- """
+"""
 const reaction_factories = Dict{String, Function}()
 
 """
