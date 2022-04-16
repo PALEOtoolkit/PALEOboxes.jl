@@ -30,10 +30,8 @@ include("ModelData.jl")
 include("TestUtils.jl")
 include("SIMDutils.jl")
 include("IteratorUtils.jl")
-include("Reservoirs.jl")
-include("VariableStats.jl")
-include("Fluxes.jl")
 include("Grids.jl")
 include("SolverView.jl")
+include("reactions/Reactions.jl")
 
 end # module
