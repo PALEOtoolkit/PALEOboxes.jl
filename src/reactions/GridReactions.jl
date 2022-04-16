@@ -23,7 +23,7 @@ end
 function PB.set_model_geometry(rj::ReactionUnstructuredVectorGrid, model::PB.Model)
     @info "set_model_geometry $(PB.fullname(rj))"
 
-    grid = UnstructuredVectorGrid(ncells=rj.pars.ncells.v)
+    grid = PB.Grids.UnstructuredVectorGrid(ncells=rj.pars.ncells.v)
     rj.domain.grid = grid
     
     @info "  set $(rj.domain.name) Domain size=$(grid.ncells) grid=$grid"
@@ -161,8 +161,8 @@ function setup_grid_2DNetCDF(
         end
     else        
         for i in cellrange.indices
-            lon_edges = get_lon_edges(grid2D, i)
-            lat_edges = get_lat_edges(grid2D, i)
+            lon_edges = PB.Grids.get_lon_edges(grid2D, i)
+            lat_edges = PB.Grids.get_lat_edges(grid2D, i)
             area = calc_spherical_area(rj.pars.planet_radius.v, lon_edges, lat_edges)
             grid_vars.Asurf[i] = area
         end
