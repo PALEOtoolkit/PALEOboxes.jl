@@ -103,22 +103,6 @@ function get_field(model::Model, modeldata::AbstractModelData, varnamefull::Abst
     return get_field(var, modeldata)
 end
 
-"""
-    get_array(model::Model, modeldata, varnamefull; selectargs...) -> FieldArray
-
-Get [`FieldArray`](@ref) by Variable name, for spatial region defined by `selectargs`
-(which are passed to `Grids.get_region`).
-"""
-function get_array(model::Model, modeldata::AbstractModelData, varnamefull::AbstractString; selectargs...)
-    var = get_variable(model, varnamefull)
-    !isnothing(var) ||
-        throw(ArgumentError("Variable $varnamefull not found"))
-    f = get_field(var, modeldata)
-    attrbs = deepcopy(var.attributes)
-    attrbs[:var_name] = var.name
-    attrbs[:domain_name] = var.domain.name
-    return get_array(f; attributes=attrbs, selectargs...)
-end
 
 """
     set_variable_attribute!(model::Model, varnamefull, attributename::Symbol, value)

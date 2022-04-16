@@ -3,16 +3,9 @@ module PALEOboxes
 import YAML
 import Graphs # formerly LightGraphs
 import DataFrames
-# import ForwardDiff
-
-greet() = print("Hello World!")
-
-function PALEOrootdir()
-    return dirname(dirname(dirname(pathof(PALEOboxes))))
-end
 
 include("Types.jl")
-include("CoordsDimsFieldArray.jl")
+include("CoordsDims.jl")
 include("Fields.jl")
 include("AtomicScalar.jl")
 include("ScalarData.jl")

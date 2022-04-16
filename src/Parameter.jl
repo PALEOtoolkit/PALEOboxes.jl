@@ -392,8 +392,6 @@ externalvalue(rawvalue, external_parameters) = rawvalue
 Substitute "\$MyLocalSetting\$" with the value of the MyLocalSetting key in the 
 Julia LocalPreferences.toml file, from the section for `module` 
 (for a Reaction Parameter value, this should be the Julia module of the Reaction containing the Parameter).
-
-As a special case, "\$PALEOrootdir\$" is substituted with the path to the PALEO.jl distribution.
 """
 function substitutevalue(mod::Module, rawvalue::AbstractString; dontsub=("\$fluxname\$",)) 
     value = rawvalue
@@ -402,16 +400,13 @@ function substitutevalue(mod::Module, rawvalue::AbstractString; dontsub=("\$flux
             # dont substitute
             continue
         end
-        if m.match == "\$PALEOrootdir\$"
-            # special case
-            replacestr = PALEOboxes.PALEOrootdir()            
-        else
-            # look up in LocalPreferences.toml
-            subval = m.match[2:end-1] # omit $ $
-            Preferences.has_preference(mod, String(subval)) || 
-                error("substitutevalue: key $subval not found in LocalPreferences.toml")
-            replacestr = Preferences.load_preference(mod, String(subval)) 
-        end
+        
+        # look up in LocalPreferences.toml
+        subval = m.match[2:end-1] # omit $ $
+        Preferences.has_preference(mod, String(subval)) || 
+            error("substitutevalue: key $subval not found in LocalPreferences.toml")
+        replacestr = Preferences.load_preference(mod, String(subval)) 
+       
             
         value = replace(value, m.match => replacestr)
     end

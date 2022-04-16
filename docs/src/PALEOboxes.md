@@ -150,7 +150,6 @@ Examples:
 - `:field_data` = [`ScalarData`](@ref), `:space` = [`CellSpace`](@ref) defines a per-cell quantity in a spatial Domain.
 - `:field_data` = [`ArrayScalarData`](@ref), `:data_dims =("wgrid",)` `:space` = [`ScalarSpace`](@ref) defines a Domain scalar (0D) quantity on a wavelength grid, a Vector of length given by the value of the Domain "wgrid" data dimension (see [`set_data_dimension!`](@ref))
 
-[`FieldArray`](@ref) provides a generic array type with named dimensions [`NamedDimension`](@ref)s and optional coordinates [`FixedCoord`](@ref) for processing of model output.
 
 ```@docs
 VariableBase
@@ -190,16 +189,13 @@ CellSpace
 ### Fields
 ```@docs
 Field
-FieldRecord
 get_field
 ```
 
-### FieldArray
+### Dimensions and Coordinates
 ```@docs
-FieldArray
-get_array
-FixedCoord
 NamedDimension
+FixedCoord
 ```
 
 ### Variable Attributes
