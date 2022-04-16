@@ -1,7 +1,7 @@
 
 # PALEOboxes.jl
 
-[![Build Status](https://github.com/PALEOtoolkit/PALEOboxes.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PALEOtoolkit/PALEOboxes.jl/actions/workflows/ci.yml)
+[![CI](https://github.com/PALEOtoolkit/PALEOboxes.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/PALEOtoolkit/PALEOboxes.jl/actions/workflows/CI.yml)
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://PALEOtoolkit.github.io/PALEOboxes.jl/dev)
 
 PALEOboxes.jl provides the model coupler for the PALEO model framework.
