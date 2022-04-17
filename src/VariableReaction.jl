@@ -1,16 +1,24 @@
 import Infiltrator
 # import StaticArrays
 """
-    VariableReaction
+    VariableReaction{T}
 
-[`ReactionMethod`](@ref) view on a model `Domain` variable.
+Reaction view on a model variable.
+
+Reactions define [`AbstractVarList`](@ref)s of `VariableReaction`s when creating a [`ReactionMethod`](@ref). These
+are used to create to [`VariableDomain`](@ref) variables when the model is initialised, 
+linking together `VariableReaction`s with the same name. 
+`views` on Domain data Arrays are then passed to the [`ReactionMethod`](@ref) function at each timestep.
+
+The Type parameter `T` is one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`.
+
+`localname` identifies the `VariableReaction` within the `Reaction`, and can be used to set `variable_attributes:`
+and `variable_links:` in the .yaml configuration file.
+
+`linkreq_domain.linkreq_subdomain.linkreq_name` defines the Domain, Subdomain and name for run-time linking
+to [`VariableDomain`](@ref) variables. 
 
 Not created directly - see [`CreateVariableReaction`](@ref)
-
-`localname` identifies the `VariableReaction` within the `Reaction`.
-`linkreq_domain.linkreq_subdomain.linkreq_name` defines the Domain, Subdomain and name for run-time linking
-to Domain variables. `views` on Domain data Arrays are created at runtime from [`AbstractVarList`](@ref)s of
-`VariableReaction`s and passed to the [`ReactionMethod`](@ref).
 """
 Base.@kwdef mutable struct VariableReaction{T} <: VariableBase
     method::Union{Nothing, AbstractReactionMethod} = nothing
@@ -57,46 +65,41 @@ end
 ##################################################
 
 """
-    CreateVariableReaction(var_type, localnamestr, units, description; 
-                           attributes=Tuple(), link_namestr=localnamestr) 
+    CreateVariableReaction(var_type, linklocal_namestr, units, description; 
+                           attributes=Tuple(), link_namestr=linklocal_namestr) 
                             -> VariableReaction{T}
 
-Create a `VariableReaction`.
+Create a [`VariableReaction`](@ref).
 
 Not called directly: use short names `VarProp`, `VarDep`, `VarContrib`, `VarTarget`, 
 `VarPropScalar`, `VarDepScalar`, `VarContribScalar`, `VarTargetScalar`.
 
 # Arguments
 - `var_type::VariableType`:  one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`
-- `localnamestr::AbstractString`: Reaction-local name
+- `linklocal_namestr::AbstractString`: either `localname`, or `<linkreq_domain>.[linkreq_subdomain].localname`
+(parsed by [`parse_variablereaction_namestr`](@ref) to define requested linking to `Domain` Variable). 
 - `units::AbstractString`: units ("" if not applicable)
 - `description::AbstractString`: text describing the variable
 - `attributes::Tuple(:attrb1name=>attrb1value, :attrb2name=>attrb2value, ...)`: 
- variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
+variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
 - `link_namestr::AbstractString`: parsed by [`parse_variablereaction_namestr`](@ref) 
- to define requested linking to `Domain` Variable.
-
-To provide a convenient syntax that handles common cases without separately specifying `link_namestr`:
-- If `link_namestr==localnamestr` (the default value) `localnamestr` is parsed to find `localname` 
- (stripping out linking information).
-- If `link_namestr' is explicitly provided, so `link_namestr != localnamestr`,
- then to avoid confusion `local_namestr` must be just `localname`.
-
+to define requested linking to `Domain` Variable. Only required to specify a requested link name where `linkreq_name`
+is different from `localname`. If supplied, `linklocal_namestr` must then be just `localname`.
 """
 function CreateVariableReaction(
     var_type::VariableType,
-    localnamestr::AbstractString,
+    linklocal_namestr::AbstractString,
     units::AbstractString,
     description::AbstractString;                                      
     attributes::Tuple{Vararg{Pair}}=(),  # (:atrb1=>value1, :atrb2=>value2)
-    link_namestr = localnamestr
+    link_namestr = linklocal_namestr
 )
 
-    (ignored_domain, ignored_subdomain, localname, ignored_optional) = parse_variablereaction_namestr(localnamestr)
+    (ignored_domain, ignored_subdomain, localname, ignored_optional) = parse_variablereaction_namestr(linklocal_namestr)
     localname = sub_variablereaction_linkreq_name(localname, "")  # strip %reaction%
-    if localnamestr != link_namestr
-        localnamestr == localname ||
-            error("CreateVariableReaction: invalid combination of explicit link_namestr=$link_namestr and localname=$localnamestr")
+    if linklocal_namestr != link_namestr
+        linklocal_namestr == localname ||
+            error("CreateVariableReaction: invalid combination of explicit link_namestr=$link_namestr and localname=$linklocal_namestr")
     end
 
     (linkreq_domain, linkreq_subdomain, linkreq_name, link_optional) = parse_variablereaction_namestr(link_namestr)
@@ -259,12 +262,12 @@ end
     VarVector(variable_ctorfn, variables_list) -> Vector{VariableReaction{T}}
 
 Create and return a `Vector{VariableReaction{T}}` defined by specified `variable_ctorfn`
-from `variables_list = [(localnamestr, units, description), ...]``
+from `variables_list = [(linklocal_namestr, units, description), ...]``
 """
 VarVector(variable_ctorfn, variables_list) = 
     [
-        variable_ctorfn(localnamestr, units, description) 
-        for (localnamestr, units, description) in variables_list
+        variable_ctorfn(linklocal_namestr, units, description) 
+        for (linklocal_namestr, units, description) in variables_list
     ]
 
 #########################################################################

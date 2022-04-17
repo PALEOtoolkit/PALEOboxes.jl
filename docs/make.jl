@@ -14,7 +14,10 @@ makedocs(bib, sitename="PALEOboxes Documentation",
                 "CreateInitializeLoop.md"
             ],
             "Reference" => [
-                "PALEOboxes.md",
+                "DomainsVariablesFields.md",
+                "Solver API.md",
+                "Reaction API.md",
+                "ReactionCatalog.md",
             ],
             "References.md",
             "indexpage.md",

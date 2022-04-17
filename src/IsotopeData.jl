@@ -7,7 +7,7 @@ import StructArrays
 ################################
 
 """
-    AbstractIsotopeScalar
+    AbstractIsotopeScalar <: AbstractData
 
 An IsotopeScalar represents a quantity or flux with isotopic composition.
 Can be added, subtracted, multiplied by a scalar, and decomposed into components with the
@@ -90,7 +90,7 @@ end
 # IsotopeLinear
 #####################################################
 """
-    IsotopeLinear
+    IsotopeLinear <: AbstractIsotopeScalar
 
 Linearized representation of isotopic composition, where 
 `moldelta` = `total` * `delta`.
@@ -355,7 +355,7 @@ num_components(field_data::Type{IsotopeLinear{T1, T2}})  where {T1,T2}      = nu
 get_components(values, data::Type{IsotopeLinear}) = [values.v, values.v_moldelta]
 
 
-"provide a create_accessor method for ScalarData --> IsotopeLinear that takes just the first (total) component"
+# provide a create_accessor method for ScalarData --> IsotopeLinear that takes just the first (total) component
 function create_accessor(
     output_data::Type{ScalarData},
     # TODO - check space, data_dims,
