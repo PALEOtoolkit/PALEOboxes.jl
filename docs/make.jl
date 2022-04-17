@@ -15,6 +15,7 @@ makedocs(bib, sitename="PALEOboxes Documentation",
             ],
             "Reference" => [
                 "PALEOboxes.md",
+                "ReactionCatalog.md",
             ],
             "References.md",
             "indexpage.md",

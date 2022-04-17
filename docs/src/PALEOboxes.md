@@ -262,7 +262,6 @@ VariableReaction
 CreateVariableReaction
 parse_variablereaction_namestr
 set_attribute!
-Reservoirs.ReservoirLinksVector
 ```
 
 ### ReactionMethods
@@ -310,47 +309,4 @@ add_method_do_totals_default!
 ```@docs
 RateStoich
 create_ratestoich_method
-```
-
-## Reservoirs
-```@meta
-CurrentModule = PALEOboxes.Reservoirs
-```
-```@docs
-ReactionReservoirScalar
-ReactionReservoir
-ReactionReservoirWellMixed
-ReactionReservoirConst
-ReactionReservoirForced
-ReactionConst
-```
-
-## Variable Statistics
-```@meta
-CurrentModule = PALEOboxes.VariableStats
-```
-```@docs
-ReactionSum
-ReactionWeightedMean
-ReactionAreaVolumeValInRange
-```
-
-## Fluxes
-```@meta
-CurrentModule = PALEOboxes
-```
-```@docs
-Fluxes
-```
-```@meta
-CurrentModule = PALEOboxes.Fluxes
-```
-```@docs
-ReactionFluxTarget
-ReactionFluxTransfer
-```
-
-### Contributing to flux couplers from a Reaction
-```@docs
-FluxContrib
 ```
