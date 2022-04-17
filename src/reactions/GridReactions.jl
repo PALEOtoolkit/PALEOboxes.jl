@@ -8,7 +8,7 @@ import Infiltrator # Julia debugger
 """
     ReactionUnstructuredVectorGrid
 
-Create an [`UnstructuredVectorGrid`](@ref) with `ncells` (from `ncells` Parameter).
+Create an [`PB.UnstructuredVectorGrid`](@ref) with `ncells` (from `ncells` Parameter).
 """
 Base.@kwdef mutable struct ReactionUnstructuredVectorGrid{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -37,7 +37,7 @@ PB.register_methods!(rj::ReactionUnstructuredVectorGrid) = nothing
 """
     ReactionCartesianGrid
 
-Create a [`CartesianArrayGrid`](@ref) with `dims` and `dimnames``
+Create a [`PB.CartesianArrayGrid`](@ref) with `dims` and `dimnames``
 """
 Base.@kwdef mutable struct ReactionCartesianGrid{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -72,7 +72,7 @@ PB.register_methods!(rj::ReactionCartesianGrid) = nothing
 """
     ReactionGrid2DNetCDF
 
-Create a 2D [`CartesianLinearGrid`](@ref) from grid information in a NetCDF file.
+Create a 2D [`PB.CartesianLinearGrid`](@ref) from grid information in a NetCDF file.
 """
 Base.@kwdef mutable struct ReactionGrid2DNetCDF{P} <: PB.AbstractReaction
     base::PB.ReactionBase

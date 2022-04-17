@@ -5,7 +5,7 @@ import Infiltrator
 ###########################################################
 
 """
-    ScalarSpace
+    ScalarSpace <: AbstractSpace
 
 A Domain position-independent quantity
 """
@@ -13,7 +13,7 @@ struct ScalarSpace <: AbstractSpace
 end
 
 """
-    CellSpace
+    CellSpace <: AbstractSpace
 
 A per-cell quantity. Use as Variable attribute :space to create a Variable with data array dimensions from Grid
 """
@@ -22,7 +22,7 @@ end
 
 
 """
-    Face1DColumnSpace
+    Face1DColumnSpace <: AbstractSpace
 
 A quantity defined on upper and lower faces of a cell in a 1D column
 """
@@ -291,7 +291,7 @@ get_values_output(values, data_type::Type{<:AbstractData}, data_dims::Tuple{Vara
 
 
 """
-    UndefinedData
+    UndefinedData <: AbstractData
 
 Undefined data type (no methods implemented). Used to indicate that a Variable can link to any data type.
 """
@@ -397,7 +397,7 @@ function get_values_output(field::Field{D, S, V, N, M}) where {D, S, V, N, M}
 end
 
 
-"get values from `linkvar_field`, optionally applying view defined by `linksubdomain`"
+# get values from `linkvar_field`, optionally applying view defined by `linksubdomain`
 function create_accessor(
     output_data::Union{Type{D}, Type{UndefinedData}},
     # TODO - check space, data_dims,

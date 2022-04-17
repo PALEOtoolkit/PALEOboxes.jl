@@ -3,7 +3,7 @@
 ################################################
 
 """
-    ArrayScalarData
+    ArrayScalarData <: AbstractData
 
 An Array of Field scalars (eg a intensity on a wavelength grid).
 

@@ -1,4 +1,4 @@
-# PALEOboxes
+# Generic Reaction catalog
 
 ```@meta
 CurrentModule = PALEOboxes
@@ -55,7 +55,7 @@ FluxContrib
 ```
 
 ```@meta
-CurrentModule = PALEOreactions.Forcings
+CurrentModule = PALEOboxes
 ```
 ## Forcings
 ```@docs
@@ -66,4 +66,14 @@ FluxPerturb.ReactionRestore
 ```
 
 ## Grids
+Minimal generic model grids for test purposes.
+
+These just define the Domain size, and don't provide coordinate or metric information (cell volume, area).  Models will usually require a Reaction with a Domain-specific implementation (eg for ocean, atmosphere) that defines coordinates and volumes etc and also implements transport (advection, eddy diffusion, etc).
+```@meta
+CurrentModule = PALEOboxes.GridReactions
+```
+```@docs
 ReactionUnstructuredVectorGrid
+ReactionCartesianGrid
+ReactionGrid2DNetCDF
+```

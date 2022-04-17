@@ -5,10 +5,10 @@ The PALEO model framework provides a toolkit and model coupler for constructing 
 ```@meta
 CurrentModule = PALEOboxes
 ```
-## [PALEOboxes](@ref) coupler
+## PALEOboxes coupler
 A PALEO [`Model`](@ref) contains [`Domain`](@ref)s, each of which contain Variables and Reactions with [`ReactionMethod`](@ref)s that operate on the Variables to calculate model time evolution.
 
-The [PALEOboxes](@ref) Julia package (abbreviated to `PB` in the PALEO code) implements a coupler that provides a unified mechanism for
+The PALEOboxes Julia package (abbreviated to `PB` in the PALEO code) implements a coupler that provides a unified mechanism for
 1. ‘low-level’ coupling (e.g. linking individual redox Reactions within a [`Domain`](@ref)), on which is built
 2. ‘module-level’ coupling (linking e.g. atmosphere and ocean components) based on standardising names for communicating fluxes, and which enables
 3. separation of biogeochemical reaction and transport. 
