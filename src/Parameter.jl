@@ -4,12 +4,12 @@ import Preferences
 """
     Parameter{T, ParseFromString}
 
-A reaction parameter of type `T`
+A reaction parameter of type `T`.
 Create using short names `ParDouble`, `ParInt`, `ParBool`, `ParString`.
-Value is `<par>.v::T`.
+Read value as `<par>.v::T`, set with [`setvalue!`](@ref).
 
-`ParseFromString` should usually be `false`: a value of `Type T` is then required when calling [`setvalue!`](@ref).
-If `ParseFromString` is not Nothing, then [`setvalue!`](@ref) will accept an `AbstractString` and call `Base.parse(ParseFromString, strvalue)`.
+`ParseFromString` should usually be `Nothing`: a value of `Type T` is then required when calling [`setvalue!`](@ref).
+If `ParseFromString` is not `Nothing`, then [`setvalue!`](@ref) will accept an `AbstractString` and call `Base.parse(ParseFromString, strvalue)`.
 This allows eg an enum-valued Parameter to be defined by Parameter{EnumType, EnumType} and implementing
 parse(EnumType, rawvalue::AbstractString)
 """
@@ -291,7 +291,13 @@ function _parsevalue(par::Union{Parameter{T, PT}, VecParameter{T, PT}, VecVecPar
     return parse(PT, value)
 end
 
-"Set Parameter value"
+"""
+    setvalue!(par::Parameter, value)
+
+Set Parameter to `value`.
+
+Optionally (if [`Parameter`](@ref) has Type parameter `ParseFromString != Nothing`) parse `value` from a String.
+"""
 function setvalue!(par::Parameter, rawvalue)
     value = _parsevalue(par, rawvalue)
     if !isempty(par.allowed_values) && !(value in par.allowed_values)
@@ -306,7 +312,6 @@ end
 
 
 
-"Set Parameter value"
 function setvalue!(par::VecParameter, values)  
     if !isempty(par.allowed_values)
         for  rawv in values
@@ -323,7 +328,7 @@ function setvalue!(par::VecParameter, values)
     return nothing
 end
 
-"allow an empty Vector{Any} (as that is what yaml provides for [])"
+# allow an empty Vector{Any} (as that is what yaml provides for [])
 function setvalue!(par::VecParameter{T, ParseFromString}, values::Vector{Any}) where{T, ParseFromString}
     if isempty(values)
         return setvalue!(par, T[])

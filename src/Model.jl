@@ -626,21 +626,36 @@ function Base.show(io::IO, ::MIME"text/plain", model::Model)
     println(io, "\tdomains=", model.domains)
 end
 
-"display reaction order"
+"""
+    show_methods_setup(model::Model)
+
+Display ordered list of Reaction setup methods (registered by [`add_method_setup!`](@ref),
+called by [`dispatch_setup`](@ref))
+"""
 function show_methods_setup(model::Model)
     println("All methods_setup:")
     println(model.sorted_methods_setup)
     return nothing    
 end
 
-"display reaction order"
+"""
+    show_methods_initialize(model::Model)
+
+Display ordered list of Reaction initialize methods (registered by [`add_method_initialize!`](@ref),
+called by [`do_deriv`](@ref) at start of each model timestep).
+"""
 function show_methods_initialize(model::Model)
     println("All methods_initialize:")
     println(model.sorted_methods_initialize)
     return nothing    
 end
 
-"display reaction order"
+"""
+    show_methods_do(model::Model)
+
+Display ordered list of Reaction do methods (registered by [`add_method_do!`](@ref),
+called by [`do_deriv`](@ref) for each model timestep).
+"""
 function show_methods_do(model::Model)
     println("All methods_do:")
     println(model.sorted_methods_do)

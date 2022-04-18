@@ -139,7 +139,11 @@ function Base.copyto!(dest::AbstractVector, src::VariableAggregator; dof::Int=1)
     return fof - dof
 end
 
-"va -> x"
+"""
+    get_data(va::VariableAggregator) -> Vector
+
+Allocate Vector and set to values of aggregated Variables `va`.
+"""
 function get_data(va::VariableAggregator)
     x = Vector{eltype(va)}(undef, length(va))
     copyto!(x, va)

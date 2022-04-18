@@ -42,8 +42,51 @@ Base.@kwdef mutable struct VariableDomContribTarget <: VariableDomain
 
  get_var_type(var::VariableDomContribTarget) = VT_DomContribTarget
 
+####################################
+# Properties
+###################################
+
 """
-    set_field!(var, modeldata, field::Field)
+    Base.getproperty(var::VariableDomain, s::Symbol)
+
+Define [`VariableDomain`](@ref) properties.
+
+`var.attributes` is forwarded to the linked [`VariableReaction`](@ref) defined by the `var.master` field.
+"""
+function Base.getproperty(var::VariableDomain, s::Symbol)
+    if s == :attributes
+        return var.master.attributes
+    else
+        return getfield(var, s)
+    end
+end
+
+is_scalar(var::VariableDomain) = (var.attributes[:space] === ScalarSpace)
+
+"true if data array assigned"
+function is_allocated(var::VariableDomain, modeldata::AbstractModelData)
+    return !isnothing(get_field(var, modeldata))    
+end
+
+"fully qualified name"
+function fullname(var::VariableDomain)
+    return var.domain.name*"."*var.name
+end
+
+function host_dependent(var::VariableDomPropDep)
+    return isempty(var.var_property)
+end
+
+function host_dependent(var::VariableDomContribTarget)
+    return isnothing(var.var_target)
+end
+
+################################################
+# Field and data access
+##################################################
+
+"""
+    set_field!(var::VariableDomain, modeldata, field::Field)
  
 Set `VariableDomain` data to `field`
 """
@@ -57,9 +100,11 @@ function set_field!(var::VariableDomain, modeldata::AbstractModelData, field::Fi
 end
 
 """
-    set_data!(var, modeldata, data)
+    set_data!(var::VariableDomain, modeldata, data)
  
-Set `VariableDomain` to a Field wrapping `data`
+Set [`VariableDomain`](@ref) to a Field containing `data`.
+
+Calls [`wrap_field`](@ref) to create a new [`Field`](@ref).
 """
 function set_data!(var::VariableDomain, modeldata::AbstractModelData, data)
 
@@ -78,12 +123,9 @@ function set_data!(var::VariableDomain, modeldata::AbstractModelData, data)
 end
 
 
-function get_field(var::VariableDomain, domaindata::AbstractDomainData)    
-    return domaindata.variable_data[var.ID]
-end
-
 """
-    get_field(var::VariableDomain, modeldata::AbstractDomainData) -> field::Field
+    get_field(var::VariableDomain, modeldata::AbstractModelData) -> field::Field
+    get_field(var::VariableDomain, domaindata::AbstractDomainData) -> field::Field
 
 Get Variable `var` `field`
 """
@@ -92,20 +134,30 @@ function get_field(var::VariableDomain, modeldata::AbstractModelData)
     return get_field(var, domaindata)
 end
 
-"""
-    get_data(var::VariableDomain, modelordomaindata) -> field.values
+function get_field(var::VariableDomain, domaindata::AbstractDomainData)    
+    return domaindata.variable_data[var.ID]
+end
 
-Get Variable `var` data array
+"""
+    get_data(var::VariableDomain, modeldata::AbstractModelData) -> field.values
+    get_data(var::VariableDomain, modeldata::AbstractDomainData) -> field.values
+
+Get Variable `var` data array from [`Field`](@ref).values
 """
 get_data(var::VariableDomain, domainmodeldata) = get_field(var, domainmodeldata).values
 
 """
-    get_data_output(var, modelordomaindata) -> Field.values
+    get_data(var::VariableDomain, modeldata::AbstractModelData) -> get_values_output(field.values)
+    get_data(var::VariableDomain, modeldata::AbstractDomainData) -> get_values_output(field.values)
 
 Get a sanitized version of Variable `var` data array for storing as output
+from [`get_values_output`]@ref)`(`[`Field`](@ref).values`)`
 """
 get_data_output(var::VariableDomain, domainmodeldata) = get_values_output(get_field(var, domainmodeldata))
 
+####################################################################
+# Create and add to Domain
+##################################################################
 
 "create and add to Domain"
 function create_VariableDomPropDep(domain, name, master)
@@ -114,7 +166,7 @@ function create_VariableDomPropDep(domain, name, master)
         error("attempt to add duplicate VariableDomPropDep $(domain.name).$(name) to Domain")
     end
     domain.variables[name] = newvar
-    reset_master!(newvar, master)
+    _reset_master!(newvar, master)
     return newvar
 end
 
@@ -125,15 +177,19 @@ end
         error("attempt to add duplicate VariableDomContribTarget $(domain.name).$(name) to Domain")
     end
     domain.variables[name] = newvar
-    reset_master!(newvar, master)
+    _reset_master!(newvar, master)
     return newvar
 end
+
+####################################################################
+# Manage linked VariableReactions
+##################################################################
 
 function add_dependency(vardom::VariableDomPropDep, varreact::VariableReaction{VT_ReactDependency})
     push!(vardom.var_dependencies, varreact)
     if get_attribute(varreact, :vfunction) in (VF_StateExplicit, VF_State) 
         @debug "    Resetting master variable"
-        reset_master!(vardom, varreact)
+        _reset_master!(vardom, varreact)
     end   
     return nothing
 end
@@ -158,48 +214,16 @@ function add_contributor(vardom::VariableDomContribTarget, varreact::VariableRea
     push!(vardom.var_contributors, varreact)
     if get_attribute(varreact, :vfunction) in (VF_Deriv, VF_Total, VF_Constraint) 
         @debug "    Resetting master variable"
-        reset_master!(vardom, varreact)
+        _reset_master!(vardom, varreact)
     end
     return nothing
 end
 
 
-"reset master variable"
-function reset_master!(var::VariableDomain, master::VariableReaction)
+# reset master variable
+function _reset_master!(var::VariableDomain, master::VariableReaction)
     var.master = master
 end
-
-"fully qualified name"
-function fullname(var::VariableDomain)
-    return var.domain.name*"."*var.name
-end
-
-function host_dependent(var::VariableDomPropDep)
-    return isempty(var.var_property)
-end
-
-function host_dependent(var::VariableDomContribTarget)
-    return isnothing(var.var_target)
-end
-
-
-"Define additional VariableDomain properties"
-function Base.getproperty(var::VariableDomain, s::Symbol)
-    if s == :attributes
-        return var.master.attributes
-    else
-        return getfield(var, s)
-    end
-end
-
-is_scalar(var::VariableDomain) = (var.attributes[:space] === ScalarSpace)
-
-"true if data array assigned"
-function is_allocated(var::VariableDomain, modeldata::AbstractModelData)
-    return !isnothing(get_field(var, modeldata))    
-end
-
-
 
 function get_all_links(var::VariableDomPropDep)
     all_links = Vector{VariableReaction}()
@@ -265,7 +289,12 @@ function Base.show(io::IO, ::MIME"text/plain", var::VariableDomain)
     println(io, "  attributes=", var.attributes)
 end
 
-show_links(vardom::Union{VariableDomPropDep, VariableDomContribTarget}) = show_links(stdout, vardom)
+"""
+    show_links(vardom::VariableDomain) 
+
+Display all [`VariableReaction`](@ref)s linked to this [`VariableDomain`](@ref)
+"""
+show_links(vardom::VariableDomain) = show_links(stdout, vardom)
 
 function show_links(io::IO, vardom::VariableDomPropDep)
     println(io, "\t$(typeof(vardom)) $(fullname(vardom)) links:")
