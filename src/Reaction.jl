@@ -38,7 +38,11 @@ end
 
 
 
-"forward properties to ReactionBase"
+"""
+    Base.getproperty(react::AbstractReaction, s::Symbol)
+
+Forward to `react.base::ReactionBase` to define additional properties.
+"""
 function Base.getproperty(react::AbstractReaction, s::Symbol)
     if s == :name
         return react.base.name

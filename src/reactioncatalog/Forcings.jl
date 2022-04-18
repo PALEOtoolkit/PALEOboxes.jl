@@ -5,8 +5,15 @@ import PALEOboxes as PB
 """
     ReactionForceInterp
  
- `F` forcing interpolated from parameters (use configuration file to rename output variable `F`)
- NB: no extrapolation ! (so eg set guard values at -1e30, 1e30)
+Provide a scalar Property `F`, linearly interpolated from a table of values vs time `tforce`.
+
+The table of values is set by parameters `force_times` and `force_value`.
+
+The input time Variable is `tforce`, with default linking to the `global.tforce` Variable.
+
+Use the configuration file to rename the output variable `F` (and if necessary, the input Variable `tforce`).
+
+NB: no extrapolation ! (so eg set guard values for `force_times` at -1e30, 1e30)
  """
 Base.@kwdef mutable struct ReactionForceInterp{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -14,7 +21,7 @@ Base.@kwdef mutable struct ReactionForceInterp{P} <: PB.AbstractReaction
     pars::P = PB.ParametersTuple(
         PB.ParDoubleVec("force_times", [-1e30, 1e30], units="yr", 
             description="interpolated forcing times"),
-        PB.ParDoubleVec("force_values",[1.0, 1.0], units="",
+        PB.ParDoubleVec("force_values", [1.0, 1.0], units="",
             description="interpolated forcing values"),
     )
  

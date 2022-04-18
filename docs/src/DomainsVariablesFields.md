@@ -123,6 +123,7 @@ Examples:
 ```@docs
 Field
 get_field
+wrap_field
 ```
 
 ## Spaces

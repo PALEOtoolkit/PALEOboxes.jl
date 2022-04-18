@@ -76,15 +76,18 @@ Not called directly: use short names `VarProp`, `VarDep`, `VarContrib`, `VarTarg
 
 # Arguments
 - `var_type::VariableType`:  one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`
-- `linklocal_namestr::AbstractString`: either `localname`, or `<linkreq_domain>.[linkreq_subdomain].localname`
-(parsed by [`parse_variablereaction_namestr`](@ref) to define requested linking to `Domain` Variable). 
+- `linklocal_namestr::AbstractString`: either 
+  - `localname`, or
+  - `<linkreq_domain>.[linkreq_subdomain.]localname` (which is parsed by [`parse_variablereaction_namestr`](@ref)
+    to define the requested linking to `Domain` Variable). 
 - `units::AbstractString`: units ("" if not applicable)
 - `description::AbstractString`: text describing the variable
+# Keywords
 - `attributes::Tuple(:attrb1name=>attrb1value, :attrb2name=>attrb2value, ...)`: 
-variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
+  variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
 - `link_namestr::AbstractString`: parsed by [`parse_variablereaction_namestr`](@ref) 
-to define requested linking to `Domain` Variable. Only required to specify a requested link name where `linkreq_name`
-is different from `localname`. If supplied, `linklocal_namestr` must then be just `localname`.
+  to define requested linking to `Domain` Variable. Only required to specify a requested link name where `linkreq_name`
+  is different from `localname`. If supplied, `linklocal_namestr` must then be just `localname`.
 """
 function CreateVariableReaction(
     var_type::VariableType,

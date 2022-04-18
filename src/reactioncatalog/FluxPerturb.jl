@@ -8,9 +8,16 @@ import PALEOboxes as PB
 """
     ReactionFluxPerturb
  
- Add scalar flux `F` interpolated from parameters (use configuration file to rename output variable `F`)
- NB: no extrapolation ! (so eg set guard values at -1e30, 1e30)
- """
+Provide a scalar flux `F`, linearly interpolated from a table of values vs time `tforce`.
+
+The table of values is set by parameters `perturb_times` and `perturb_totals`, and optionally `perturb_deltas`.
+
+The input time Variable is `tforce`, with default linking to the `global.tforce` Variable.
+
+Use the configuration file to rename output variable `F` (and if necessary, the input Variable `tforce`).
+
+NB: no extrapolation ! (so eg set guard values for `force_times` at -1e30, 1e30)
+"""
 Base.@kwdef mutable struct ReactionFluxPerturb{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 
@@ -100,8 +107,8 @@ end
 """
     ReactionRestore
  
- Adds `RestoringFlux` in response to discrepancy between Variable `WatchLevel` and Parameter `RequiredLevel`
- """
+Adds `RestoringFlux` in response to discrepancy between Variable `WatchLevel` and Parameter `RequiredLevel`
+"""
 Base.@kwdef mutable struct ReactionRestore{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 

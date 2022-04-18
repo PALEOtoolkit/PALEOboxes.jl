@@ -8,8 +8,8 @@ CurrentModule = PALEOboxes
 A [YAML](https://en.wikipedia.org/wiki/YAML) format configuration file defines both the model structure (spatial domains containing biogeochemical variables and reactions that operate on them) and model parameter values. Reactions (subtypes of [`AbstractReaction`](@ref)) are registered in [`reaction_factories`](@ref) Dict and identified by name in the configuration file.
 
 To create the model, the numerical solver or host should call [`create_model_from_config`](@ref) which reads the configuration file, and then:
-- creates model [`Domain`](@ref)s and Reactions (subtypes of [AbstractReaction](@ref)), applying any [`Parameter`](@ref)s settings from the `parameters:` sections in the config file.
-- calls [`set_model_geometry`](@ref) allowing Reactions to create and attach Grids ([AbstractMesh](@ref) subtypes) defining [`Domain`](@ref) sizes.
+- creates model [`Domain`](@ref)s and Reactions (subtypes of [`AbstractReaction`](@ref)), applying any [`Parameter`](@ref)s settings from the `parameters:` sections in the config file.
+- calls [`set_model_geometry`](@ref) allowing Reactions to create and attach Grids ([`AbstractMesh`](@ref) subtypes) defining [`Domain`](@ref) sizes.
 - calls [`register_methods!`](@ref) on each Reaction, allowing Reactions to define local [`VariableReaction`](@ref)s and register [`ReactionMethod`](@ref)s. [`ReactionMethod`](@ref)s can be added to one of three groups, by calling [`add_method_setup!`](@ref) (called during model setup), [`add_method_initialize!`](@ref) (called at start of main loop) [`add_method_do!`](@ref) (called during main loop).
  - links [`VariableReaction`](@ref)s to [`VariableDomain`](@ref)s, applying any renaming from the `variable_links:` sections in the config file.
  - calls [`register_dynamic_methods!`](@ref) on each Reaction, allowing Reactions to create [`VariableReaction`](@ref)s and register [`ReactionMethod`](@ref)s that depend on [`VariableDomain`](@ref)s created by other Reactions.

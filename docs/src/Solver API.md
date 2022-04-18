@@ -76,6 +76,7 @@ show_methods_setup
 show_methods_initialize
 show_methods_do
 show_variables
+show_links
 show_parameters
 ```
 
