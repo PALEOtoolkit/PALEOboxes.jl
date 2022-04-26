@@ -16,20 +16,20 @@ function find_all_reactions()
     rtypes = InteractiveUtils.subtypes(AbstractReaction)
 
     rdict = Dict{String, Type}()
-    duplicate_keys = String[]
+    duplicate_keys = []
     for ReactionType in rtypes
         rname = String(last(split(string(ReactionType), ".")))
         if haskey(rdict, rname)
-            push!(duplicate_keys, rname)           
+            push!(duplicate_keys, (rname, ReactionType))
         end
         rdict[rname] = ReactionType
     end
 
-    for rname in duplicate_keys
-        @warn "Duplicate reaction name $rname for Types $(rdict[rname]) (removing from Dict)"
+    for (rname, ReactionType) in duplicate_keys
+        @warn "Duplicate reaction name $rname for Type $ReactionType (removing from Dict)"
         delete!(rdict, rname)
     end
-    
+
     return rdict
 end
 
