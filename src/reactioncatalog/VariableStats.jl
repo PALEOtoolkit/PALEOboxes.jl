@@ -3,7 +3,7 @@ module VariableStats
 
 import PALEOboxes as PB
 
-# import Infiltrator # Julia debugger
+import Infiltrator # Julia debugger
 
 
 """
@@ -31,7 +31,13 @@ Base.@kwdef mutable struct ReactionSum{P} <: PB.AbstractReaction
     )
 end
 
-
+abstract type ReactionVectorSum <: PB.AbstractReaction end
+function PB.create_reaction(::Type{ReactionVectorSum}, base::PB.ReactionBase)
+    rj = ReactionSum(base=base)
+    PB.setvalueanddefault!(rj.pars.vectorsum, true)
+    PB.setfrozen!(rj.pars.vectorsum)
+    return rj
+end
 
 function PB.register_methods!(rj::ReactionSum)
 
@@ -94,17 +100,20 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
     # check variable components match and update var_sum.components
     if rj.pars.component_to_add.v == 0
         # add all components of vars_to_add Variables
-        firstvar_d = PB.get_attribute(first(vars_to_add).linkvar, :field_data)
         # check all Variable have the same data
+        firstvar_d = nothing
         for v in vars_to_add
             !isnothing(v.linkvar) ||
                 error("Reaction $(PB.fullname(rj)) variable $(v.localname) is not linked - check configuration")            
             linkvar_d = PB.get_attribute(v.linkvar, :field_data)
+            if v === first(vars_to_add)
+                firstvar_d = linkvar_d
+                PB.set_attribute!(var_sum, :field_data,  firstvar_d)
+                @info "Reaction $(PB.fullname(rj)) Variable $(PB.fullname(var_sum.linkvar)) adding data=$firstvar_d"
+            end
             linkvar_d == firstvar_d ||
                 error("$(PB.fullname(rj)) not all variables to be summed have the same data $(PB.fullname(v.linkvar)) $(linkvar_d) != $(PB.fullname(first(rj.vars_to_add).linkvar)) $(firstvar_d)")
-        end
-        PB.set_attribute!(var_sum, :field_data,  firstvar_d)
-        @info "Reaction $(PB.fullname(rj)) Variable $(PB.fullname(var_sum.linkvar)) adding data=$firstvar_d"
+        end        
     else
         # add first component of vars_to_add Variables
         PB.set_attribute!(var_sum, :field_data,  PB.ScalarData)
@@ -275,16 +284,6 @@ function do_area_volume_in_range(m::PB.ReactionMethod, (vars,), cellrange::PB.Ab
     return nothing
 end
 
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    
-    PB.add_reaction_factory(ReactionSum, set_pars=("vectorsum"=>false,))
-    PB.add_reaction_factory("ReactionVectorSum", ReactionSum, set_pars=("vectorsum"=>true,))
-    PB.add_reaction_factory(ReactionAreaVolumeValInRange)
-    PB.add_reaction_factory(ReactionWeightedMean)
-
-    return nothing
-end
 
 
 

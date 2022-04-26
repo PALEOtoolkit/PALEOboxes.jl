@@ -182,12 +182,4 @@ function calc_spherical_area(r, (lond_l, lond_u), (latd_l, latd_u))
 end
 
 
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionGrid2DNetCDF)
-    PB.add_reaction_factory(ReactionUnstructuredVectorGrid)
-    PB.add_reaction_factory(ReactionCartesianGrid)
-    return nothing
-end
-
 end # module

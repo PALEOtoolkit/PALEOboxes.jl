@@ -74,11 +74,5 @@ function  do_react_kernel(v,  indices, p)
     return nothing
 end
 
-"Install a factory method when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionPaleoMock)    
-    return nothing
-end
-
 
 end # module

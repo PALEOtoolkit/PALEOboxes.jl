@@ -445,14 +445,4 @@ function do_force_insolation(m::PB.ReactionMethod, (vars, ), cellrange::PB.Abstr
 end
 
 
-
-
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionForceGrid)
-    PB.add_reaction_factory(ReactionForceInsolation)
-    return nothing
-end
-
-
 end # module

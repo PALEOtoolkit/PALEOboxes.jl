@@ -184,6 +184,14 @@ Base.@kwdef mutable struct ReactionReservoir{P} <: PB.AbstractReaction
     )
 end
 
+abstract type ReactionReservoirTotal <: PB.AbstractReaction end
+function PB.create_reaction(::Type{ReactionReservoirTotal}, base::PB.ReactionBase)
+    rj = ReactionReservoir(base=base)
+    PB.setvalueanddefault!(rj.pars.total, true)
+    PB.setfrozen!(rj.pars.total)
+    return rj
+end
+
 
 function PB.register_methods!(rj::ReactionReservoir)
 
@@ -585,7 +593,7 @@ Base.@kwdef mutable struct ReactionConst{P} <: PB.AbstractReaction
             description="vector of names for constant Variables. Isotopes use <name>::CIsotope syntax"),
     )
 
-    scalar::Bool
+    scalar::Bool = false
 end
 
 function PB.register_methods!(rj::ReactionConst)
@@ -608,32 +616,10 @@ function PB.register_methods!(rj::ReactionConst)
     return nothing
 end
 
-
-function create_ReactionConst(base)
-    rj = ReactionConst(base=base, scalar=false)
-    PB.add_par(rj, rj.pars)
-    return rj
-end
-
-function create_ReactionScalarConst(base)
+abstract type ReactionScalarConst <: PB.AbstractReaction end
+function PB.create_reaction(::Type{ReactionScalarConst}, base::PB.ReactionBase)
     rj = ReactionConst(base=base, scalar=true)
-    PB.add_par(rj, rj.pars)
     return rj
-end
-
-
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionReservoirScalar)
-    PB.add_reaction_factory(ReactionReservoir, set_pars=("total"=>false,))
-    PB.add_reaction_factory("ReactionReservoirTotal", ReactionReservoir, set_pars=("total"=>true,))
-    PB.add_reaction_factory(ReactionReservoirConst)
-    PB.add_reaction_factory(ReactionReservoirForced)
-    PB.add_reaction_factory(ReactionReservoirWellMixed)
-    PB.add_reaction_factory("ReactionConst", create_ReactionConst)
-    PB.add_reaction_factory("ReactionScalarConst", create_ReactionScalarConst)
-
-    return nothing
 end
 
 

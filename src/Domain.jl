@@ -277,7 +277,7 @@ end
 
 
 function create_domain_from_config(
-    name::AbstractString, domainID::Integer, conf_domain::Dict{Any,Any}, external_parameters::Dict{String, Any}
+    name::AbstractString, domainID::Integer, conf_domain::Dict{Any,Any}, external_parameters::Dict{String, Any}, rdict::Dict{String, Type}
 )
  
     for k in keys(conf_domain)
@@ -317,7 +317,7 @@ function create_domain_from_config(
                 push!(
                     domain.reactions, 
                     create_reaction_from_config(
-                        domain, reactname, conf_reaction, classname, domain.parameters
+                        classname, rdict, domain, reactname, conf_reaction, domain.parameters
                     )
                 )
             else
