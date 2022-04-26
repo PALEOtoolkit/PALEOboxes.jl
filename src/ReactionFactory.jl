@@ -1,107 +1,68 @@
 import Printf
+import InteractiveUtils
 
 """
-    const reaction_factories = Dict{classname::String, Function}()
+    find_all_reactions() -> Dict{String, Type}
 
-Dictionary of reaction factories.
+Use `InteractiveUtils.subtypes(AbstractReaction)` to find all currently loaded subtypes off
+AbstractReaction, and create a `Dict` with last part of the name of the Type
+as key (ie without the module prefix) and Type as value.
 
-A module containing Reactions should define a module `__init__()` function that includes a call
-to [`add_reaction_factory`] for each Reaction. This registers functions that then return instances of the Reaction structs.
+Any Types that generate non-unique keys (eg Module1.MyReactionType and Module2.MyReactionType) will generate
+a warning, and no entry will be added to the Dict (so if this Reaction is present in a config file, it will
+not be found and will error).
+"""
+function find_all_reactions()
+    rtypes = InteractiveUtils.subtypes(AbstractReaction)
 
-    "Install create_reactionXXX factories when module imported"
-    function __init__()
-        PB.add_reaction_factory(ReactionReservoirScalar)
+    rdict = Dict{String, Type}()
+    duplicate_keys = []
+    for ReactionType in rtypes
+        rname = String(last(split(string(ReactionType), ".")))
+        if haskey(rdict, rname)
+            push!(duplicate_keys, (rname, ReactionType))
+        end
+        rdict[rname] = ReactionType
     end
 
-"""
-const reaction_factories = Dict{String, Function}()
-
-"""
-    reaction_factory(ReactionType::Type{<:AbstractReaction}; [, operatorID=[1]] [,extra_par_fields], [, set_pars::Tuple]) -> Function
-
-Return a function that will create Reaction of type `rt` when called.
-    
-Optionally, after creation, set and freeze Parameters in `set_pars` (a Tuple of Pairs of name=>value eg ("total"=>false,) )
-"""
-function reaction_factory(
-    ReactionType::Type{<:AbstractReaction}; 
-    operatorID=[1],
-    extra_par_fields::Vector{Symbol}=Symbol[], # eg [:pars_stoich]
-    set_pars::Tuple{Vararg{Pair}}=()
-)
-
-    function create_init_reaction(base::ReactionBase)
-        rj = ReactionType(base=base)
-        rj.base.operatorID = operatorID
-       
-        # Add parameters from pars field
-        if hasfield(ReactionType, :pars)
-            add_par(rj, rj.pars)
-        end
-
-        # Add parameters from any additional fields
-        for ef in extra_par_fields
-            add_par(rj, getfield(rj, ef))
-        end
-
-        # optionally set and freeze supplied parameters
-        for (parname, value) in set_pars
-            par = get_parameter(rj, parname)
-            setvalueanddefault!(par, value)
-            setfrozen!(par)
-        end
-
-        return rj
+    for (rname, ReactionType) in duplicate_keys
+        @warn "Duplicate reaction name $rname for Type $ReactionType (removing from Dict)"
+        delete!(rdict, rname)
     end
 
-    return create_init_reaction
+    return rdict
 end
 
 """
-    add_reaction_factory(ReactionType::Type{<:AbstractReaction}; [, operatorID=[1]] [, set_pars::Tuple])
-    add_reaction_factory(classname, ReactionType::Type{<:AbstractReaction}; [, operatorID=[1]] [, set_pars::Tuple])
-    add_reaction_factory(classname, factory_fn)
+    create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase) -> reaction::AbstractReaction
 
-Register a ReactionType to be created either by using the default [`reaction_factory`](@ref) and typename as classname,
-or by the explicitly supplied `factory_fn` and `classname`.
+Create a `ReactionType` and set `base` field.
 
-Optionally, after creation, set and freeze Parameters in `set_pars` (a Tuple of Pairs of name=>value eg ("total"=>false,) )
+Default implementation may be overriden to eg set additional fields
 """
-function add_reaction_factory(ReactionType::Type{<:AbstractReaction}; kwargs...)
-    add_reaction_factory(string(nameof(ReactionType)), ReactionType; kwargs...)
-    return nothing
+function create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
+    return ReactionType(base=base)
 end
 
-function add_reaction_factory(classname::AbstractString, ReactionType::Type{<:AbstractReaction}; kwargs...)
-    add_reaction_factory(classname, reaction_factory(ReactionType; kwargs...))
-    return nothing
-end
-
-function add_reaction_factory(classname::AbstractString, factory_fn::Function)
-    reaction_factories[classname] = factory_fn
-    return nothing
-end
-
-"""
-    _create_reaction(classname::String, name::String) -> AbstractReaction
-
-Create a new instance of a reaction
-"""
-function _create_reaction(classname::String, name::String, external_parameters::Dict{String, Any})
-
-    # Create a new ReactionXXX instance if a Reaction factory has been registered for this classname
-    if haskey(reaction_factories, classname)
+function create_reaction(rdict::Dict{String, Type}, classname::String, name::String, external_parameters::Dict{String, Any})
+   
+    if haskey(rdict, classname)
         base=ReactionBase(name=name, classname=classname, external_parameters=external_parameters)
-        # use factory to create ReactionXXX instance
-        rj = reaction_factories[classname](base)
-        if ! (rj isa AbstractReaction)
-            error("_create_reaction classname='$classname', name='$name' returned ", rj)
+        rj = create_reaction(rdict[classname], base)
+        # Add parameters from pars field
+        if hasproperty(rj, :pars)
+            add_par(rj, rj.pars)
         end
         return rj
     else
         error("classname $classname not found")
         return nothing
     end
+end
+
+
+function add_reaction_factory(ReactionType::Type{<:AbstractReaction})
+    @warn "call to deprecated add_reaction_factory($ReactionType)"
 end
 
 """
@@ -116,16 +77,13 @@ Examples:
 """
 function show_all_reactions(classnamefilter="", typenamefilter="")
     
-    for (classname, ctorfn) in sort(reaction_factories)
+    for (classname, RType) in find_all_reactions()
         if occursin(classnamefilter, classname)
             println(classname)
             
-            base=ReactionBase(name="test", classname=classname, external_parameters=Dict{String, Any}())
-            r = ctorfn(base)       
-            rt = typeof(r)
-            rtstring = Printf.@sprintf("%s", rt)
+            rtstring = Printf.@sprintf("%s", RType)
             if  occursin(typenamefilter, rtstring )      
-                println("    ", rt)
+                println("    ", RType)
                 
                 # doc = Base.Docs.doc(rt)  # a Markdown object?
                 # display(doc)

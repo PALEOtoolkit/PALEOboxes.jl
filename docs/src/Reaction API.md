@@ -29,9 +29,7 @@ setvalue!
 
 ## Registering with PALEOboxes framework
 ```@docs
-reaction_factories
-add_reaction_factory
-reaction_factory
+create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
 ```
 
 ## Optional initialisation callbacks to define Domain Grids and array sizes

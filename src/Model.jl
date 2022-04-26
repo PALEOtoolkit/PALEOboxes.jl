@@ -256,6 +256,8 @@ function create_model_from_config(
     conf_domains = conf_model["domains"]
 
     # create domains
+    rdict = find_all_reactions()
+    @info "generated Reaction catalog with $(length(rdict)) Reactions"
     for (name, conf_domain) in conf_domains
         nextDomainID = length(model.domains) + 1
         @info "creating domain '$(name)' ID=$nextDomainID" 
@@ -264,7 +266,7 @@ function create_model_from_config(
         end       
         push!(
             model.domains, 
-            create_domain_from_config(name, nextDomainID, conf_domain, model.parameters)
+            create_domain_from_config(name, nextDomainID, conf_domain, model.parameters, rdict)
         )     
     end
 

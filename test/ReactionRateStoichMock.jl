@@ -33,11 +33,5 @@ function do_rate(m, (rate, ), cellrange::PB.AbstractCellRange, deltat)
     return nothing
 end
 
-"Install create_reaction when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionRateStoichMock)
-    return nothing
-end
-
 
 end # module

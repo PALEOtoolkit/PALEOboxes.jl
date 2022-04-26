@@ -469,14 +469,4 @@ function do_transfer(
     return nothing
 end
 
-
-
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionFluxTarget)
-    PB.add_reaction_factory(ReactionFluxTransfer)
-    return nothing
-end
-
-
 end

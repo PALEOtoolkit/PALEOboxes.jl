@@ -174,14 +174,4 @@ function do_restore(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRa
     return nothing
 end
 
-
-
-"Install create_reactionXXX factories when module imported"
-function __init__()    
-    PB.add_reaction_factory(ReactionFluxPerturb)
-    PB.add_reaction_factory(ReactionRestore)
-
-    return nothing
-end
-
 end

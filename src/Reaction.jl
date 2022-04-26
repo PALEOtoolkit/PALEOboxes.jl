@@ -336,14 +336,15 @@ end
 "Create new ReactionXXXX of specified classname from config file, set parameters,
 read variable mapping and initial values (to be set later by _configure_variables!)"
 function create_reaction_from_config(
+    classname::AbstractString,
+    rdict::Dict{String, Type},
     domain::Domain,
     name,
     conf_reaction,
-    classname,
     external_parameters::Dict{String, Any}
 )
        
-    newreaction = _create_reaction(classname, name, external_parameters)
+    newreaction = create_reaction(rdict, classname, name, external_parameters)
     newreaction.base.domain = domain
 
     for k in keys(conf_reaction)

@@ -69,12 +69,4 @@ end
 
 
 
-
-"Install create_reactionXXX factories when module imported"
-function __init__()
-    PB.add_reaction_factory(ReactionForceInterp)
-    return nothing
-end
-
-
 end # module
