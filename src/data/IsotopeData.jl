@@ -124,7 +124,7 @@ end
 Create an `IsotopeLinear` from `total` and `delta`
 
 # Examples:
- ```jldoctest; setup = :(import PALEOboxes as PB)
+```jldoctest; setup = :(import PALEOboxes as PB)
 julia> a = PB.isotope_totaldelta(PB.IsotopeLinear, 10.0, -2.0)
 (v=10.0, v_moldelta=-20.0, ‰=-2.0)
 
@@ -194,11 +194,24 @@ const IsotopeTypes = (ScalarData, IsotopeLinear)
 """
     split_nameisotope(
         nameisotope::AbstractString, isotope_data::Dict; 
-        default=AbstractData,
-    ) -> (fluxname, components)
+        default=UndefinedData,
+    ) -> (name::AbstractString, field_data::AbstractData)
 
-Split `nameisotope` string of form  <fluxname>[::XIsotope],  returning `data` = `isotope_data[XIsotope]`, 
-or `default` if `XIsotope` key is not present in `isotope_data`, or ScalarData if ::XIsotope not present.
+Split `nameisotope` string of form  <name>[::XIsotope],  and look up `field_data` from key `XIsotope` in supplied Dict `isotope_data`.
+
+Returns ScalarData if ::XIsotope not present in `nameisotope`, `field_data = default` if `XIsotope` key is not present in `isotope_data`.
+    
+# Examples
+```jldoctest; setup = :(import PALEOboxes as PB)
+julia> PB.split_nameisotope("myflux::CIsotope", Dict("CIsotope"=>PB.IsotopeLinear))
+("myflux", PALEOboxes.IsotopeLinear)
+
+julia> PB.split_nameisotope("myflux", Dict("CIsotope"=>PB.IsotopeLinear))
+("myflux", PALEOboxes.ScalarData)
+
+julia> PB.split_nameisotope("::CIsotope", Dict("CIsotope"=>PB.IsotopeLinear))
+("", PALEOboxes.IsotopeLinear)
+```
 """
 function split_nameisotope(
     nameisotope::AbstractString, isotope_data::Dict;

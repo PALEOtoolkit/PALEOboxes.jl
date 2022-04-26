@@ -120,22 +120,9 @@ A model region containing Fields and Reactions that act on them.
 abstract type AbstractDomain
 end
 
-
-"""
-    AbstractSubdomain
-
-Defines relationship between two [`Domain`](@ref) by mapping indices in one Domain to related indices in the other,
-eg interior cells adjacent to a boundary.
-"""
 abstract type AbstractSubdomain
 end
 
-
-"""
-    AbstractMesh
-
-Defines additional geometric and topological information for [`Domain`](@ref)
-"""
 abstract type AbstractMesh
 end
 
@@ -154,19 +141,9 @@ Defines a range of cells within a [`Domain`](@ref)
 abstract type AbstractCellRange
 end
 
-"""
-    AbstractSpace
-
-Defines a function space within a Domain, on a mesh defined by a Grid 
-"""
 abstract type AbstractSpace
 end
 
-"""
-    AbstractData
-
-Defines a Data type that can be composed with a Space to form a Field
-"""
 abstract type AbstractData
 end
 
