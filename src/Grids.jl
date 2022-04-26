@@ -8,9 +8,22 @@ import Infiltrator # Julia debugger
 ###########################
 # Subdomains
 ###########################
+"""
+    AbstractSubdomain
+
+Defines the relationship between two [`Domain`](@ref)s by mapping indices in one Domain to related indices in the other,
+eg interior cells adjacent to a boundary.
+
+Concrete subtypes should implement:
+
+[`subdomain_view`](@ref)
+
+[`subdomain_indices`](@ref)
+"""
+PB.AbstractSubdomain
 
 """
-    BoundarySubdomain
+    BoundarySubdomain <: PB.AbstractSubdomain
 
 A 2D subdomain corresponding to the 2D boundary Domain associated with a 3D interior Domain:
 - `indices[ibnd]` is the index of the 3D interior cell corresponding to a 2D boundary cell `ibnd`.
@@ -40,7 +53,7 @@ function subdomain_indices(subdomain::BoundarySubdomain)
 end
 
 """
-    InteriorSubdomain
+    InteriorSubdomain <: PB.AbstractSubdomain
 
 A 3D subdomain corresponding to the 3D interior Domain associated with a 2D boundary Domain: `indices[iint]` is either:
 - `missing` if `iint` is the index of an interior cell in the 3D Domain, or
@@ -85,12 +98,20 @@ function is_boundary(subdomain::InteriorSubdomain, i)
     return !ismissing(subdomain.indices[i])
 end
 
-"fallback when `subdomain == nothing`"
+"""
+    subdomain_view(values, subdomain::Nothing) -> values
+
+Fallback when `subdomain == nothing`
+"""
 function subdomain_view(values, subdomain::Nothing)
     return values
 end
 
-"fallback when `subdomain == nothing`"
+"""
+    subdomain_indices(subdomain::Nothing) -> nothing
+
+fallback when `subdomain == nothing`
+"""
 function subdomain_indices(subdomain::Nothing)
     return nothing
 end
@@ -100,6 +121,21 @@ end
 #########################################
 # Grids
 ##########################################
+
+"""
+    AbstractMesh
+
+Defines additional geometric and topological information for [`PB.Domain`](@ref)
+
+Concrete subtypes should implement methods:
+
+[`PB.internal_size`](@ref), optionally [`PB.cartesian_size`](@ref)
+
+[`PB.Grids.set_subdomain!`](@ref), [`PB.Grids.get_subdomain`](@ref)
+
+[`PB.Grids.create_default_cellrange`](@ref), [`PB.Grids.get_region`](@ref)
+"""
+PB.AbstractMesh
 
 "parse eg \"CartesianLinearGrid\" as CartesianLinearGrid"
 function Base.parse(::Type{PB.AbstractMesh}, str::AbstractString)   
@@ -118,7 +154,7 @@ Create a CellRange for entire `domain` and supplied `operatorID`
 function create_default_cellrange(domain::PB.AbstractDomain, grid::Union{PB.AbstractMesh, Nothing}) end
 
 """
-    get_region(grid, values; selectargs...) -> values_subset, (dim_subset::NamedDimension, ...)
+    get_region(grid::Union{PB.AbstractMesh, Nothing}, values; selectargs...) -> values_subset, (dim_subset::NamedDimension, ...)
 
 Return the subset of `values` given by `selectargs` (Grid-specific keywords eg cell=, column=, ...)
 and corresponding dimensions (with attached coordinates).
@@ -138,6 +174,11 @@ function set_subdomain!(grid::PB.AbstractMesh, subdomainname::AbstractString, su
     return nothing
 end
 
+"""
+    get_subdomain(grid::PB.AbstractMesh, subdomainname::AbstractString) -> PB.AbstractSubdomain
+
+Get Subdomain
+"""
 function get_subdomain(grid::PB.AbstractMesh, subdomainname::AbstractString)
     subdomain = get(grid.subdomains, subdomainname, nothing)
     !isnothing(subdomain) || error("get_subdomain: no subdomain $subdomainname")
@@ -162,7 +203,11 @@ function create_default_cellrange(domain::PB.AbstractDomain, grid::Nothing; oper
     return PB.CellRange(domain=domain, indices=1:PB.get_length(domain), operatorID=operatorID)
 end
 
-"fallback for Domain with no grid, assumed 1 cell"
+"""
+    get_region(grid::Nothing, values) -> values[]
+
+Fallback for Domain with no grid, assumed 1 cell
+"""
 function get_region(grid::Nothing, values)
     length(values) == 1 ||
         throw(ArgumentError("grid==Nothing and length(values) != 1"))
@@ -174,7 +219,7 @@ end
 ##################################
 
 """
-    UnstructuredVectorGrid
+    UnstructuredVectorGrid <: PB.AbstractMesh
 
 Minimal Grid for a Vector Domain, defines only some named cells for plotting
 """
@@ -231,7 +276,7 @@ end
 ###########################################
 
 """
-    UnstructuredColumnGrid
+    UnstructuredColumnGrid <: PB.AbstractMesh
 
 Minimal Grid for a Vector Domain composed of columns (not necessarily forming a 2-D array).
 
@@ -322,7 +367,7 @@ end
 #######################################
 
 """
-    CartesianLinearGrid
+    CartesianLinearGrid <: PB.AbstractMesh
 
 nD grid with netcdf CF1.0 coordinates, using Vectors for PALEO internal representation of Variables,
 with a mapping linear indices <--> some subset of grid indices.
@@ -378,7 +423,7 @@ PB.cartesian_size(grid::CartesianLinearGrid) = Tuple(grid.dims)
 
 
 """
-    CartesianArrayGrid
+    CartesianArrayGrid <: PB.AbstractMesh
 
 nD grid with netcdf CF1.0 coordinates, using n-dimensional Arrays for PALEO internal representation of Variables
 

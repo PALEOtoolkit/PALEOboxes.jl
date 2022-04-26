@@ -3,6 +3,12 @@ import Infiltrator
 ############################################################
 # (Function) Spaces
 ###########################################################
+"""
+    AbstractSpace
+
+Defines a function space within a Domain, on a mesh defined by a Grid 
+"""
+AbstractSpace
 
 """
     ScalarSpace <: AbstractSpace
@@ -77,6 +83,25 @@ spatial_size(::Type{CellSpace}, mesh) = internal_size(mesh)
 #
 # Concrete types (ScalarData, ArrayScalarData, IsotopeData) should implement these methods
 #################################################################
+"""
+    AbstractData
+
+Defines a Data type that can be composed with an [`AbstractSpace`](@ref) to form a Field
+
+Concrete subtypes should implement:
+
+[`allocate_values`](@ref), [`check_values`](@ref), [`zero_values!`](@ref), [`dof_values`](@ref),
+[`get_values_output`](@ref)
+
+If the subtype needs to provide values for a numerical solver (eg as a state variable), it also needs to implement:
+
+[`init_values!`](@ref), [`copyfieldto!`](@ref), [`copytofield!`](@ref), [`add_field!`](@ref), [`add_field_vec!`](@ref)
+
+If the subtype has a representation as components, it should implement:
+[`num_components`](@ref), [`get_components`](@ref)
+"""
+AbstractData
+
 
 """
     allocate_values(

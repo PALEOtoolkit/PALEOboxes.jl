@@ -27,11 +27,17 @@ CurrentModule = PALEOboxes
 ```
 ```@docs
 AbstractMesh
+
+internal_size
+cartesian_size
 ```
 ```@meta
 CurrentModule = PALEOboxes.Grids
 ```
 ```@docs
+set_subdomain!
+get_subdomain
+
 UnstructuredVectorGrid
 UnstructuredColumnGrid
 CartesianLinearGrid
@@ -51,12 +57,18 @@ CurrentModule = PALEOboxes.Grids
 ```@docs
 BoundarySubdomain
 InteriorSubdomain
-set_subdomain!
 subdomain_view
 subdomain_indices
 ```
 
-#### Dimensions and Coordinates
+#### Regions, Dimensions and Coordinates
+```@meta
+CurrentModule = PALEOboxes.Grids
+```
+```@docs
+get_region
+```
+
 Grids may define name dimensions and attach coordinates for the convenience of output visualisation. Any coordinate information required by Reactions should be supplied as Variables.
 ```@meta
 CurrentModule = PALEOboxes
@@ -97,7 +109,6 @@ CurrentModule = PALEOboxes
 Attribute
 StandardAttributes
 get_attribute
-num_components
 VariableFunction
 VariablePhase
 ```
@@ -145,6 +156,23 @@ AbstractData
 UndefinedData
 ScalarData
 ArrayScalarData
+
+
+allocate_values
+check_values
+zero_values!
+dof_values
+get_values_output
+
+
+init_values!
+copyfieldto!
+copytofield!
+add_field!
+add_field_vec!
+
+num_components(field_data::Type{<:AbstractData})
+get_components
 ```
 
 ### Isotopes
