@@ -1,18 +1,35 @@
 import Printf
 import InteractiveUtils
 
+"""
+    find_all_reactions() -> Dict{String, Type}
 
+Use `InteractiveUtils.subtypes(AbstractReaction)` to find all currently loaded subtypes off
+AbstractReaction, and create a `Dict` with last part of the name of the Type
+as key (ie without the module prefix) and Type as value.
+
+Any Types that generate non-unique keys (eg Module1.MyReactionType and Module2.MyReactionType) will generate
+a warning, and no entry will be added to the Dict (so if this Reaction is present in a config file, it will
+not be found and will error).
+"""
 function find_all_reactions()
     rtypes = InteractiveUtils.subtypes(AbstractReaction)
 
     rdict = Dict{String, Type}()
+    duplicate_keys = String[]
     for ReactionType in rtypes
         rname = String(last(split(string(ReactionType), ".")))
-        !haskey(rdict, rname) || 
-            error("Duplicate reaction name $rname for Types $(rdict[rname])    $ReactionType")
+        if haskey(rdict, rname)
+            push!(duplicate_keys, rname)           
+        end
         rdict[rname] = ReactionType
     end
 
+    for rname in duplicate_keys
+        @warn "Duplicate reaction name $rname for Types $(rdict[rname]) (removing from Dict)"
+        delete!(rdict, rname)
+    end
+    
     return rdict
 end
 
