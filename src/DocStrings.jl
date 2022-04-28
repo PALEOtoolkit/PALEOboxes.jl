@@ -115,7 +115,12 @@ module DocStrings
         evv = [escape_md(v) for v in vv]
         return "$evv"
     end
-    md_value(vv::Vector) = replace("$vv", "["=>"\\[", "]"=>"\\]")
+    function md_value(vv::Vector)
+        str = "$vv"
+        str = replace(str, "["=>"\\[")
+        str = replace(str, "]"=>"\\]")
+        return str
+    end
 
     export PARS, METHODS_SETUP, METHODS_INITIALIZE, METHODS_DO
 end
