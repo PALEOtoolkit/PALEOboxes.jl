@@ -103,7 +103,10 @@ module DocStrings
 
 
     function escape_md(str::AbstractString)
-        return replace(str, "_"=>"\\_", "\$"=>"\\\$", "*"=>"\\*")
+        str = replace(str, "_"=>"\\_")
+        str = replace(str, "\$"=>"\\\$")
+        str = replace(str, "*"=>"\\*")
+        return str
     end
 
     md_value(v) = "$v"
