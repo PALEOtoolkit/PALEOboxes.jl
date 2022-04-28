@@ -30,6 +30,9 @@ setvalue!
 ## Registering with PALEOboxes framework
 ```@docs
 create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
+
+find_reaction
+find_all_reactions
 ```
 
 ## Optional initialisation callbacks to define Domain Grids and array sizes

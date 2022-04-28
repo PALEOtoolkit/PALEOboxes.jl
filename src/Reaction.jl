@@ -233,8 +233,8 @@ end
 
 Add a single parameter or parameters from fields of `objectwithpars` to a new Reaction.
 
-Not usually needed: [`add_reaction_factory`](@ref) will provide a [`reaction_factory`](@ref)
-that does this automatically for Parameters in pars::ParametersTuple.
+Not usually needed: Parameters in `pars::ParametersTuple`` will be added automatically, only needed if there are additional
+Parameters that are not members of `pars`.
 """
 function add_par(reaction::AbstractReaction, par::AbstractParameter)
     

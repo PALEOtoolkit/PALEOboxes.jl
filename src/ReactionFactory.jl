@@ -27,10 +27,28 @@ function find_all_reactions()
 
     for (rname, ReactionType) in duplicate_keys
         @warn "Duplicate reaction name $rname for Type $ReactionType (removing from Dict)"
-        delete!(rdict, rname)
+        if haskey(rdict, rname)
+            @warn "Duplicate reaction name $rname for Type $(rdict[rname]) (removing from Dict)"
+            delete!(rdict, rname)
+        end
     end
 
     return rdict
+end
+
+"""
+    find_reaction(class::AbstractString) -> ReactionType
+
+Look up "class" in list of Reactions from [`find_all_reactions`](@ref), and return 
+fully-qualified Reaction Type (including module prefixes).
+"""
+function find_reaction(class::AbstractString)
+    rdict = find_all_reactions()
+    if haskey(rdict, class)
+        return rdict[class]
+    else
+        error("class \"$class\" not found")
+    end
 end
 
 """
@@ -77,11 +95,11 @@ Examples:
 """
 function show_all_reactions(classnamefilter="", typenamefilter="")
     
-    for (classname, RType) in find_all_reactions()
+    for (classname, ReactionType) in find_all_reactions()
         if occursin(classnamefilter, classname)
             println(classname)
             
-            rtstring = Printf.@sprintf("%s", RType)
+            rtstring = Printf.@sprintf("%s", ReactionType)
             if  occursin(typenamefilter, rtstring )      
                 println("    ", RType)
                 

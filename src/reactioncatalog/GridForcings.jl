@@ -5,6 +5,7 @@ import MAT
 import Interpolations
 
 import PALEOboxes as PB
+using ..DocStrings
 
 using Infiltrator # Julia debugger
 
@@ -25,7 +26,13 @@ Then applies forcing:
 
 Optionally (if `interp_vars` is non-empty), interpolate forcing from additional dimensions in the netcdf file,
 given values supplied by additional Variable dependencies.
-NB: netcdf dimensions order must be grid_vars x interp_vars x time_var, where order within interp_vars also must match netcdf order.
+NB: netcdf dimensions order must be `grid_vars` x `interp_vars`` x `time_var`, where order within `interp_vars` also must match netcdf order.
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionForceGrid{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -385,7 +392,13 @@ end
     ReactionForceInsolation
  
 Calculate time and latitude dependent daily mean surface solar insolation.
- """
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
+"""
 Base.@kwdef mutable struct ReactionForceInsolation{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 

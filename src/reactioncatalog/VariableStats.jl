@@ -2,6 +2,7 @@
 module VariableStats
 
 import PALEOboxes as PB
+using ..DocStrings
 
 import Infiltrator # Julia debugger
 
@@ -12,12 +13,18 @@ import Infiltrator # Julia debugger
 A sum of variables (eg budget).
 - If Parameter `component_to_add == 0`, all components of Isotopes are included.
 - If Parameter `component_to_add == component_number`, a single component only is included.
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionSum{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 
     pars::P = PB.ParametersTuple(
-        PB.ParStringVec( "vars_to_add",
+        PB.ParStringVec( "vars_to_add", ["2*myvar", "myothervar", "-1*mythirdvar"],
             description="vector of variable names to add, eg [2*myvar, myothervar, -1*mythirdvar]"),
         PB.ParString("vars_prefix", "",
             description="optional prefix for vars_to_add"),
@@ -189,6 +196,12 @@ end
     ReactionWeightedMean
 
 Weighted mean (eg by area or volume) of Variable
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionWeightedMean{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -236,6 +249,12 @@ end
     ReactionAreaVolumeValInRange
 
 Fraction of Domain area or volume with Variable in a range of values.
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionAreaVolumeValInRange{P} <: PB.AbstractReaction
     base::PB.ReactionBase

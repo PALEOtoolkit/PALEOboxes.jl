@@ -1,6 +1,7 @@
 module GridReactions
 
 import PALEOboxes as PB
+using ..DocStrings
 
 import Infiltrator # Julia debugger
 
@@ -9,6 +10,9 @@ import Infiltrator # Julia debugger
     ReactionUnstructuredVectorGrid
 
 Create an [`PB.Grids.UnstructuredVectorGrid`](@ref) with `ncells` (from `ncells` Parameter).
+
+# Parameters
+$(PARS)
 """
 Base.@kwdef mutable struct ReactionUnstructuredVectorGrid{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -38,6 +42,9 @@ PB.register_methods!(rj::ReactionUnstructuredVectorGrid) = nothing
     ReactionCartesianGrid
 
 Create a [`PB.Grids.CartesianArrayGrid`](@ref) with `dims` and `dimnames``
+
+# Parameters
+$(PARS)
 """
 Base.@kwdef mutable struct ReactionCartesianGrid{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -73,6 +80,12 @@ PB.register_methods!(rj::ReactionCartesianGrid) = nothing
     ReactionGrid2DNetCDF
 
 Create a 2D [`PB.Grids.CartesianLinearGrid`](@ref) from grid information in a NetCDF file.
+
+# Parameters
+$(PARS)
+
+# Methods
+$(METHODS_SETUP)
 """
 Base.@kwdef mutable struct ReactionGrid2DNetCDF{P} <: PB.AbstractReaction
     base::PB.ReactionBase

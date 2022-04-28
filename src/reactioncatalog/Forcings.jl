@@ -2,6 +2,8 @@ module Forcings
 
 import PALEOboxes as PB
 
+using ..DocStrings
+
 """
     ReactionForceInterp
  
@@ -14,6 +16,12 @@ The input time Variable is `tforce`, with default linking to the `global.tforce`
 Use the configuration file to rename the output variable `F` (and if necessary, the input Variable `tforce`).
 
 NB: no extrapolation ! (so eg set guard values for `force_times` at -1e30, 1e30)
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_DO)
  """
 Base.@kwdef mutable struct ReactionForceInterp{P} <: PB.AbstractReaction
     base::PB.ReactionBase

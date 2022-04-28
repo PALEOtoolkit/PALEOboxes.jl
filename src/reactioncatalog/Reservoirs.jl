@@ -5,6 +5,8 @@ import PALEOboxes as PB
 
 import Infiltrator # Julia debugger
 
+using ..DocStrings
+
 """
     ReactionReservoirScalar
 
@@ -44,6 +46,12 @@ The local name prefix `R` should then be renamed using `variable_links:` in the 
 # See also
 [`ReactionReservoir`](@ref) (one value per cell for a spatially resolved Domain eg ocean),
 [`ReactionReservoirWellMixed`](@ref) (one value for a whole spatially resolved Domain).
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -164,6 +172,12 @@ extinction is defined by the `:specific_light_extinction` (m^2 mol-1) attribute 
 [`ReactionReservoirWellMixed`](@ref) (one value for the whole Domain), [`ReactionReservoirScalar`](@ref) (one value for
 a reservoir in a 0D Domain eg for COPSE [Bergman2004](@cite)), [`ReactionReservoirConst`](@ref) (constant time-independent value
 ie no state variable). 
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoir{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -307,6 +321,12 @@ TODO salinity normalisation.
 
 # See also
 [`ReactionReservoir`](@ref)
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_SETUP)
 """
 Base.@kwdef mutable struct ReactionReservoirConst{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -364,6 +384,12 @@ TODO salinity normalisation.
 
 # See also
 [`ReactionReservoirConst`](@ref), [`ReactionReservoir`](@ref)
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirForced{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -437,7 +463,13 @@ TODO salinity normalisation.
 
 # See also
 [`ReactionReservoir`](@ref) (one value per cell), [`ReactionReservoirScalar`](@ref) (one value for
-a reservoir in a 0D Domain eg for COPSE [Bergman2004](@cite)). 
+a reservoir in a 0D Domain eg for COPSE [Bergman2004](@cite)).
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirWellMixed{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -584,6 +616,12 @@ Constant values set by `:initial_value`, `:initial_delta` attributes in the `var
 # See also
 [`ReactionReservoirConst`](@ref), [`ReactionReservoirScalar`](@ref).  These provide additional variables (eg `R_delta`) to 
 allow them to function as a drop-in replacement for a non-constant Reservoir.
+
+# Parameters
+$(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_SETUP)
 """
 Base.@kwdef mutable struct ReactionConst{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -624,7 +662,7 @@ end
 
 
 """
-    ReservoirLinksVector(reservoirlist) -> (res::Vector, sms::Vector, diag::Vector)
+    ReservoirLinksVector(isotope_data::Dict, reservoirlist) -> (res::Vector, sms::Vector, diag::Vector)
 
 Convenience function to create variables required for a Reaction to link to a list of Reservoir variables.
 `res` contains VariableReactions `<reservoir_name>`, `sms` `<reservoir_name>_sms` that link to `State`, `State_sms` variables.
