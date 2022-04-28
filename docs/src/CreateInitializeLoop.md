@@ -5,7 +5,7 @@ CurrentModule = PALEOboxes
 ```
 ## Model Creation
 
-A [YAML](https://en.wikipedia.org/wiki/YAML) format configuration file defines both the model structure (spatial domains containing biogeochemical variables and reactions that operate on them) and model parameter values. Reactions (subtypes of [`AbstractReaction`](@ref)) are registered in [`reaction_factories`](@ref) Dict and identified by name in the configuration file.
+A [YAML](https://en.wikipedia.org/wiki/YAML) format configuration file defines both the model structure (spatial domains containing biogeochemical variables and reactions that operate on them) and model parameter values. Reactions (subtypes of [`AbstractReaction`](@ref)) are identified by Type name (without module prefix) in the configuration file.
 
 To create the model, the numerical solver or host should call [`create_model_from_config`](@ref) which reads the configuration file, and then:
 - creates model [`Domain`](@ref)s and Reactions (subtypes of [`AbstractReaction`](@ref)), applying any [`Parameter`](@ref)s settings from the `parameters:` sections in the config file.

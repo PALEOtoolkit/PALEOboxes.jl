@@ -49,6 +49,9 @@ The local name prefix `R` should then be renamed using `variable_links:` in the 
 
 # Parameters
 $(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -172,6 +175,9 @@ ie no state variable).
 
 # Parameters
 $(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoir{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -318,6 +324,9 @@ TODO salinity normalisation.
 
 # Parameters
 $(PARS)
+
+# Methods and Variables
+$(METHODS_SETUP)
 """
 Base.@kwdef mutable struct ReactionReservoirConst{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -378,6 +387,9 @@ TODO salinity normalisation.
 
 # Parameters
 $(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirForced{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -455,6 +467,9 @@ a reservoir in a 0D Domain eg for COPSE [Bergman2004](@cite)).
 
 # Parameters
 $(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionReservoirWellMixed{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -604,6 +619,9 @@ allow them to function as a drop-in replacement for a non-constant Reservoir.
 
 # Parameters
 $(PARS)
+
+# Methods and Variables for default Parameters
+$(METHODS_SETUP)
 """
 Base.@kwdef mutable struct ReactionConst{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -644,7 +662,7 @@ end
 
 
 """
-    ReservoirLinksVector(reservoirlist) -> (res::Vector, sms::Vector, diag::Vector)
+    ReservoirLinksVector(isotope_data::Dict, reservoirlist) -> (res::Vector, sms::Vector, diag::Vector)
 
 Convenience function to create variables required for a Reaction to link to a list of Reservoir variables.
 `res` contains VariableReactions `<reservoir_name>`, `sms` `<reservoir_name>_sms` that link to `State`, `State_sms` variables.

@@ -5,6 +5,8 @@ import Interpolations
 
 import PALEOboxes as PB
 
+using ..DocStrings
+
 """
     ReactionFluxPerturb
  
@@ -16,7 +18,13 @@ The input time Variable is `tforce`, with default linking to the `global.tforce`
 
 Use the configuration file to rename output variable `F` (and if necessary, the input Variable `tforce`).
 
-NB: no extrapolation ! (so eg set guard values for `force_times` at -1e30, 1e30)
+NB: no extrapolation ! (so eg set guard values for `perturb_times` at -1e30, 1e30)
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionFluxPerturb{P} <: PB.AbstractReaction
     base::PB.ReactionBase
@@ -108,6 +116,12 @@ end
     ReactionRestore
  
 Adds `RestoringFlux` in response to discrepancy between Variable `WatchLevel` and Parameter `RequiredLevel`
+
+# Parameters
+$(PARS)
+
+# Methods and Variables
+$(METHODS_DO)
 """
 Base.@kwdef mutable struct ReactionRestore{P} <: PB.AbstractReaction
     base::PB.ReactionBase
