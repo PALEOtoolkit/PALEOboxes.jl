@@ -408,8 +408,15 @@ function substitutevalue(mod::Module, rawvalue::AbstractString; dontsub=("\$flux
         
         # look up in LocalPreferences.toml
         subval = m.match[2:end-1] # omit $ $
+
+        # if a Reaction is not part of a package (eg development code), use Preferences package instead to look for a key
+        if isnothing(Base.PkgId(mod).uuid)
+            @warn "substitutevalue $subval - Module $(mod) does not correspond to a loaded package, using a key from [PALEOboxes] instead"
+            mod = PALEOboxes
+        end
+
         Preferences.has_preference(mod, String(subval)) || 
-            error("substitutevalue: key $subval not found in LocalPreferences.toml")
+            error("substitutevalue: key [$(Base.PkgId(mod).name)] $subval not found in LocalPreferences.toml")
         replacestr = Preferences.load_preference(mod, String(subval)) 
        
             
