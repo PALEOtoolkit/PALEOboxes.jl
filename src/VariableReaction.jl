@@ -285,6 +285,12 @@ a Tuple of VarList_xxx <: AbstractVarList, each containing a collection of [`Var
 
 These are then converted (by the [`create_accessors`](@ref) method) to a corresponding
 Tuple of collections of views on Domain data arrays , which are then be passed to the [`ReactionMethod`](@ref) `methodfn`.
+
+# Implementation
+Subtypes of `AbstractVarList` should implement:
+- a constructor that takes a collection of VariableReactions
+- `create_accessors`, returning the views on Domain data arrays in a subtype-specific collection.
+- `get_variables`, returning the collection of VariableReactions (as a flat list).
 """
 abstract type AbstractVarList
 end
@@ -325,7 +331,7 @@ create_accessors(va::VarList_single, modeldata::AbstractModelData) = create_acce
     VarList_components(varcollection) -> VarList_components
 
 Create a `VarList_components` describing a collection of `VariableReaction`s,
-`create_accessors` will then return a Vector with Variable components flattened.
+`create_accessors` will then return a Vector with data array components concatenated (flattened).
 """
 struct VarList_components <:  AbstractVarList
     vars::Vector{VariableReaction}
@@ -368,9 +374,10 @@ end
     VarList_namedtuple(varcollection; components=false) -> VarList_namedtuple
 
 Create a `VarList_namedtuple` describing a collection of `VariableReaction`s,
-`create_accessors` will then return a NamedTuple with field names = `VariableReaction.localname` and values 
-as returned by [`create_accessor`](@ref).
-Ordering is preserved.
+`create_accessors` will then return a NamedTuple with field names = `VariableReaction.localname`
+and field values = corresponding data arrays.
+
+If `components = true`, each NamedTuple field will be a Vector of data array components.
 """
 function VarList_namedtuple(varcollection; components=false)
     keys = Symbol.([v.localname for v in varcollection])
@@ -383,9 +390,10 @@ end
     VarList_namedtuple_fields(objectwithvars; components=false) -> VarList_namedtuple
 
 Create a `VarList_namedtuple` describing `VariableReaction` fields in `objectwithvars`,
-`create_accessors` will then return a NamedTuple with field names = field names in `objectwithvars` and values 
-as returned by [`create_accessor`](@ref).
-Ordering is preserved.
+`create_accessors` will then return a NamedTuple with field names = field names in `objectwithvars` and
+field values = corresponding data arrays.
+
+If `components = true`, each NamedTuple field will be a Vector of data array components.
 """
 function VarList_namedtuple_fields(objectwithvars; components=false)
     # find field names and VariableReactions
@@ -409,7 +417,9 @@ end
     VarList_tuple(varcollection; components=false) -> VarList_tuple
 
 Create a `VarList_tuple` describing a collection of `VariableReaction`s,
-`create_accessors` will then return a Tuple with values as returned by [`create_accessor`](@ref).
+`create_accessors` will then return a Tuple of data arrays.
+
+If `components = true`, each Tuple field will be a Vector of data array components.
 """
 struct VarList_tuple <: AbstractVarList
     vars::Vector{VariableReaction}
@@ -425,12 +435,14 @@ function create_accessors(va::VarList_tuple, modeldata::AbstractModelData)
 end
 
 """
-    VarList_vector(varcollection; components=false) -> VarList_vector
+    VarList_vector(varcollection; components=false, forceview=false) -> VarList_vector
 
 Create a `VarList_vector` describing a collection of `VariableReaction`s,
-`create_accessors` will then return a Vector with accessors as returned by [`create_accessor`](@ref).
+`create_accessors` will then return a Vector of data arrays.
 
-`forceview` option will make each accessor a 1-D `view` to help type stability,
+If `components = true`, each Vector element will be a Vector of data array components.
+
+If `forceview = true`, each accessor will be a 1-D `view` to help type stability,
 even if this is redundant (ie no `view` required, v::Vector -> view(v, 1:length(v)))
 """
 struct VarList_vector <: AbstractVarList
@@ -451,7 +463,9 @@ create_accessors(va::VarList_vector, modeldata::AbstractModelData) =
     VarList_vvector(Vector{Vector{VariableReaction}}::vars; components=false) -> VarList_vvector
 
 Create a `VarList_vvector` describing a Vector of Vectors of `VariableReaction`s,
-`create_accessors` will then return a Vector of Vectors with values as returned by [`create_accessor`](@ref).
+`create_accessors` will then return a Vector of Vectors of data arrays.
+
+If `components = true`, each Vector of Vectors element will be a Vector of data array components.
 """
 struct VarList_vvector <: AbstractVarList
     vars::Vector{Vector{VariableReaction}}
