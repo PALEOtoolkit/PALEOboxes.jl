@@ -39,10 +39,10 @@ end
 
 get_var_type(var::VariableReaction{T}) where T = T
 
-VarPropT        = VariableReaction{VT_ReactProperty}
-VarDepT         = VariableReaction{VT_ReactDependency}
-VarTargetT      = VariableReaction{VT_ReactTarget}
-VarContribT     = VariableReaction{VT_ReactContributor}
+const VarPropT        = VariableReaction{VT_ReactProperty}
+const VarDepT         = VariableReaction{VT_ReactDependency}
+const VarTargetT      = VariableReaction{VT_ReactTarget}
+const VarContribT     = VariableReaction{VT_ReactContributor}
 
 """
     get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing) -> value
@@ -167,8 +167,8 @@ end
 
 VarPropScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarProp(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
-VarProp(localname, units, description; kwargs... ) = 
-    CreateVariableReaction(VT_ReactProperty, localname, units, description; kwargs...)
+VarProp(localname, units, description; attributes::Tuple=(), kwargs... ) = 
+    CreateVariableReaction(VT_ReactProperty, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
             
 VarPropScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VarPropScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
@@ -205,8 +205,8 @@ end
 
 VarTargetScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarTarget(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
-VarTarget(localname, units, description; kwargs... ) = 
-    CreateVariableReaction(VT_ReactTarget, localname, units, description; kwargs...)
+VarTarget(localname, units, description; attributes::Tuple=(), kwargs... ) = 
+    CreateVariableReaction(VT_ReactTarget, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
         
 VarContribScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarContrib(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
@@ -223,30 +223,30 @@ VarContrib(v::VarTargetT) = VarContribT(
 )
 
 VarStateExplicitScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarDepScalar(localname, units, description; attributes=(attributes..., :vfunction=>VF_StateExplicit), kwargs...)
+    VarDepScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateExplicit), kwargs...)
 VarStateExplicit(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarDep(localname, units, description; attributes=(attributes..., :vfunction=>VF_StateExplicit), kwargs...)
+    VarDep(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateExplicit), kwargs...)
     
 VarTotalScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarContribScalar(localname, units, description;
-        components, attributes=(attributes..., :vfunction=>VF_Total), kwargs...)
+        components, attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
 VarTotal(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-        VarContrib(localname, units, description; attributes=(attributes..., :vfunction=>VF_Total), kwargs...)
+        VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
          
 VarDerivScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarContribScalar(localname, units, description; attributes=(attributes..., :vfunction=>VF_Deriv), kwargs...)
+    VarContribScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv), kwargs...)
 VarDeriv(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarContrib(localname, units, description; attributes=(attributes..., :vfunction=>VF_Deriv),  kwargs...)
+    VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv),  kwargs...)
          
 VarConstraintScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarContribScalar(localname, units, description; attributes=(attributes..., :vfunction=>VF_Constraint), kwargs...)
+    VarContribScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
 VarConstraint(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-        VarContrib(localname, units, description; attributes=(attributes..., :vfunction=>VF_Constraint), kwargs...)
+        VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
          
 VarStateScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarDepScalar(localname, units, description; attributes=(attributes..., :vfunction=>VF_State), kwargs...)
+    VarDepScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_State), kwargs...)
 VarState(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarDep(localname, units, description; attributes=(attributes..., :vfunction=>VF_State), kwargs...)
+    VarDep(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_State), kwargs...)
    
 # TODO: define a VarInit Type. Currently (ab)using VarDep   
 VarInit(v::Union{VarPropT, VarTargetT, VarContribT}) = VarDepT(        

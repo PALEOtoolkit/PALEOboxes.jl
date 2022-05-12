@@ -69,9 +69,9 @@ function PB.register_methods!(rj::ReactionSum)
             PB.parse_variablereaction_namestr(varname)
         localname = PB.combine_link_name(linkreq_domain, "", linkreq_name, sep="_")
          # mark all vars_to_add as optional to help diagnose config errors
-         # NB: :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
+         # default :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
         push!(vars_to_add, 
-            PB.VarDep(localname, "", "", link_namestr="("*varname*")", attributes=(:field_data=>PB.UndefinedData,))
+            PB.VarDep(localname, "", "", link_namestr="("*varname*")")
         )
     end
 

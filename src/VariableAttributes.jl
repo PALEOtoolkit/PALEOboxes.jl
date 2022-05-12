@@ -126,7 +126,7 @@ List of standard Variable attributes.
 const StandardAttributes = [
     #                                   name                    default_value    required    units       description    
 
-    Attribute{Type, AbstractData}(        :field_data,           ScalarData,      true,       "",         "AbstractData type Variable contains")    
+    Attribute{Type, AbstractData}(        :field_data,           UndefinedData,   true,       "",         "AbstractData type Variable contains")    
     Attribute{Tuple{Vararg{String}}, Tuple{Vararg{String}}}(
                                           :data_dims,            (),              true,       "",         "Variable data dimensions, or empty for a scalar")
     Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",           "function space Variable is defined on")
