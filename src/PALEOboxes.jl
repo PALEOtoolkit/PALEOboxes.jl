@@ -24,7 +24,7 @@ import YAML
 import Graphs # formerly LightGraphs
 import DataFrames
 
-include("DocStrings.jl")
+include("utils/DocStrings.jl")
 
 include("Types.jl")
 include("CoordsDims.jl")

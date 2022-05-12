@@ -34,7 +34,9 @@ module DocStrings
             end
             # println(buf, "$object  $(length(PB.get_parameters(rj))) Parameters" )
             for p in PB.get_parameters(rj)
-                md = "- `$(p.name)[$(typeof(p.v))]`="
+                md = "- `$(p.name)["
+                md *= p.external ? "external, " : ""
+                md *= "$(typeof(p.v))]`="
                 md *= md_value(p.v)
                 md *= isempty(p.units) ? "," : "  ($(p.units)),"
                 md *= " `default_value`="*md_value(p.default_value)*","

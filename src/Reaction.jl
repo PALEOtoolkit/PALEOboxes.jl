@@ -365,6 +365,10 @@ function create_reaction_from_config(
     for par in allpars
         rawvalue = par.v
         par_modified = false
+        if par.external && haskey(newreaction.base.external_parameters, par.name)
+            rawvalue = newreaction.base.external_parameters[par.name]
+            par_modified = true
+        end
         if !isnothing(conf_parameters) && haskey(conf_parameters, par.name) # empty 'parameters:' will return nothing
             rawvalue = conf_parameters[par.name]
             par_modified = true
