@@ -46,7 +46,7 @@ function bench_method(dispatchlist, domainname="", reactionname="", methodname="
 
     # fns, methods, vardatas, crs = dispatchlist
     # iterate through dispatchlist, if names match then benchmark method else just call method
-    for (fn, method, vardata, cr) in zip(
+    for (fn, method, vardata, cr) in PB.IteratorUtils.zipstrict(
                                         dispatchlist.methodfns, 
                                         dispatchlist.methods,
                                         dispatchlist.vardatas, 

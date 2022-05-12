@@ -537,7 +537,7 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
         PB.VarTarget(               "R_vec_sms","mol yr-1", "vector reservoir source-sinks",
             attributes=(:field_data=>rj.pars.field_data.v,))
     ]
-    PB.add_method_do!(rj, do_reservoir_well_mixed_sms, (PB.VarList_namedtuple(vars_sms, components=true),))
+    PB.add_method_do!(rj, do_reservoir_well_mixed_sms, (PB.VarList_namedtuple(vars_sms),))
 
     PB.add_method_initialize_zero_vars_default!(rj)
 
@@ -574,19 +574,18 @@ end
 
 function do_reservoir_well_mixed_sms(
     m::PB.ReactionMethod,
-    (vars_components, ),
+    (vars, ),
     cellrange::PB.AbstractCellRange,
     deltat,
 )
-    for c in 1:length(vars_components.R_sms)
-        # accumulate first into a subtotal,
-        # in order to minimise time spent with lock held if this is one tile of a threaded model
-        subtotal = zero(vars_components.R_sms[c][])
-        @inbounds for i in cellrange.indices
-            subtotal += vars_components.R_vec_sms[c][i]
-        end
-        PB.atomic_add!(vars_components.R_sms[c], subtotal)
+    
+    # accumulate first into a subtotal,
+    # in order to minimise time spent with lock held if this is one tile of a threaded model
+    subtotal = zero(vars.R_sms[])
+    @inbounds for i in cellrange.indices
+        subtotal += vars.R_vec_sms[i]
     end
+    PB.atomic_add!(vars.R_sms, subtotal)
 
     return nothing
 end

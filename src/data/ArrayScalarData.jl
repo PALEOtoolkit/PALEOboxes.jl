@@ -31,7 +31,7 @@ end
 
 function check_values(
     existing_values, field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, data_type, space::Type{<:AbstractSpace}, spatial_size::Tuple{Integer, Vararg{Integer}},
-) where {N}
+)
 
     check_data_type(existing_values, data_type)
 
@@ -43,13 +43,13 @@ function check_values(
 end
 
 
-function zero_values!(values, field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, space::Type{ScalarSpace}, cellrange) where {N}
+function zero_values!(values, field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, space::Type{ScalarSpace}, cellrange)
     values .= 0.0
     return nothing
 end
 
-function zero_values!(values, field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, space::Type{CellSpace}, cellrange)  where {N}
-    data_dims_colons = ntuple(i->Colon(), length(data_dims))
+function zero_values!(values, field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, space::Type{CellSpace}, cellrange)
+    data_dims_colons = ntuple(i->Colon(), fieldcount(typeof(data_dims)))
     @inbounds for i in cellrange.indices
         values[i, data_dims_colons...] .= 0.0
     end

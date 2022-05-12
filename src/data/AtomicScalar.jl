@@ -39,4 +39,4 @@ Fallback adds v to a[] using standard addition.
 """
 atomic_add!(as::AtomicScalar, v) = Threads.atomic_add!(as.value, v)
 
-@Base.propagate_inbounds atomic_add!(a::Array, v) = (a[] += v)
+@Base.propagate_inbounds atomic_add!(a::AbstractArray, v) = (a[] += v)

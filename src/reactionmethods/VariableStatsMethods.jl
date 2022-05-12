@@ -118,7 +118,7 @@ function do_vartotals(m::AbstractReactionMethod, (vars_data, var_totals_data), c
     end
 
     length(vars_data) == length(var_totals_data) || 
-        error("do_vartotals: components length mismatch $(fullname(m)) $(get_variables_tuple(m))")
+        error("do_vartotals: components length mismatch $(fullname(m)) $(get_variables_tuple(m)) (check :field_data (ScalarData, IsotopeLinear etc) match)")
     #  if cellrange.operatorID == 0 || cellrange.operatorID in totals_method.operatorID
     for iv in eachindex(vars_data)
         calc_total(vars_data[iv], var_totals_data[iv], cellrange)
