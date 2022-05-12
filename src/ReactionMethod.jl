@@ -241,7 +241,7 @@ function setup_initialvalue_vars_default(
         attrbvars = [v.linkvar for v in transfer_attribute_vars]
     end
 
-    for (rv, v, attrbv, vfield) in zip(vars, domvars, attrbvars, varfields)
+    for (rv, v, attrbv, vfield) in IteratorUtils.zipstrict(vars, domvars, attrbvars, varfields)
       
         if v === attrbv
             trsfrinfo = ""

@@ -364,7 +364,7 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
     var_inputs, var_outputs = PB.get_variables.(m.vars)
     flux_names = m.p
     nactive = 0
-    for (var_input, var_output, fluxname) in zip(var_inputs, var_outputs, flux_names)
+    for (var_input, var_output, fluxname) in PB.IteratorUtils.zipstrict(var_inputs, var_outputs, flux_names)
         if isnothing(var_output.linkvar)
             @info "    $(rpad(fluxname, 20))   $(rpad(PB.fullname(var_input.linkvar),40)) output not linked"
         else
@@ -373,10 +373,14 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
         end
     end
 
+    # check we have the same number of components
+    length(input_vardata) == length(output_vardata) ||
+        error("prepare_do_transfer: ReactionMethod $(PB.fullname(m)) number of input components != number of output components - check :field_data (ScalarData, IsotopeLinear etc) match")
+
     # remove unlinked Variables
     input_vardata_active = []
     output_vardata_active = []
-    for (ainput, aoutput) in zip(input_vardata, output_vardata)
+    for (ainput, aoutput) in PB.IteratorUtils.zipstrict(input_vardata, output_vardata)
         if !isnothing(aoutput)
             push!(input_vardata_active, ainput)
             push!(output_vardata_active, aoutput)
@@ -387,7 +391,7 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
         # figure out length of input and output arrays
         input_length = 0
         output_length = 0
-        for (ainput, aoutput) in zip(input_vardata_active, output_vardata_active)
+        for (ainput, aoutput) in PB.IteratorUtils.zipstrict(input_vardata_active, output_vardata_active)
             
             if iszero(input_length)
                 input_length = prod(size(ainput))::Int
@@ -458,7 +462,7 @@ function do_transfer(
         return nothing
     end
 
-    for (acinput, acoutput) in zip(input_vardata, output_vardata)
+    for (acinput, acoutput) in PB.IteratorUtils.zipstrict(input_vardata, output_vardata)
         _transfer(acinput, acoutput, tm_tr, cellrange)
     end
    

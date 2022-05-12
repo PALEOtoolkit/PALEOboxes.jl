@@ -351,8 +351,7 @@ function create_accessors(va::VarList_components, modeldata::AbstractModelData)
         end
     end
     
-    accessors_typed = [a for a in accessors_generic] 
-    # accessors_typed = _dynamic_svector([a for a in accessors_generic])
+    accessors_typed = [a for a in accessors_generic]  # narrow Type
     return accessors_typed
 end
 

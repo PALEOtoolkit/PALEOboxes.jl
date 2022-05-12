@@ -94,10 +94,8 @@ function PB.register_methods!(rj::ReactionForceGrid)
     end
     PB.setfrozen!(rj.pars.scale_offset_var)
 
-    length(rj.pars.interp_vars.v) == length(rj.pars.interp_log.v) ||
-        error("length(interp_vars) != length(interp_log)")
     interp_vars = []
-    for (vname, vlog) in zip(rj.pars.interp_vars.v, rj.pars.interp_log.v)
+    for (vname, vlog) in PB.IteratorUtils.zipstrict(rj.pars.interp_vars.v, rj.pars.interp_log.v; errmsg="length(interp_vars) != length(interp_log)")
         @info "  adding interpolation Variable $vname log $vlog"
         push!(interp_vars, PB.VarDepScalar(vname, "",  "interpolation variable log $vlog"))
     end
@@ -231,7 +229,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # create variable interpolator(s) (if any)
     rj.interp_interp = []
     rj.interp_fn = []
-    for (vidx, (vname, vlog)) in enumerate(zip(rj.pars.interp_vars.v, rj.pars.interp_log.v))
+    for (vidx, (vname, vlog)) in enumerate(PB.IteratorUtils.zipstrict(rj.pars.interp_vars.v, rj.pars.interp_log.v; errmsg="length(interp_vars) != length(interp_log)"))
         if vlog
             interp_fn = log
         else

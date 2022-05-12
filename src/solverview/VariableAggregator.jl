@@ -29,13 +29,13 @@ with indices from corresponding `cellranges`, for `modeldata`.
 `cellranges` may contain `nothing` entries to indicate whole Domain.
 """
 function VariableAggregator(vars, cellranges, modeldata)
-    length(vars) == length(cellranges) || 
-        throw(ArgumentError("'vars' and 'cellranges' must be of same length"))
+
+    IteratorUtils.check_lengths_equal(vars, cellranges; errmsg="'vars' and 'cellranges' must be of same length")
 
     fields = []
     indices = UnitRange{Int64}[]
     nextidx = 1
-    for (v, cr) in zip(vars, cellranges)
+    for (v, cr) in IteratorUtils.zipstrict(vars, cellranges)
         f = get_field(v, modeldata)
 
         dof = dof_field(f, cr)
