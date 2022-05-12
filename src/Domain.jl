@@ -307,18 +307,24 @@ function create_domain_from_config(
     # reactions 
     conf_reactions = get(conf_domain, "reactions", Dict{Any,Any}())
     
+    function pop_bool_key!(conf, keyname, defaultval)
+        keyval = pop!(conf, keyname, defaultval)
+        keyval = externalvalue(keyval, external_parameters)
+        keyval isa Bool || 
+            error("config error: reaction $(domain.name).reactions.$(reactname) "*
+                "invalid '$keyname' key $keyval (must be a Bool)")
+        return keyval
+    end
+
     if !isnothing(conf_reactions)
         for (reactname, conf_reactionraw) in conf_reactions
             !isnothing(conf_reactionraw) || 
                 error("config error: reaction $(domain.name).reactions.$(reactname) has no configuration")
             conf_reaction = copy(conf_reactionraw)
-            reactenabledval = pop!(conf_reaction, "enabled", true)
-            reactenabled = externalvalue(reactenabledval, external_parameters)
-            reactenabled isa Bool || 
-                error("config error: reaction $(domain.name).reactions.$(reactname) "*
-                    "invalid 'enabled' key $reactenabled (must be a Bool)")
+            reactenabled = pop_bool_key!(conf_reaction, "enabled", true)
+            reactdisabled = pop_bool_key!(conf_reaction, "disabled", false)            
             
-            if reactenabled
+            if reactenabled && !reactdisabled
                 classname = pop!(conf_reaction, "class", missing)
                 !ismissing(classname) ||
                     error("config error: reaction $(domain.name).reactions.$(reactname) missing 'class' key")
@@ -331,7 +337,7 @@ function create_domain_from_config(
                     )
                 )
             else
-                @info "not creating reaction $(domain.name).reactions.$(reactname) (enabled=false)"
+                @info "not creating reaction $(domain.name).reactions.$(reactname) (enabled=$reactenabled, disabled=$reactdisabled)"
             end
         end
     else

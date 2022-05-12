@@ -14,11 +14,9 @@ A single scalar biogeochemical reservoir with optional paired isotope reservoir,
 (eg sedimentary or ocean reservoirs for COPSE [Bergman2004](@cite)).
 
 Creates State and associated Variables, depending on parameter settings:
-- `const=false, stateexplicit=true`: usual case, create state variable `R` (units mol, with attribute `vfunction=VF_StateExplicit`)
+- `const=false`: usual case, create state variable `R` (units mol, with attribute `vfunction=VF_StateExplicit`)
   and `R_sms` (units mol yr-1, with attribute `vfunction=VF_Deriv`).
-- `const=true, stateexplicit=true`: a constant value, create `R` (a Property)
-- `const=false, stateexplicit=false`: for use with an implicit state variable, create `R_sms` (with attribute `vfunction=VF_Deriv`) and a Dependency `R` (which 
-  should be linked to a Variable with attribute `vfunction=VF_Total` calculated elsewhere, which should also set up initial value). 
+- `const=true`: a constant value, create `R` (a Property)
 
 In addition:
 - a Property `R_norm` (normalized value) is always created.
@@ -27,9 +25,8 @@ In addition:
 The local name prefix `R` should then be renamed using `variable_links:` in the configuration file.
 
 # Initialisation
-- `state_explicit=true`: (the usual case) initial and norm value is set in the `variable_attributes:` section in 
+Initial and norm value is set in the `variable_attributes:` section in 
   the configuration file, using `R:initial_value`, `R:initial_delta`, and `R:norm_value`.
-- `state_explicit=false`: initial and norm values should be set by the linked implicit state Variable
 
 # Example configuration in .yaml file
                 reservoir_P:  # 0D ocean Phosphorus
@@ -60,13 +57,8 @@ Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
         PB.ParType(PB.AbstractData, "field_data", PB.ScalarData,
             allowed_values=PB.IsotopeTypes,
             description="disable / enable isotopes and specify isotope type"),
-
         PB.ParBool("const", false,
             description="true to provide constant value with no _sms Variable"),
-
-        PB.ParBool("stateexplicit", true,
-            description="true to define a StateExplicit Variable, "*
-                "false to just calculate conc etc from eg a Total Variable defined somewhere else"),
     )
 
     norm_value::Float64  = NaN
@@ -95,18 +87,12 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
     end
 
     if rj.pars.const.v
-        rj.pars.stateexplicit.v || error("$(PB.fullname(rj)) configuration error: 'const' requires 'stateexplicit'")
         R            = PB.VarPropScalar(      "R", "mol", "scalar constant reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
         PB.add_method_setup_initialvalue_vars_default!(rj, [R], filterfn = v->true, setup_callback=setup_callback)  # force setup even though R is not a state Variable
         # no _sms variable
-    else
-        if rj.pars.stateexplicit.v
-            R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
-            PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
-        else
-            R        = PB.VarDepScalar(       "R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
-            # initial value setup handled elsewhere
-        end
+    else        
+        R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
+        PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
 
         R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data.v,))
         # sms variable not used by us, but must appear in a method to be linked and created
@@ -127,9 +113,6 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
 
     return nothing
 end
-
-
-
 
 """
     ReactionReservoir,  ReactionReservoirTotal
