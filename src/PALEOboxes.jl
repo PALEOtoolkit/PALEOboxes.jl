@@ -49,6 +49,7 @@ include("ReactionFactory.jl")
 include("ModelData.jl")
 include("Grids.jl")
 
+include("reactionmethods/SetupInitializeUtilityMethods.jl")
 include("reactionmethods/VariableStatsMethods.jl")
 include("reactionmethods/RateStoich.jl")
 
