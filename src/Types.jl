@@ -147,13 +147,19 @@ end
 abstract type AbstractData
 end
 
-"parse eg \"ScalarData\" as ScalarData"
+"parse eg \"ScalarData\" or \"PALEOboxes.ScalarData\" as ScalarData"
 function Base.parse(::Type{AbstractData}, str::AbstractString)   
-    dtype = getproperty(@__MODULE__, Symbol(str))
+    dtype = tryparse(AbstractData, str)
 
-    dtype <: AbstractData || 
+    !isnothing(dtype) || 
         throw(ArgumentError("$str is not a subtype of AbstractData"))
     return dtype
+end
+
+function Base.tryparse(::Type{AbstractData}, str::AbstractString)   
+    dtype = getproperty(@__MODULE__, Symbol(replace(str, "PALEOboxes."=>"")))
+
+    return (dtype <: AbstractData) ? dtype : nothing
 end
 
 

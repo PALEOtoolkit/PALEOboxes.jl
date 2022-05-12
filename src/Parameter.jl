@@ -8,6 +8,8 @@ A reaction parameter of type `T`.
 Create using short names `ParDouble`, `ParInt`, `ParBool`, `ParString`.
 Read value as `<par>.v::T`, set with [`setvalue!`](@ref).
 
+Parameters with `external=true` may be set from the Model-level Parameters list, if `name` is present in that list.
+
 `ParseFromString` should usually be `Nothing`: a value of `Type T` is then required when calling [`setvalue!`](@ref).
 If `ParseFromString` is not `Nothing`, then [`setvalue!`](@ref) will accept an `AbstractString` and call `Base.parse(ParseFromString, strvalue)`.
 This allows eg an enum-valued Parameter to be defined by Parameter{EnumType, EnumType} and implementing
@@ -22,85 +24,86 @@ mutable struct Parameter{T, ParseFromString} <: AbstractParameter
     default_value::T
     allowed_values::Vector{T}
     frozen::Bool
+    external::Bool
 end
 
 """
-    ParDouble(name,  defaultvalue::Float64; units="", description="")
+    ParDouble(name,  defaultvalue::Float64; units="", description="", external=false)
 """
 function ParDouble(
     name,  defaultvalue::Float64; 
-    units="", description="",
+    units="", description="", external=false
 )
     return Parameter{Float64, Nothing}(
-        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false
+        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false, external
     )
 end
 
 """
-    ParInt(name,  defaultvalue::Integer; units="", description="", allowed_values=Vector{Int}())
+    ParInt(name,  defaultvalue::Integer; units="", description="", allowed_values=Vector{Int}(), external=false)
 """
 function ParInt(
     name,  defaultvalue::Integer;
-    units="", description="", allowed_values=Vector{Int}(),
+    units="", description="", allowed_values=Vector{Int}(), external=false
 )
     # splat allowed_values to allow Tuple etc
     return Parameter{Int, Nothing}(
-        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false, external
     )
 end
 
 """
-    ParEnum(name,  defaultvalue::T; units="", description="", allowed_values=Vector{T}())
+    ParEnum(name,  defaultvalue::T; units="", description="", allowed_values=Vector{T}(), external=false)
 
 T can be an Enum (or any Type) that implements Base.parse.
 """
 function ParEnum(
     name,  defaultvalue::T;
-    units="", description="", allowed_values=Vector{T}(),
+    units="", description="", allowed_values=Vector{T}(), external=false
 ) where {T}
     # splat allowed_values to allow Tuple etc
     return Parameter{T, T}(
-        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false, external
     )
 end
 
 """
-    ParType(::Type{T}, name,  defaultvalue; units="", description="", allowed_values=Vector{T}())
+    ParType(::Type{T}, name,  defaultvalue; units="", description="", allowed_values=Vector{T}(), external=false)
 
 T can be an abstract Type that implements Base.parse.
 """
 function ParType(
     ::Type{T}, name,  defaultvalue::Type{D};
-    units="", description="", allowed_values=Vector{Type}(),
+    units="", description="", allowed_values=Vector{Type}(), external=false
 ) where {T, D <: T}
     # splat allowed_values to allow Tuple etc
     return Parameter{Type, T}(
-        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false, external
     )
 end
 
 """
-    ParBool(name,  defaultvalue::Bool;  description="")
+    ParBool(name,  defaultvalue::Bool;  description="", external=false)
 """
 function ParBool(
     name,  defaultvalue::Bool;
-    description="",
+    description="", external=false
 )
     return Parameter{Bool, Nothing}(
-        name, description, "", defaultvalue, defaultvalue, Vector{Bool}(), false
+        name, description, "", defaultvalue, defaultvalue, Vector{Bool}(), false, external
     )
 end
 
 """
-    ParString(name,  defaultvalue::String;  description="", allowed_values=Vector{String}())
+    ParString(name,  defaultvalue::String;  description="", allowed_values=Vector{String}(), external=false)
 """
 function ParString(
     name,  defaultvalue::String;
-    description="", allowed_values=Vector{String}(),
+    description="", allowed_values=Vector{String}(), external=false
 )
     # splat allowed_values to allow Tuple etc
     par = Parameter{String, Nothing}(
-        name, description, "", defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, "", defaultvalue, defaultvalue, [allowed_values...], false, external
     )
     setvalue!(par, defaultvalue) # catch attempt to set a defaultvalue not in allowed_values
     return par
@@ -125,57 +128,58 @@ mutable struct VecParameter{T, ParseFromString} <: AbstractParameter
     default_value::Vector{T}
     allowed_values::Vector{T}
     frozen::Bool
+    external::Bool
 end
 
 """
-    ParDoubleVec(name, defaultvalue::Vector{Float64}; units="", description="")
+    ParDoubleVec(name, defaultvalue::Vector{Float64}; units="", description="", external=false)
 """
 function ParDoubleVec(
     name, defaultvalue::Vector{Float64};
-    units="", description="",
+    units="", description="", external=false
 )
     return VecParameter{Float64, Nothing}(
-        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false
+        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false, external
     )
 end
 
 """
-    ParIntVec(name,  defaultvalue::Vector{Integer}; units="", description="", allowed_values=Vector{Int}())
+    ParIntVec(name,  defaultvalue::Vector{Integer}; units="", description="", allowed_values=Vector{Int}(), external=false)
 """
 function ParIntVec(
     name, defaultvalue::Vector{Int};
-    units="", description="", allowed_values=Vector{Int}(),
+    units="", description="", allowed_values=Vector{Int}(), external=false
 )
     # splat allowed_values to allow Tuple etc
     par = VecParameter{Int, Nothing}(
-        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, units, defaultvalue, defaultvalue, [allowed_values...], false, external
     )
     setvalue!(par, defaultvalue) # catch attempt to set defaultvalue not in allowed_values
     return par
 end
 
 """
-    ParBoolVec(name,  defaultvalue::Vector{Bool};  description="")
+    ParBoolVec(name,  defaultvalue::Vector{Bool};  description="", external=false)
 """
 function ParBoolVec(
     name, defaultvalue::Vector{Bool};
-    description="",
+    description="", external=false
 )
     return VecParameter{Bool, Nothing}(
-        name, description, "", defaultvalue, defaultvalue, Vector{Bool}(), false
+        name, description, "", defaultvalue, defaultvalue, Vector{Bool}(), false, external
     )
 end
 
 """
-    ParStringVec(name, defaultvalue::Vector{String};  description="")
+    ParStringVec(name, defaultvalue::Vector{String};  description="", external=false)
 """
 function ParStringVec(
     name, defaultvalue::Vector{String}=String[];
-    description="", allowed_values=Vector{String}(),
+    description="", allowed_values=Vector{String}(), external=false
 )
     # splat allowed_values to allow Tuple etc
     par = VecParameter{String, Nothing}(
-        name, description, "", defaultvalue, defaultvalue, [allowed_values...], false
+        name, description, "", defaultvalue, defaultvalue, [allowed_values...], false, external
     )
     setvalue!(par, defaultvalue) # catch attempt to set defaultvalue not in allowed_values
     return par
@@ -199,17 +203,18 @@ mutable struct VecVecParameter{T, ParseFromString} <: AbstractParameter
     default_value::Vector{Vector{T}}
     allowed_values::Vector{T} # Int, String only
     frozen::Bool
+    external::Bool
 end
 
 """
-    ParDoubleVecVec(name, defaultvalue::Vector{Vector{Float64}}; units="", description="")
+    ParDoubleVecVec(name, defaultvalue::Vector{Vector{Float64}}; units="", description="", external=false)
 """
 function ParDoubleVecVec(
     name, defaultvalue::Vector{Vector{Float64}} = Vector{Vector{Float64}}();
-    units="", description="",
+    units="", description="", external=false
 )
     par = VecVecParameter{Float64, Nothing}(
-        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false
+        name, description, units, defaultvalue, defaultvalue, Vector{Float64}(), false, external
     )
     return par
 end
@@ -363,7 +368,6 @@ function setvalueanddefault!(par::Union{Parameter, VecParameter, VecVecParameter
     end
     return nothing
 end
-
 
 """
     externalvalue(rawvalue::AbstractString, external_parameters) -> value

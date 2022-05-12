@@ -206,6 +206,9 @@ Returns ScalarData if ::XIsotope not present in `nameisotope`, `field_data = def
 julia> PB.split_nameisotope("myflux::CIsotope", Dict("CIsotope"=>PB.IsotopeLinear))
 ("myflux", PALEOboxes.IsotopeLinear)
 
+julia> PB.split_nameisotope("myflux::PALEOboxes.IsotopeLinear", Dict())
+("myflux", PALEOboxes.IsotopeLinear)
+
 julia> PB.split_nameisotope("myflux", Dict("CIsotope"=>PB.IsotopeLinear))
 ("myflux", PALEOboxes.ScalarData)
 
@@ -227,7 +230,9 @@ function split_nameisotope(
         field_data = ScalarData
     elseif length(spfn) == 2
         if haskey(isotope_data, spfn[2]) 
-            field_data = convertd(isotope_data[spfn[2]])            
+            field_data = convertd(isotope_data[spfn[2]])
+        elseif !isnothing(tryparse(AbstractData, spfn[2]))
+            field_data = parse(AbstractData, spfn[2])
         elseif default != UndefinedData
             field_data = default
         else
