@@ -212,13 +212,13 @@ function allocate_variables!(
         space = get_attribute(v, :space)
 
         if field_data == UndefinedData
-            if host_dependent(v)
+            if host_dependent(v) && (get_attribute(v, :vfunction, VF_Undefined) == VF_Undefined)
                 field_data = ScalarData
                 set_attribute!(v, :field_data, ScalarData)
                 field_data = get_attribute(v, :field_data)
                 @info "    set :field_data=$field_data for host-dependent Variable $(fullname(v))"
             else
-                error("allocate_variables! :field_data=UndefinedData for Variable $(fullname(v))")
+                error("allocate_variables! :field_data=UndefinedData for Variable $(fullname(v)) $v")
             end
         end
         v_field = allocate_field(
