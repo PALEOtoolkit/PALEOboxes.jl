@@ -12,6 +12,8 @@ const k_solar_presentday  = 1368.0 # present-day solar insolation W/m^2
 const k_secpyr        = 3.15569e7  # present-day seconds per year
 const k_secpday       = 24.0*3600.0 # sec per day
 const k_daypyr        = k_secpyr/k_secpday  # days in a year
+const k_g_earth       = 9.80665     # gravitational field strength for Earth m/s^2
+const k_SurfAreaEarth = 5.101e14 # Earth surface area in m
 
 const pCO2atm0        = 280e-6     # ppm pre-industrial pCO2
 const k16_PANtoO      = 3.762      #
