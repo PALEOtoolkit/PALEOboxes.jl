@@ -45,7 +45,7 @@ using ..DocStrings
 """
     FluxContrib(
         fluxprefix::AbstractString, flux_list;
-        isotope_data::Dict,
+        [, isotope_data::Dict]
         [, space=PB.CellSpace][, alloptional=true]
     ) -> vartuple::NamedTuple
 
@@ -80,7 +80,7 @@ FluxContribScalar(fluxprefix::AbstractString, flux_list; kwargs...) =
 
 """
     FluxTarget(fluxprefix::AbstractString, flux_list;
-        isotope_data::Dict, 
+        [, isotope_data::Dict=Dict()] 
         [, space=PB.CellSpace]
     ) -> vartuple::NamedTuple
 
@@ -95,7 +95,7 @@ FluxTargetScalar(fluxprefix::AbstractString, flux_list; kwargs...) =
 "Create a NamedTuple of Variables using `varctorfn`"
 function _FluxVars(
     varctorfn, fluxprefix::AbstractString, flux_list; 
-    isotope_data::Dict,
+    isotope_data::Dict=Dict(),
     localname_prefix=nothing,
     alloptional=false,
     description="flux",

@@ -193,7 +193,7 @@ const IsotopeTypes = (ScalarData, IsotopeLinear)
 
 """
     split_nameisotope(
-        nameisotope::AbstractString, isotope_data::Dict; 
+        nameisotope::AbstractString, isotope_data::Dict=Dict(); 
         default=UndefinedData,
     ) -> (name::AbstractString, field_data::AbstractData)
 
@@ -206,7 +206,7 @@ Returns ScalarData if ::XIsotope not present in `nameisotope`, `field_data = def
 julia> PB.split_nameisotope("myflux::CIsotope", Dict("CIsotope"=>PB.IsotopeLinear))
 ("myflux", PALEOboxes.IsotopeLinear)
 
-julia> PB.split_nameisotope("myflux::PALEOboxes.IsotopeLinear", Dict())
+julia> PB.split_nameisotope("myflux::PALEOboxes.IsotopeLinear")
 ("myflux", PALEOboxes.IsotopeLinear)
 
 julia> PB.split_nameisotope("myflux", Dict("CIsotope"=>PB.IsotopeLinear))
@@ -217,7 +217,7 @@ julia> PB.split_nameisotope("::CIsotope", Dict("CIsotope"=>PB.IsotopeLinear))
 ```
 """
 function split_nameisotope(
-    nameisotope::AbstractString, isotope_data::Dict;
+    nameisotope::AbstractString, isotope_data::Dict=Dict();
     default=UndefinedData
 )    
     convertd(v_data::AbstractString)       = parse(AbstractData, v_data)
