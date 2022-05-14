@@ -340,6 +340,9 @@ struct Field{D <: AbstractData, S <: AbstractSpace, V, N, M}
     mesh::M
 end
 
+field_data(field::Field{D, S, V, N, M}) where {D, S, V, N, M} = D
+space(field::Field{D, S, V, N, M}) where {D, S, V, N, M} = S
+
 """
     get_field(obj, ...) -> Field
 
@@ -429,13 +432,6 @@ function create_accessor(
     linkvar_field::Field{D, S, V, N, M}, linksubdomain::Union{Nothing, AbstractSubdomain};
     forceview, components,
 ) where {D, S, V, N, M}
-
-    #=
-    if !(outputcomponents in (VC_Single, VC_ValueOnly, VC_Undefined))
-        @warn "create_accessor: invalid combination of outputcomponents=$outputcomponents and Vector data"
-        return nothing
-    end
-    =#
 
     # create accessor
     if isnothing(linksubdomain)

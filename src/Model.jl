@@ -1,8 +1,5 @@
 import Infiltrator
 
-using BenchmarkTools
-
-
 """
     Model
 
@@ -378,9 +375,12 @@ function check_ready(
             for hv in dom_hdv
                 fullname_hv = fullname(hv)
                 if !(fullname_hv in expect_hostdep_varnames)
-                    @warn "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a 
-                    missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either
-                    in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)"
+                    io = IOBuffer()
+                    write(io, "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a "*
+                    "missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either "*
+                    "in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)\n")
+                    show_links(io, hv)
+                    @warn String(take!(io))
                     ready = false
                 end
             end

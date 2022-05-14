@@ -290,7 +290,8 @@ function Base.show(io::IO, ::MIME"text/plain", var::VariableDomain)
 end
 
 """
-    show_links(vardom::VariableDomain) 
+    show_links(vardom::VariableDomain)
+    show_links(io::IO, vardom::VariableDomPropDep)
 
 Display all [`VariableReaction`](@ref)s linked to this [`VariableDomain`](@ref)
 """

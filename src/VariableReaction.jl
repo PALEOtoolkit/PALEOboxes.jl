@@ -567,39 +567,47 @@ function create_accessor(
     var::VariableReaction, modeldata::AbstractModelData, components; 
     forceview=false
 )
-    @debug "create_accessor: $(fullname(var))  ->  $(isnothing(var.linkvar) ? nothing : fullname(var.linkvar))"
+    errstring = "create_accessor: VariableReaction $(fullname(var))  ->  $(isnothing(var.linkvar) ? nothing : fullname(var.linkvar))"
+    @debug errstring
     if isnothing(var.linkvar)
-        var.link_optional || error("unlinked variable $var")
+        var.link_optional || error("$errstring:  unlinked variable")
         return nothing
     else
         linkvar_field = get_field(var.linkvar, modeldata)
 
         # find subdomain (if requested)
         if !isempty(var.linkreq_subdomain)
-            !isnothing(var.linkvar.domain.grid) || error("create_accessor: VariableReaction $(fullname(var)) linkreq_subdomain='$(var.linkreq_subdomain)' Domain has no grid defined") 
+            !isnothing(var.linkvar.domain.grid) || error("$errstring:   linkreq_subdomain='$(var.linkreq_subdomain)' but Domain has no grid defined") 
             linksubdomain = Grids.get_subdomain(var.linkvar.domain.grid, var.linkreq_subdomain)
-            !isnothing(linksubdomain) || error("create_accessor: VariableReaction $(fullname(var)) linkreq_subdomain='$(var.linkreq_subdomain)' not found") 
+            !isnothing(linksubdomain) || error("$errstring:  linkreq_subdomain='$(var.linkreq_subdomain)' not found") 
             subdomain_indices = Grids.subdomain_indices(linksubdomain) # nothing, unless accessing boundary from interior
         else
             linksubdomain = nothing
             subdomain_indices = nothing
         end
 
-        var_accessor = create_accessor(
-            get_attribute(var, :field_data),
-            # TODO - check space, data_dims,
-            linkvar_field, linksubdomain,
-            forceview=forceview, components=components,
-        )
+        try
+            var_accessor = create_accessor(
+                get_attribute(var, :field_data),
+                # TODO - check space, data_dims,
+                linkvar_field, linksubdomain,
+                forceview=forceview, components=components,
+            )
 
-        !isnothing(var_accessor) ||
-            @warn "create_accessor: $(fullname(var))  ->  $(isnothing(var.linkvar) ? nothing : fullname(var.linkvar)) create_accessor failed"
-
-        if isnothing(subdomain_indices) 
-            return var_accessor  # usual case: no subdomain, or accessing interior from boundary as a view
-        else
-            return (var_accessor, subdomain_indices) # accessing boundary from interior
-        end
+            !isnothing(var_accessor) || error("$errstring:   create_accessor returned $nothing")
+    
+            if isnothing(subdomain_indices) 
+                return var_accessor  # usual case: no subdomain, or accessing interior from boundary as a view
+            else
+                return (var_accessor, subdomain_indices) # accessing boundary from interior
+            end
+        catch ex
+            if isa(ex, MethodError)
+                @warn "$errstring:  invalid :field_data combination - attempting to link a Variable "*
+                    "with :field_data=$(get_attribute(var, :field_data)) to a Variable with :field_data=$(field_data(linkvar_field))"
+            end
+            rethrow(ex)
+        end        
     end
 end
 
