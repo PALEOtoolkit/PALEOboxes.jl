@@ -390,25 +390,24 @@ function _link_create(domain::Domain, reaction::AbstractReaction,
 
     if haskey(linkvar_domain.variables, linkvar_name)
         newvar = linkvar_domain.variables[linkvar_name]
-        # Either a single var_property link,
-        # or two, one for a setup ReactionMethod and one for a do ReactionMethod
-        if (length(newvar.var_property) == 1) && 
-            # check one is method setup and the other method do (no other combinations allowed)
-            ((is_method_do(newvar.var_property[1].method) && is_method_setup(variable.method))
-             || (is_method_setup(newvar.var_property[1].method) && is_method_do(variable.method)))
-            @debug "Adding additional method to Property $(fullname(newvar)) "*
-                "from $(nameof(typeof(reaction))) $(fullname(reaction)) (now have setup and do methods)"
-        else
+        if ((is_method_setup(variable.method) && !isnothing(newvar.var_property_setup)) ||
+            (!is_method_setup(variable.method) && !isnothing(newvar.var_property)))
+            errstr = is_method_setup(variable.method) ? "property_setup" : "property"
             io = IOBuffer()
-            show_links(io, linkvar_domain.variables[linkvar_name])
-            error("Duplicate variable name: Linking VariableReactProperty $(fullname(variable))\n",
-                "    Variable $(linkvar_domain.name).$(linkvar_name) exists ! with links:\n",
-                String(take!(io)))
+                show_links(io, linkvar_domain.variables[linkvar_name])
+                error("Duplicate variable name: Linking VariableReactProperty $(fullname(variable)) --> $(linkvar_domain.name).$(linkvar_name)\n",
+                    "    Variable $(linkvar_domain.name).$(linkvar_name) already exists and has a $errstr Variable, links:\n",
+                    String(take!(io)))
         end
     else
         newvar =  create_VariableDomPropDep(linkvar_domain, linkvar_name, variable)
     end
-    push!(newvar.var_property, variable)
+
+    if is_method_setup(variable.method)     
+        newvar.var_property_setup = variable
+    else
+        newvar.var_property = variable
+    end
     variable.linkvar = newvar
     return nothing
 end
@@ -422,8 +421,8 @@ function _link_create(domain::Domain, reaction::AbstractReaction,
     if haskey(linkvar_domain.variables, linkvar_name)
         io = IOBuffer()
         show_links(io, linkvar_domain.variables[linkvar_name])
-        error("Duplicate variable name: Linking VariableReactTarget $(fullname(variable))\n",
-              "    Variable $(linkvar_domain.name).$(linkvar_name) exists ! with links:\n",
+        error("Duplicate variable name: Linking VariableReactTarget $(fullname(variable)) --> $(linkvar_domain.name).$(linkvar_name)\n",
+              "    Variable $(linkvar_domain.name).$(linkvar_name) already exists, with links:\n",
               String(take!(io)))
     end
     newvar =  create_VariableDomContribTarget(linkvar_domain, linkvar_name, variable)
@@ -610,8 +609,8 @@ function show_variables(
     end
 
     # functions to collect links
-    get_property(v::VariableDomPropDep)             = 
-        isempty(v.var_property) ? missing : [fullname(vp) for vp in v.var_property]
+    get_property(v::VariableDomPropDep) =
+        (pvars = get_properties(v); isempty(pvars) ? missing : [fullname(pv) for pv in pvars])
     get_property(v::VariableDomContribTarget)       = missing
     get_target(v::VariableDomPropDep)               = missing
     get_target(v::VariableDomContribTarget)         =
