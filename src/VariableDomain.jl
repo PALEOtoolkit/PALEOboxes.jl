@@ -10,11 +10,20 @@ Base.@kwdef mutable struct VariableDomPropDep <: VariableDomain
     name::String
     master::VariableReaction
 
-    var_property::Vector{VariableReaction{VT_ReactProperty}}  =
-        Vector{VariableReaction{VT_ReactProperty}}() # 0, 1 (or 2 if linked by both setup and do methods)
+    var_property::Union{Nothing, VariableReaction{VT_ReactProperty}} =
+        nothing
+    var_property_setup::Union{Nothing, VariableReaction{VT_ReactProperty}} =
+        nothing
     var_dependencies::Vector{VariableReaction{VT_ReactDependency}} =
         Vector{VariableReaction{VT_ReactDependency}}()
 
+end
+
+function get_properties(var::VariableDomPropDep)
+    pvars = VariableReaction[]
+    isnothing(var.var_property) || push!(pvars, var.var_property)
+    isnothing(var.var_property_setup) || push!(pvars, var.var_property_setup)
+    return pvars
 end
 
 get_var_type(var::VariableDomPropDep) = VT_DomPropDep
@@ -74,7 +83,7 @@ function fullname(var::VariableDomain)
 end
 
 function host_dependent(var::VariableDomPropDep)
-    return isempty(var.var_property)
+    return isnothing(var.var_property) && isnothing(var.var_property_setup)
 end
 
 function host_dependent(var::VariableDomContribTarget)
@@ -227,23 +236,21 @@ end
 
 function get_all_links(var::VariableDomPropDep)
     all_links = Vector{VariableReaction}()
-    append!(all_links, var.var_property)
+    append!(all_links,  get_properties(var))
     append!(all_links,  var.var_dependencies)
     return all_links
 end
 
 function get_all_links(var::VariableDomContribTarget)
     all_links = Vector{VariableReaction}()
-    if !isnothing(var.var_target)
-        push!(all_links, var.var_target)
-    end
+    isnothing(var.var_target) || push!(all_links, var.var_target)
     append!(all_links,  var.var_contributors)
     append!(all_links,  var.var_dependencies)
     return all_links
 end
 
 function get_modifying_methods(var::VariableDomPropDep)
-    methods = AbstractReactionMethod[rv.method for rv in var.var_property]
+    methods = AbstractReactionMethod[rv.method for rv in get_properties(var)]
     return methods
 end
 
@@ -290,7 +297,8 @@ function Base.show(io::IO, ::MIME"text/plain", var::VariableDomain)
 end
 
 """
-    show_links(vardom::VariableDomain) 
+    show_links(vardom::VariableDomain)
+    show_links(io::IO, vardom::VariableDomPropDep)
 
 Display all [`VariableReaction`](@ref)s linked to this [`VariableDomain`](@ref)
 """
@@ -298,7 +306,8 @@ show_links(vardom::VariableDomain) = show_links(stdout, vardom)
 
 function show_links(io::IO, vardom::VariableDomPropDep)
     println(io, "\t$(typeof(vardom)) $(fullname(vardom)) links:")
-    println(io, "\t\tproperty:\t",  fullname.(vardom.var_property))
+    println(io, "\t\tproperty:\t", if isnothing(vardom.var_property) "nothing" else fullname(vardom.var_property) end)
+    println(io, "\t\tproperty_setup:\t", if isnothing(vardom.var_property_setup) "nothing" else fullname(vardom.var_property_setup) end)
     for var in vardom.var_dependencies
         println(io, "\t\tdependency:\t", fullname(var))
     end

@@ -111,7 +111,7 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
         firstvar_d = nothing
         for v in vars_to_add
             !isnothing(v.linkvar) ||
-                error("Reaction $(PB.fullname(rj)) variable $(v.localname) is not linked - check configuration")            
+                error("Reaction $(PB.fullname(rj)) variable $(v.localname) is not linked: check configuration")            
             linkvar_d = PB.get_attribute(v.linkvar, :field_data)
             if v === first(vars_to_add)
                 firstvar_d = linkvar_d
@@ -119,7 +119,7 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
                 @info "Reaction $(PB.fullname(rj)) Variable $(PB.fullname(var_sum.linkvar)) adding data=$firstvar_d"
             end
             linkvar_d == firstvar_d ||
-                error("$(PB.fullname(rj)) not all variables to be summed have the same data $(PB.fullname(v.linkvar)) $(linkvar_d) != $(PB.fullname(first(rj.vars_to_add).linkvar)) $(firstvar_d)")
+                error("Reaction $(PB.fullname(rj)) not all variables to be summed have the same :field_data Type: $(PB.fullname(v.linkvar)) $(linkvar_d) != $(PB.fullname(first(vars_to_add).linkvar)) $(firstvar_d)")
         end        
     else
         # add first component of vars_to_add Variables
