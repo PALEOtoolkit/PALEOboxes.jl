@@ -127,8 +127,7 @@ function _FluxVars(
         push!(
             variables, 
             varctorfn(
-                localname,  "mol yr-1", "$description $fluxname", 
-                link_namestr=link_namestr, 
+                localname=>link_namestr, "mol yr-1", "$description $fluxname", 
                 attributes=attributes
             )
         )
@@ -321,8 +320,7 @@ function PB.register_dynamic_methods!(rj::ReactionFluxTransfer, model::PB.Model)
             input_attrb = Tuple(atnm=>PB.get_attribute(input_var, atnm) for atnm in (:field_data, :data_dims, :space))
            
             push!(var_inputs, 
-                PB.VarDep("input_"*fluxname, "mol yr-1", "flux input",
-                    link_namestr=input_namestr,                  
+                PB.VarDep("input_"*fluxname => input_namestr, "mol yr-1", "flux input",           
                     attributes=input_attrb,
                 )
             )
@@ -333,8 +331,7 @@ function PB.register_dynamic_methods!(rj::ReactionFluxTransfer, model::PB.Model)
                 replace(output_var_patternname, "\$fluxname\$" => fluxname)
             )*")"
             push!(var_outputs, 
-                PB.VarContrib("output_"*fluxname, "mol yr-1", "flux output",
-                    link_namestr=output_namestr,
+                PB.VarContrib("output_"*fluxname => output_namestr, "mol yr-1", "flux output",
                     attributes=input_attrb,
                 )
             )
