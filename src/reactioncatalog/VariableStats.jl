@@ -71,7 +71,7 @@ function PB.register_methods!(rj::ReactionSum)
          # mark all vars_to_add as optional to help diagnose config errors
          # default :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
         push!(vars_to_add, 
-            PB.VarDep(localname, "", "", link_namestr="("*varname*")")
+            PB.VarDep(localname => "("*varname*")", "", "")
         )
     end
 

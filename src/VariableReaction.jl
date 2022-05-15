@@ -65,9 +65,9 @@ end
 ##################################################
 
 """
-    CreateVariableReaction(var_type, linklocal_namestr, units, description; 
-                           attributes=Tuple(), link_namestr=linklocal_namestr) 
-                            -> VariableReaction{T}
+    CreateVariableReaction(T, localname => link_namestr, units, description; attributes=Tuple()) -> VariableReaction{T}
+    CreateVariableReaction(T, linklocal_namestr, units, description; attributes=Tuple()) -> VariableReaction{T}    
+    [deprecated] CreateVariableReaction(T, localname, units, description; link_namestr, attributes=Tuple()) -> VariableReaction{T}
 
 Create a [`VariableReaction`](@ref).
 
@@ -76,19 +76,30 @@ Not called directly: use short names `VarProp`, `VarDep`, `VarContrib`, `VarTarg
 
 # Arguments
 - `var_type::VariableType`:  one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`
-- `linklocal_namestr::AbstractString`: either 
-  - `localname`, or
-  - `<linkreq_domain>.[linkreq_subdomain.]localname` (which is parsed by [`parse_variablereaction_namestr`](@ref)
-    to define the requested linking to `Domain` Variable). 
+- `localname::AbstractString`: Reaction-local Variable name
+- `link_namestr::AbstractString`: `<linkreq_domain>.[linkreq_subdomain.]linkreq_name`. Parsed by [`parse_variablereaction_namestr`](@ref)
+  to define the requested linking to `Domain` Variable.
+- `linklocal_namestr::AbstractString`:  `<linkreq_domain>.[linkreq_subdomain.]localname`. Convenience form to define both `localname`
+  and requested linking to Domain Variable, for the common case where `linkreq_name == localname`.
 - `units::AbstractString`: units ("" if not applicable)
 - `description::AbstractString`: text describing the variable
 # Keywords
 - `attributes::Tuple(:attrb1name=>attrb1value, :attrb2name=>attrb2value, ...)`: 
   variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
-- `link_namestr::AbstractString`: parsed by [`parse_variablereaction_namestr`](@ref) 
-  to define requested linking to `Domain` Variable. Only required to specify a requested link name where `linkreq_name`
-  is different from `localname`. If supplied, `linklocal_namestr` must then be just `localname`.
 """
+function CreateVariableReaction end
+
+CreateVariableReaction(
+    var_type::VariableType,
+    localname_linkname::Pair{<:AbstractString, <:AbstractString},
+    units::AbstractString,
+    description::AbstractString;                                      
+    attributes::Tuple{Vararg{Pair}}=(),  # (:atrb1=>value1, :atrb2=>value2)
+) = CreateVariableReaction(
+    var_type, first(localname_linkname), units, description;
+    link_namestr=last(localname_linkname), attributes=attributes
+)
+
 function CreateVariableReaction(
     var_type::VariableType,
     linklocal_namestr::AbstractString,
