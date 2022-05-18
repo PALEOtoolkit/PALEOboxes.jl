@@ -361,7 +361,7 @@ function create_reaction_from_config(
 
     # set parameters
     allpars = get_parameters(newreaction)
-    conf_parameters = get(conf_reaction, "parameters", Dict{Any,Any}())
+    conf_parameters = copy(get(conf_reaction, "parameters", Dict{Any,Any}()))
     for par in allpars
         rawvalue = par.v
         par_modified = false
@@ -370,7 +370,7 @@ function create_reaction_from_config(
             par_modified = true
         end
         if !isnothing(conf_parameters) && haskey(conf_parameters, par.name) # empty 'parameters:' will return nothing
-            rawvalue = conf_parameters[par.name]
+            rawvalue = pop!(conf_parameters, par.name)
             par_modified = true
         end
         par_modstr = ("[Default]     ", "[config.yaml] ")[1+par_modified]
@@ -384,7 +384,14 @@ function create_reaction_from_config(
             setvalue!(par, value)
         end
     end    
-  
+
+    if !isempty(conf_parameters)
+        io = IOBuffer()
+        write(io, "reaction $(fullname(newreaction)) has no Parameter(s):\n")
+        [write(io, "    $k:    $v\n") for (k, v) in conf_parameters]
+        error(String(take!(io)))
+    end
+
     # Read Variable configuration
     # These are applied later by _configure_variables! after Variables are created
     newreaction.base._conf_variable_links = get(conf_reaction, "variable_links", nothing)
