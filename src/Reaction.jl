@@ -388,7 +388,9 @@ function create_reaction_from_config(
     if !isempty(conf_parameters)
         io = IOBuffer()
         write(io, "reaction $(fullname(newreaction)) has no Parameter(s):\n")
-        [write(io, "    $k:    $v\n") for (k, v) in conf_parameters]
+        for (k, v) in conf_parameters
+            write(io, "    $k:    $v\n")
+        end
         error(String(take!(io)))
     end
 
