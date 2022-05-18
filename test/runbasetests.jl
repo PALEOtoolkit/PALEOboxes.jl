@@ -4,7 +4,7 @@ using BenchmarkTools
 
 include("ReactionPaleoMockModule.jl")
 
-@testset "PB.jl base" begin
+@testset "PALEOboxes base" begin
     model = PB.create_model_from_config("configbase.yaml", "model1")
 
     PB.show_methods_setup(model)
@@ -90,8 +90,14 @@ include("ReactionPaleoMockModule.jl")
 end
 
 
-@testset "PB.jl loop" begin
+@testset "PALEOboxes base loop" begin
     
     @test_throws ErrorException("The input graph contains at least one loop.") PB.create_model_from_config("configbase.yaml", "model_with_loop")
+   
+end
+
+@testset "PALEOboxes base invalid parameter name" begin
+    
+    @test_throws ErrorException("reaction ocean.julia_paleo_mock has no Parameter(s):\n    misspelt_par:    something\n") PB.create_model_from_config("configbase.yaml", "model_with_invalid_parameter")
    
 end
