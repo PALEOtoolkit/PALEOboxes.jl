@@ -49,12 +49,24 @@ model1:
         ocean:
             
             reactions:
+                grid:
+                    class: ReactionUnstructuredVectorGrid
+                    parameters:
+                        ncells: 1000
+
                 const_volume:
                     class: ReactionConst
                     parameters:
                         constnames: ["volume"]
                     variable_attributes:                       
                         volume:initial_value:        10.0
+
+                const_volume_total:
+                    class: ReactionScalarConst
+                    parameters:
+                        constnames: ["volume_total"]
+                    variable_attributes:                       
+                        volume_total:initial_value:  10000.0
 
                 reservoir_const:
                     class: ReactionReservoirConst
@@ -80,4 +92,22 @@ model1:
                         vars_to_add: [volume, 2*T]
                     variable_links:
                         sum: vectorsum # 30.0
+
+                weightedmean:
+                    class: ReactionWeightedMean
+                    parameters:
+                        field_data: IsotopeLinear
+                    variable_links:
+                        var*:           const_conc*
+                        measure*:       volume*
+
+                volinrange:
+                    class: ReactionAreaVolumeValInRange
+                    parameters:
+                        range_min:         0.0
+                        range_max:         0.2
+                    variable_links:
+                        rangevar:           const_conc
+                        measure*:            volume*
+                       
                       

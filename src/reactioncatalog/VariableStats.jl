@@ -207,6 +207,9 @@ Base.@kwdef mutable struct ReactionWeightedMean{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 
     pars::P = PB.ParametersTuple(
+        PB.ParType(PB.AbstractData, "field_data", PB.ScalarData,
+            allowed_values=PB.IsotopeTypes,
+            description="disable / enable isotopes and specify isotope type"),
     )
 
 
@@ -216,11 +219,12 @@ end
 function PB.register_methods!(rj::ReactionWeightedMean)
 
     vars = [
-        PB.VarDep(       "var", "measure-1", "variable to calculate weighted mean from"),
+        PB.VarDep(       "var", "measure-1", "variable to calculate weighted mean from",
+            attributes=(:field_data=>rj.pars.field_data.v,)),
         PB.VarDep(       "measure", "", "cell area or volume"),
         PB.VarDepScalar( "measure_total", "", "total Domain area or volume"),
         PB.VarPropScalar("var_mean", "", "weighted mean over Domain area or volume",
-            attributes=(:initialize_to_zero=>true, :atomic=>true)),
+            attributes=(:field_data=>rj.pars.field_data.v, :initialize_to_zero=>true, :atomic=>true)),
     ]
 
     PB.add_method_do!(rj, do_weighted_mean, (PB.VarList_namedtuple(vars),))
