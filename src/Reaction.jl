@@ -361,7 +361,8 @@ function create_reaction_from_config(
 
     # set parameters
     allpars = get_parameters(newreaction)
-    conf_parameters = copy(get(conf_reaction, "parameters", Dict{Any,Any}()))
+    conf_parameters_raw = get(conf_reaction, "parameters", Dict{Any,Any}())  # empty 'parameters:' will return nothing
+    conf_parameters = isnothing(conf_parameters_raw) ? Dict{Any, Any}() : copy(conf_parameters_raw)
     for par in allpars
         rawvalue = par.v
         par_modified = false
@@ -369,7 +370,7 @@ function create_reaction_from_config(
             rawvalue = newreaction.base.external_parameters[par.name]
             par_modified = true
         end
-        if !isnothing(conf_parameters) && haskey(conf_parameters, par.name) # empty 'parameters:' will return nothing
+        if haskey(conf_parameters, par.name)
             rawvalue = pop!(conf_parameters, par.name)
             par_modified = true
         end

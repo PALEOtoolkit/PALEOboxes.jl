@@ -101,3 +101,11 @@ end
     @test_throws ErrorException("reaction ocean.julia_paleo_mock has no Parameter(s):\n    misspelt_par:    something\n") PB.create_model_from_config("configbase.yaml", "model_with_invalid_parameter")
    
 end
+
+@testset "PALEOboxes base empty parameters" begin
+    
+    model = PB.create_model_from_config("configbase.yaml", "model_with_empty_parameters")
+
+    @test length(model.domains) == 3
+   
+end
