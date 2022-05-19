@@ -61,7 +61,6 @@ model_with_loop:
             reactions:
 
 
-# two reactions that depend on each other - sort_reactions! should fail
 model_with_invalid_parameter:
     domains:
         ocean:
@@ -72,6 +71,24 @@ model_with_invalid_parameter:
                     parameters:
                         par1:          0.15          # double parameter
                         misspelt_par:  something      # no Parameter with this name
+                    variable_links:
+                        phy*:      mock_phy*
+
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
+
+model_with_empty_parameters:
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                    
                     variable_links:
                         phy*:      mock_phy*
 
