@@ -4,6 +4,7 @@ using Logging
 
 import PALEOboxes as PB
 
+import Infiltrator
 
 @testset "Reservoirs" begin
 
@@ -19,7 +20,6 @@ import PALEOboxes as PB
     @test global_domain.name == "global"
     @test  PB.get_length(global_domain) == 1
     ocean_domain =  PB.get_domain(model, "ocean")
-    ocean_domain.grid = PB.Grids.UnstructuredVectorGrid(ncells=1000)
     @test  PB.get_length(ocean_domain) == 1000
     ocean_length = PB.get_length(ocean_domain)
 
@@ -75,8 +75,10 @@ import PALEOboxes as PB
     @info "ocean host-dependent variables:\n"  ocean_hostdep_data
     @test ocean_hostdep_data["T"][1]           == 1.0*10.0    
 
+    # take a time step
     dispatchlists = modeldata.dispatchlists_all
     PB.do_deriv(dispatchlists)
+
     @info "global model-created variables:\n" global_modelcreated_vars_dict
     @test  PB.get_data(global_modelcreated_vars_dict["A_norm"], modeldata)[] == 10.0
     @test  PB.get_data(global_modelcreated_vars_dict["A_delta"], modeldata)[]== 2.0
@@ -95,7 +97,12 @@ import PALEOboxes as PB
     @test const_conc_data.v             == fill(0.1, ocean_length)
     @test const_conc_data.v_moldelta    == fill(-0.2, ocean_length)
 
-    model = nothing
+    @info "weighted mean"
+    @test PB.get_data(ocean_modelcreated_vars_dict["const_conc_mean"], modeldata)[] == PB.IsotopeLinear(0.1, -0.2)
+
+    @info "volume in range"
+    @test PB.get_data(ocean_modelcreated_vars_dict["frac"], modeldata)[] == 1.0
+
 
     @info "test complete"
     # close(logfile)
