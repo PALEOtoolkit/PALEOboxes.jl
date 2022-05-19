@@ -273,7 +273,8 @@ end
 function PB.register_methods!(rj::ReactionAreaVolumeValInRange)
 
     vars = [
-        PB.VarDep(       "rangevar", "mol m-3", "variable to check within range"),
+        PB.VarDep(       "rangevar", "mol m-3", "variable to check within range";
+            attributes=(:field_data=>PB.ScalarData, )), # total only, not isotope
         PB.VarDep(       "measure", "", "cell area or volume"),
         PB.VarDepScalar( "measure_total", "", "total Domain area or volume"),
         PB.VarPropScalar("frac", "", "fraction of Domain area or volume in specified range",
