@@ -182,6 +182,9 @@ Base.:*(a::IsotopeLinear,  b::Real)             = IsotopeLinear(a.v*b, a.v_molde
 Base.:*(a::Real, b::IsotopeLinear)              = IsotopeLinear(a*b.v, a*b.v_moldelta)
 Base.:/(a::IsotopeLinear,  b::Real)             = IsotopeLinear(a.v/b, a.v_moldelta/b)
 
+# convert methods for cases (eg from Float64 to an AD type) where scalar components v, v_moldelta can be converted
+IsotopeLinear{T1, T2}(x::IsotopeLinear) where {T1, T2} = IsotopeLinear{T1, T2}(x.v, x.v_moldelta)
+Base.convert(::Type{IsotopeLinear{T1, T2}}, x::IsotopeLinear) where {T1, T2} = IsotopeLinear{T1, T2}(x)
 
 """
     IsotopeTypes::Tuple
