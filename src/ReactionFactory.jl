@@ -95,13 +95,13 @@ Examples:
 """
 function show_all_reactions(classnamefilter="", typenamefilter="")
     
-    for (classname, ReactionType) in find_all_reactions()
+    for (classname, ReactionType) in sort(find_all_reactions())
         if occursin(classnamefilter, classname)
             println(classname)
             
             rtstring = Printf.@sprintf("%s", ReactionType)
             if  occursin(typenamefilter, rtstring )      
-                println("    ", RType)
+                println("    ", ReactionType)
                 
                 # doc = Base.Docs.doc(rt)  # a Markdown object?
                 # display(doc)
