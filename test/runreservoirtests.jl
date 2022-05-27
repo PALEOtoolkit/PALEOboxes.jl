@@ -6,6 +6,12 @@ import PALEOboxes as PB
 
 import Infiltrator
 
+@testset "Reactions" begin
+    @test PB.find_reaction("ReactionReservoirScalar") == PB.Reservoirs.ReactionReservoirScalar
+
+    PB.show_all_reactions()  # just check runs without error
+end
+
 @testset "Reservoirs" begin
 
     # logfile = open("Reservoirs_log.txt", "w")
