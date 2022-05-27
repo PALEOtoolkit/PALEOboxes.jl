@@ -28,7 +28,7 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 [compat]
 BenchmarkTools = "1.0"
 DataFrames = "1.1"
-DocStringExtensions = "0.8"
+DocStringExtensions = "0.8, 0.9"
 Documenter = "0.27"
 Graphs = "1.4"
 Infiltrator = "1.0"
