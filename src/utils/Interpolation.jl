@@ -8,8 +8,8 @@ hence allows use for arbitrary record types.
 
 # Args:
     - `xvals::Vector`: x values at which function is available.
-    - `xperiod`: Periodicity of x values (0.0 for not periodic)
-    - `require_sorted_input::Bool`: `true` to check that input is sorted in ascending order, 
+    - `xperiod=0.0`: Periodicity of x values (0.0 for not periodic)
+    - `require_sorted_input::Bool=true`: to check that input is sorted in ascending order, 
      `false` to allow arbitrary order (which will then be sorted for internal use).
 """
 struct LinInterp

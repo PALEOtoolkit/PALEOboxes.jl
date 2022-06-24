@@ -27,13 +27,13 @@ To initialise the model, the numerical solver or host should then:
   - store sorted lists of [`ReactionMethod`](@ref)s and corresponding Variable array accessors in the [`ModelData`](@ref) struct. A [`ReactionMethod`](@ref) may include a prepare function to include additional buffers etc.
   - call [`create_dispatch_methodlists`](@ref) to compile default model-wide lists of `initialize` and `do` methods + corresponding Variable array accessors and [`CellRange`](@ref)s. This is stored as the in the `dispatchlists_all` of the [`ModelData`](@ref) struct.
 - call [`check_configuration`](@ref) to call any optional [`check_configuration`](@ref) Reaction methods to validate the model configuration.
+- call [`dispatch_setup`](@ref) with `attribute_value = :setup`, which calls Reaction setup methods (registered by [`add_method_setup!`](@ref)) to initialise Reaction state and any non-state Variables (eg grid variables).
 
 ## State Variable initialization
 To initialise state Variables and perform any Reaction-specific initialisation, the numerical solver or host should:
-- optionally (if normalisation values are required by a numerical solver), 
-  - call [`dispatch_setup`](@ref) with `attribute_value = :norm_value`, which calls Reaction setup methods (registered by [`add_method_setup!`](@ref)). These methods should set state Variables according to the `:norm_value` Variable attribute (which can be set in the `variable_attributes:` section of the config file).
-  - Copy the Variable normalisation values from the arrays in [`ModelData`](@ref) to the solver.
-- call [`dispatch_setup`](@ref) with `attribute_value = :initial_value` to set state Variables according to the `:initial_value` Variable attribute (which can be set in the `variable_attributes:` section of the config file).
+- call [`dispatch_setup`](@ref) with `attribute_value = :norm_value`. These methods should set state Variables according to the `:norm_value` Variable attribute (which can be set in the `variable_attributes:` section of the config file).
+  - optionally (if normalisation values are required by a numerical solver), copy the Variable normalisation values from the arrays in [`ModelData`](@ref) to the solver.
+- optionally call [`dispatch_setup`](@ref) with `attribute_value = :initial_value` to set state Variables according to the `:initial_value` Variable attribute (which can be set in the `variable_attributes:` section of the config file).
 
 ## Main loop
 To calculate the model derivative, the numerical solver or host should:

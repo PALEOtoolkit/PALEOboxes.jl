@@ -468,12 +468,14 @@ end
 
 
 """
-    dispatch_setup(model, attribute_value, modeldata, cellranges=modeldata.cellranges_all)
+    dispatch_setup(model, attribute_name, modeldata, cellranges=modeldata.cellranges_all)
 
 Call setup methods, eg to initialize data arrays (including state variables).
 
-`attribute_value` (`:initial_value` or `:norm_value`) defines the Variable attribute to read from the configuration file
-and use to set data arrays. Usually `dispatch_setup` is called twice, first to get `:norm_value` and then to get `:initial_value`. 
+`attribute_name` defines the setup operation performed. `dispatch_setup` should be called in sequence with `attribute_name` = :
+- `:setup`: initialise Reactions and set up any non-state Variables (eg model grid Variables)
+- `:norm_value`: set state Variable values from `:norm_value` attribute in .yaml file, and initialise any Reaction state that requires this value.
+- `:initial_value` (optional): set state Variable values from `:initial_value` attribute in .yaml file.
 """
 function dispatch_setup(
     model::Model, attribute_value, modeldata::AbstractModelData, cellranges=modeldata.cellranges_all

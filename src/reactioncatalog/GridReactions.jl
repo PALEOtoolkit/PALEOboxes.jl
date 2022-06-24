@@ -158,9 +158,12 @@ function setup_grid_2DNetCDF(
     m::PB.ReactionMethod,
     (grid_vars, ),
     cellrange::PB.AbstractCellRange,
-    deltat
+    attribute_name
 )
     rj = m.reaction
+
+    attribute_name == :setup || return
+
 
     grid2D = rj.domain.grid
 

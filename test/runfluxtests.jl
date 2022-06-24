@@ -29,6 +29,8 @@ import PALEOboxes as PB
     PB.initialize_reactiondata!(model, modeldata)
       
     @info "dispatch_setup"
+    PB.dispatch_setup(model, :setup, modeldata)
+    PB.dispatch_setup(model, :norm_value, modeldata)
     PB.dispatch_setup(model, :initial_value, modeldata)
     
     @info "const fluxes:"

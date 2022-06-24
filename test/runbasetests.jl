@@ -72,6 +72,8 @@ include("ReactionPaleoMockModule.jl")
     cellrange = PB.Grids.create_default_cellrange(ocean_domain, ocean_domain.grid)
     cellranges = [cellrange]
 
+    PB.dispatch_setup(model, :setup, modeldata, cellranges)
+    PB.dispatch_setup(model, :norm_value, modeldata, cellranges)
     PB.dispatch_setup(model, :initial_value, modeldata, cellranges)
 
     dispatchlists = modeldata.dispatchlists_all

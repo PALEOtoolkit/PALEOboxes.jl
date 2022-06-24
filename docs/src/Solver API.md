@@ -7,7 +7,7 @@ CurrentModule = PALEOboxes
 A [`Model`](@ref) contains [`Domain`](@ref)s, each of which contain [Variables](@ref) defining [`Field`](@ref)s, and `Reactions` with [`ReactionMethod`](@ref)s that operate on the [`Field`](@ref)s to calculate model time evolution.
 
 
-## Initialization
+## Create and initialise
 ```@meta
 CurrentModule = PALEOboxes
 ```

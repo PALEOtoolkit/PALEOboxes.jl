@@ -7,6 +7,13 @@ import PALEOboxes as PB
 
 using ..DocStrings
 
+const LINEARINTERPOLATION_TEMPLATE = Interpolations.LinearInterpolation(
+    [0.0, 1.0], 
+    [NaN, NaN],
+    extrapolation_bc = Interpolations.Throw()
+)
+
+
 """
     ReactionFluxPerturb
  
@@ -41,66 +48,79 @@ Base.@kwdef mutable struct ReactionFluxPerturb{P} <: PB.AbstractReaction
         PB.ParDoubleVec("perturb_deltas",[0.0, 0.0], units="per mil",
             description="interpolated perturbation deltas"),
     )
+
+    interp_Ftotal::typeof(LINEARINTERPOLATION_TEMPLATE) = LINEARINTERPOLATION_TEMPLATE
+    interp_Fdelta::typeof(LINEARINTERPOLATION_TEMPLATE) = LINEARINTERPOLATION_TEMPLATE
 end
+
 
 function PB.register_methods!(rj::ReactionFluxPerturb)
     
     @info "ReactionFluxPerturb.register_methods! $(PB.fullname(rj))"
 
+    IsotopeType = rj.pars.field_data.v
     PB.setfrozen!(rj.pars.field_data)
 
     vars = [
         PB.VarDepScalar(        "global.tforce",        "yr",       "time at which to apply perturbation"),
         PB.VarContribScalar(    "F",                    "mol yr-1", "interpolated flux perturbation",
-            attributes=(:field_data=>rj.pars.field_data.v,)),
+            attributes=(:field_data=>IsotopeType,)),
         PB.VarPropScalar(       "%reaction%FApplied",   "mol yr-1", "flux perturbation applied, for diagnostic output",
-            attributes=(:field_data=>rj.pars.field_data.v,)),
+            attributes=(:field_data=>IsotopeType,)),
     ]
+
+    PB.add_method_setup!(
+        rj,
+        setup_flux_perturb,
+        Tuple{}(), 
+        p=IsotopeType,
+    )
 
     PB.add_method_do!(
         rj,
         do_flux_perturb,
-        (PB.VarList_namedtuple(vars), ), 
-        preparefn=prepare_do_flux_perturb,
+        (PB.VarList_namedtuple(vars), ),
+        p=IsotopeType,
     )
 
     return nothing
 end
 
-# We need to allow parameters to be changed after 'register_methods!'.
-# But Interpolations encodes lengths of vectors in its type, which means
-# it can't be added to ReactionMethod p and then changed later (without type instability).
-# So in order to keep type stability, calculate it here and add to end of variables Tuple.
-function prepare_do_flux_perturb(m::PB.ReactionMethod, (vars, ))
+function setup_flux_perturb(
+    m::PB.ReactionMethod, 
+    _,
+    cellrange::PB.AbstractCellRange,
+    attribute_name,
+)
+    attribute_name == :setup || return
+
     rj = m.reaction
+    IsotopeType = m.p
 
-    IsotopeType = rj.pars.field_data.v
-
-    interp_Ftotal = Interpolations.LinearInterpolation(
+    rj.interp_Ftotal = Interpolations.LinearInterpolation(
         rj.pars.perturb_times.v, 
         rj.pars.perturb_totals.v,
         extrapolation_bc = Interpolations.Throw()
     )
 
     if IsotopeType <: PB.AbstractIsotopeScalar
-        interp_Fdelta = Interpolations.LinearInterpolation(
+        rj.interp_Fdelta = Interpolations.LinearInterpolation(
             rj.pars.perturb_times.v, 
             rj.pars.perturb_deltas.v,
             extrapolation_bc = Interpolations.Throw()
         )
-    else
-        interp_Fdelta = nothing
     end
 
-    return (vars, IsotopeType, interp_Ftotal, interp_Fdelta)
+    return nothing
 end
 
 function do_flux_perturb(
     m::PB.ReactionMethod, 
-    (vars, IsotopeType, interp_Ftotal, interp_Fdelta),
+    (vars, ),
     cellrange::PB.AbstractCellRange,
     deltat
 )
+    IsotopeType = m.p
 
     tforce              = vars.tforce[]    
     F                   = @PB.isotope_totaldelta(IsotopeType, interp_Ftotal(tforce), interp_Fdelta(tforce))
