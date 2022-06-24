@@ -11,8 +11,7 @@ using InteractiveUtils
 
 import PALEOboxes as PB
 
-
-
+"repeatedly call `dispatch_methodlist` `N` times to generate a long-duration run for profiling"
 function profile_dispatchlist(dispatchlist, N, deltat::Float64=0.0)
     for i in 1:N
         PB.dispatch_methodlist(dispatchlist..., deltat)
@@ -89,44 +88,31 @@ end
 
 
 """
-    bench_model(model)
+    bench_model(model, modeldata; bench_whole=true, domainname="", reactionname="", methodname="", [; kwargs...])
     
-Benchmark whole model.
+Optionally benchmark whole model, and then call [`bench_method`](@ref) to benchmark selected methods
+
+# Keywords
+- `bench_whole=true`:  true to benchmark whole model (using `dispatch_methodlist` and `do_deriv`)
+- `domainname`, `reactionname`, `methodname`, `kwargs`: passed through to [`bench_method`](@ref)
 
 # Example
 Run @code_warntype on a single method:
 ```julia
-julia> PB.TestUtils.bench_model(run.model, bench_whole=false, reactionname="atmtransport", methodname="calc_gas_floormrbc",
+julia> PB.TestUtils.bench_model(run.model, modeldata; bench_whole=false, reactionname="atmtransport", methodname="calc_gas_floormrbc",
   use_btime=false, do_code_warntype=true)
 ````
 """
 function bench_model(
-    model;
-    modeldata=nothing,
-    tforce=0.0,
+    model, modeldata;
     bench_whole=true,
     domainname="",
     reactionname="",
     methodname="",
     kwargs...
 )
-    if isnothing(modeldata)
-        modeldata =  PB.create_modeldata(model)
-        
-        PB.allocate_variables!(model, modeldata)
-        PB.set_default_solver_view!(model, modeldata)
-
-        PB.check_ready(model, modeldata)
-
-        PB.initialize_reactiondata!(model, modeldata)
-            
-        PB.dispatch_setup(model, :norm_value, modeldata)
-        PB.copy_norm!(modeldata.solver_view_all)
-        PB.dispatch_setup(model, :initial_value, modeldata)        
-    end
 
     dispatchlists = modeldata.dispatchlists_all
-    PB.set_tforce!(modeldata.solver_view_all, tforce)
 
     if bench_whole
         println()
@@ -150,7 +136,7 @@ function bench_model(
     println("bench_method do")
     PB.TestUtils.bench_method(dispatchlists.list_do, domainname, reactionname, methodname; kwargs...)
     
-    return dispatchlists
+    return nothing
 end
 
 

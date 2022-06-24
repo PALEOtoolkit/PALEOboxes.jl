@@ -27,9 +27,7 @@ Contains `model` data arrays of element type T.
 # Fields
 - `cellranges_all::Vector{AbstractCellRange}`: default cellranges covering all domains
 - `dispatchlists_all`: default dispatchlists covering all domains
-- `solver_view_all::SolverView{T}`: an optional default [`SolverView`](@ref) covering all domains
-  (created by [`set_default_solver_view!`](@ref)).
-- `hostep_data`: optional NamedTuple with data arrays for host-dependent non-state Variables (eg for `tforce`, if defined).
+- `solver_view_all`: optional untyped context field for use by external solvers.
 """
 Base.@kwdef mutable struct ModelData{T<:Real} <: AbstractModelData
     model::Model

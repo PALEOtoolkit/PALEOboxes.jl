@@ -66,8 +66,7 @@ end
     
     @info "dispatch_setup"
     # Initialise state variables to norm_value (needed as Reservoirs may require norm_value)
-    PB.dispatch_setup(model, :norm_value, modeldata)
-    # PB.copy_norm!(modeldata.solver_view_all) # not needed as not using a solver (requires PB.set_default_solver_view!(model, modeldata))
+    PB.dispatch_setup(model, :norm_value, modeldata)    
     # set initial_value
     PB.dispatch_setup(model, :initial_value, modeldata)
 
