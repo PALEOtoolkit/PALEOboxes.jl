@@ -18,6 +18,8 @@ include("ReactionRateStoichMock.jl")
 
     PB.initialize_reactiondata!(model, modeldata)
     
+    PB.dispatch_setup(model, :setup, modeldata)
+    PB.dispatch_setup(model, :norm_value, modeldata)
     PB.dispatch_setup(model, :initial_value, modeldata)
 
     dispatchlists = modeldata.dispatchlists_all

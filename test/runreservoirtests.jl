@@ -65,9 +65,8 @@ end
     PB.initialize_reactiondata!(model, modeldata)
     
     @info "dispatch_setup"
-    # Initialise state variables to norm_value (needed as Reservoirs may require norm_value)
-    PB.dispatch_setup(model, :norm_value, modeldata)    
-    # set initial_value
+    PB.dispatch_setup(model, :setup, modeldata)
+    PB.dispatch_setup(model, :norm_value, modeldata)
     PB.dispatch_setup(model, :initial_value, modeldata)
 
     @info "global host-dependent variables:\n"  global_hostdep_data

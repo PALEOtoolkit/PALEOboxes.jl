@@ -134,6 +134,9 @@ function prepare_do_force_grid(
         error("    both netcdf_file $(rj.pars.netcdf_file.v) and matlab_file $(rj.pars.matlab_file.v) are specified")
     end
  
+    PB.setfrozen!(rj.pars.netcdf_file, rj.pars.matlab_file, rj.pars.data_var, rj.pars.time_var, 
+        rj.pars.tidx_start, rj.pars.tidx_end, rj.pars.use_timeav, rj.pars.cycle_time,)
+
     return (vars, interp_vars, rj.time_interp, rj.interp_interp, rj.interp_fn, rj.data_var)
 end
 

@@ -335,13 +335,14 @@ function PB.register_methods!(rj::ReactionReservoirConst)
             PB.VarDep(var_R_conc),
             PB.VarProp("R_delta", "per mil", "isotopic composition"),
         ]
-        PB.add_method_setup!(rj, setup_reactionreservoirconst, (PB.VarList_namedtuple(setup_vars),) )
+        # use do, not setup, so we handle the case where the value is modified after setup
+        PB.add_method_do!(rj, do_reactionreservoirconst, (PB.VarList_namedtuple(setup_vars),) )
     end
 
     return nothing
 end
 
-function setup_reactionreservoirconst(m::PB.ReactionMethod, (setup_vars, ), cellrange::PB.AbstractCellRange, deltat)
+function do_reactionreservoirconst(m::PB.ReactionMethod, (setup_vars, ), cellrange::PB.AbstractCellRange, deltat)
 
     @inbounds for i in cellrange.indices
         setup_vars.R_delta[i]  = PB.get_delta(setup_vars.R_conc[i])
