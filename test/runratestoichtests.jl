@@ -16,9 +16,6 @@ include("ReactionRateStoichMock.jl")
     PB.allocate_variables!(model, modeldata)
     PB.check_ready(model, modeldata)
 
-    PB.set_default_solver_view!(model, modeldata)     
-  
-
     PB.initialize_reactiondata!(model, modeldata)
     
     PB.dispatch_setup(model, :initial_value, modeldata)

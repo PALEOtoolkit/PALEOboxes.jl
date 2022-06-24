@@ -182,12 +182,7 @@ get_vars(va::VariableAggregator) = va.vars
 num_vars(va::VariableAggregator) = length(va.vars)
 
 
-"""
-    VariableAggregatorNamed
 
-Aggregate multiple VariableDomains into a NamedTuple, for easy access to 
-host-dependent Variables by name.
-"""
 
 mutable struct VariableAggregatorNamed{V <: NamedTuple}
     # Variables 
@@ -205,20 +200,35 @@ function Base.show(io::IO, va::VariableAggregatorNamed)
     return nothing
 end
 
+"""
+    VariableAggregatorNamed(vars, modeldata [; reallocate_hostdep_eltype=nothing]) -> VariableAggregatorNamed
+
+Aggregate multiple VariableDomains into nested NamedTuples, with Variable or Domain names as keys and
+data arrays (from `get_data`) as values.
+
+Intended use is to provide easy access by name to raw data arrays of host-dependent Variables that are not state variables.
+
+If `reallocate_hostdep_eltype != nothing`, then Variables are reallocated to Arrays of the supplied Type eg to remove AD types.
+"""
 function VariableAggregatorNamed(
     vars, modeldata::AbstractModelData;
-    reallocate_hostdep_eltype=Float64,
+    reallocate_hostdep_eltype=nothing,
 )
 
     # If requested, change data type eg to remove AD type
     if !isnothing(reallocate_hostdep_eltype)
+        io = IOBuffer()
+        println(io, "VariableAggregatorNamed:")
+        reallocated = false
         for v in vars
             v_data = get_data(v, modeldata)
             if v_data isa AbstractArray && eltype(v_data) != reallocate_hostdep_eltype
-                @info "VariableAggregatorNamed: reallocate $(fullname(v)) data $(eltype(v_data)) -> $reallocate_hostdep_eltype"
+                println(io, "    reallocate $(fullname(v)) data $(eltype(v_data)) -> $reallocate_hostdep_eltype")
                 set_data!(v, modeldata, similar(v_data, reallocate_hostdep_eltype))
+                reallocated = true
             end
         end
+        reallocated && @info String(take!(io))
     end
 
     # sort by Domain into Dict of Dicts

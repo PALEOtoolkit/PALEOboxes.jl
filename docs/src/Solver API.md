@@ -4,7 +4,7 @@
 CurrentModule = PALEOboxes
 ```
 
-A [`Model`](@ref) contains [`Domain`](@ref)s, each of which contain [Variables](@ref) defining [`Field`](@ref)s, and [Reactions](@ref) with [`ReactionMethod`](@ref)s that operate on the [`Field`](@ref)s to calculate model time evolution.
+A [`Model`](@ref) contains [`Domain`](@ref)s, each of which contain [Variables](@ref) defining [`Field`](@ref)s, and `Reactions` with [`ReactionMethod`](@ref)s that operate on the [`Field`](@ref)s to calculate model time evolution.
 
 
 ## Initialization
@@ -26,16 +26,10 @@ ReactionMethodDispatchList
 ```
 
 ## Attaching numerical solvers
-High-level access to aggregated collections of state Variables and derivatives (see [Accessing model objects](@ref) for low-level access).
+High-level access to aggregated collections of state Variables and derivatives is provided by [`VariableAggregator`](@ref) (see [Accessing model objects](@ref) for low-level access).
 ```@docs
-SolverView
 VariableAggregator
 VariableAggregator(vars, cellranges, modeldata)
-create_solver_view
-set_default_solver_view!
-copy_norm!
-set_statevar!
-get_statevar_sms!
 ```
 
 ## Defining CellRanges

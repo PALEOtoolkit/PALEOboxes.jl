@@ -80,7 +80,7 @@ end
 
 
 function add_reaction_factory(ReactionType::Type{<:AbstractReaction})
-    @warn "call to deprecated add_reaction_factory($ReactionType)"
+    Base.depwarn("call to deprecated add_reaction_factory($ReactionType), this does nothing and can be removed", :add_reaction_factory, force=true)
 end
 
 """

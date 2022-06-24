@@ -58,9 +58,23 @@ include("utils/TestUtils.jl")
 include("utils/SIMDutils.jl")
 include("utils/IteratorUtils.jl")
 
-include("solverview/VariableAggregator.jl")
-include("solverview/SolverView.jl")
+include("variableaggregators/VariableAggregator.jl")
 
 include("reactioncatalog/Reactions.jl")
+
+# Deprecated functions
+"""
+    get_statevar
+
+DEPRECATED - moved to PALEOmodel
+"""
+function get_statevar end
+
+"""
+    get_statevar_norm
+
+DEPRECATED - moved to PALEOmodel
+"""
+function get_statevar_norm end
 
 end # module
