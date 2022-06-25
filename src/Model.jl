@@ -487,7 +487,6 @@ function dispatch_setup(
     check_modeldata(model, modeldata) 
 
     for (method, vardata) in modeldata.sorted_methodsdata_setup
-        @info "    $(fullname(method))"
         for cr in cellranges
             if (cr.operatorID == 0 || cr.operatorID in method.operatorID) &&
                 (cr.domain === method.domain)

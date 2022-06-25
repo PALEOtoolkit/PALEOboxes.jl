@@ -94,6 +94,8 @@ function setup_flux_perturb(
 )
     attribute_name == :setup || return
 
+    @info "$(PB.fullname(m)):"
+
     rj = m.reaction
     IsotopeType = m.p
 
@@ -120,10 +122,11 @@ function do_flux_perturb(
     cellrange::PB.AbstractCellRange,
     deltat
 )
+    rj = m.reaction
     IsotopeType = m.p
 
     tforce              = vars.tforce[]    
-    F                   = @PB.isotope_totaldelta(IsotopeType, interp_Ftotal(tforce), interp_Fdelta(tforce))
+    F                   = @PB.isotope_totaldelta(IsotopeType, rj.interp_Ftotal(tforce), rj.interp_Fdelta(tforce))
 
     vars.F[]            += F
     vars.FApplied[]     = F
