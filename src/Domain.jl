@@ -355,13 +355,13 @@ end
 # Variable linking
 #################################
 
-function _link_print(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_print(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     @debug "Link requested $(domain.name).reactions.$(reaction.name)  $(variable.localname) --> $(combine_link_name(linkvar_domain.name, variable.linkreq_subdomain, linkvar_name))"
     return nothing
 end
 
-function _link_print_not_linked(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_print_not_linked(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     if isnothing(variable.linkvar)
         linkreq_fullname = combine_link_name(variable.linkreq_domain, variable.linkreq_subdomain, linkvar_name)
@@ -376,13 +376,13 @@ function _link_print_not_linked(domain::Domain, reaction::AbstractReaction, vari
 end
 
 "Create Domain variables for VariableReaction Property and Target, and create property/target link"
-function _link_create(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_create(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
    # generic method does nothing for VT_ReactDependency, VT_ReactContributor
    return nothing
 end
 
-function _link_create(domain::Domain, reaction::AbstractReaction,
+function _link_create(domain::Domain, @nospecialize(reaction::AbstractReaction),
                       variable::VariableReaction{VT_ReactProperty},
                       linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     dolog && @debug "Creating Property $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
@@ -412,7 +412,7 @@ function _link_create(domain::Domain, reaction::AbstractReaction,
     return nothing
 end
 
-function _link_create(domain::Domain, reaction::AbstractReaction,
+function _link_create(domain::Domain, @nospecialize(reaction::AbstractReaction),
                       variable::VariableReaction{VT_ReactTarget},
                       linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     dolog && @debug "Creating Target $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
@@ -432,13 +432,13 @@ function _link_create(domain::Domain, reaction::AbstractReaction,
 end
 
 "Create any additional (host-dependent) Domain variables for any non-optional VariableReaction Contrib"
-function _link_create_contrib(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_create_contrib(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     # generic method does nothing for VT_ReactProperty, VT_ReactTarget, VT_ReactDependency
     return nothing
 end
 
-function _link_create_contrib(domain::Domain, reaction::AbstractReaction,
+function _link_create_contrib(domain::Domain, @nospecialize(reaction::AbstractReaction),
                     variable::VariableReaction{VT_ReactContributor},
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     if (!haskey(linkvar_domain.variables, linkvar_name)
@@ -454,13 +454,13 @@ function _link_create_contrib(domain::Domain, reaction::AbstractReaction,
 end
 
 "Create any additional (host-dependent) Domain variables for any non-optional VariableReaction Dependency"
-function _link_create_dep(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_create_dep(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     # generic method does nothing for VT_ReactProperty, VT_ReactTarget, VT_ReactContributor
     return nothing
 end
 
-function _link_create_dep(domain::Domain, reaction::AbstractReaction,
+function _link_create_dep(domain::Domain, @nospecialize(reaction::AbstractReaction),
                     variable::VariableReaction{VT_ReactDependency},
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     if (!haskey(linkvar_domain.variables, linkvar_name)
@@ -476,14 +476,14 @@ function _link_create_dep(domain::Domain, reaction::AbstractReaction,
 end
 
 "Link VariableReaction Dependency and Contrib to Domain variables"
-function _link_link(domain::Domain, reaction::AbstractReaction, variable::VariableReaction,
+function _link_link(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     # generic method does nothing for VT_ReactProperty, VT_ReactTarget
     return nothing
 end
 
 
-function _link_link(domain::Domain, reaction::AbstractReaction,
+function _link_link(domain::Domain, @nospecialize(reaction::AbstractReaction),
                     variable::VariableReaction{VT_ReactDependency},
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     
@@ -503,7 +503,7 @@ function _link_link(domain::Domain, reaction::AbstractReaction,
     return nothing
 end
 
-function _link_link(domain::Domain, reaction::AbstractReaction,
+function _link_link(domain::Domain, @nospecialize(reaction::AbstractReaction),
                     variable::VariableReaction{VT_ReactContributor},
                     linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
     

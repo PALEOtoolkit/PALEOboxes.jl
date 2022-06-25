@@ -36,7 +36,9 @@ struct NoReaction <: AbstractReaction
     NoReaction() = new(ReactionBase(name="", classname="NoReaction"))
 end
 
-
+# helps type stability: even though we are using @nospecialize(AbstractReaction) everywhere, 
+# we still know the type of base
+base(react::AbstractReaction) = getfield(react, :base)::ReactionBase
 
 """
     Base.getproperty(react::AbstractReaction, s::Symbol)
@@ -44,22 +46,24 @@ end
 Forward to `react.base::ReactionBase` to define additional properties.
 """
 function Base.getproperty(react::AbstractReaction, s::Symbol)
-    if s == :name
-        return react.base.name
+    if s == :base
+        return base(react)
+    elseif s == :name
+        return base(react).name
     elseif s == :classname
-        return react.base.classname
+        return base(react).classname
     elseif s == :domain
-        return react.base.domain
+        return base(react).domain
     elseif s == :operatorID
-        return react.base.operatorID
+        return base(react).operatorID
     elseif s == :external_parameters
-        return react.base.external_parameters
+        return base(react).external_parameters
     elseif s == :methods_setup
-        return react.base.methods_setup
+        return base(react).methods_setup
     elseif s == :methods_initialize
-        return react.base.methods_initialize
+        return base(react).methods_initialize
     elseif s == :methods_do
-        return react.base.methods_do
+        return base(react).methods_do
     else
         return getfield(react, s)
     end
@@ -70,10 +74,10 @@ end
 ##########################################################
 
 "Get all parameters"
-get_parameters(reaction::AbstractReaction) = reaction.base.parameters
+get_parameters(@nospecialize(reaction::AbstractReaction)) = reaction.base.parameters
 
 "Get parameter by name"
-function get_parameter(reaction::AbstractReaction, parname::AbstractString; allow_not_found=false)
+function get_parameter(@nospecialize(reaction::AbstractReaction), parname::AbstractString; allow_not_found=false)
     matchpars = filter(p -> p.name==parname, reaction.base.parameters)
     
     length(matchpars) <= 1 ||
@@ -87,7 +91,7 @@ function get_parameter(reaction::AbstractReaction, parname::AbstractString; allo
 end
 
 "convenience function to set Parameter value"
-function set_parameter_value!(reaction::AbstractReaction, parname::AbstractString, value)
+function set_parameter_value!(@nospecialize(reaction::AbstractReaction), parname::AbstractString, value)
 
     setvalue!(get_parameter(reaction, parname, allow_not_found=false), value)  
     
@@ -95,13 +99,13 @@ function set_parameter_value!(reaction::AbstractReaction, parname::AbstractStrin
 end
 
 "Get method by name"
-get_method_setup(reaction::AbstractReaction, methodname::AbstractString; allow_not_found=false) =
+get_method_setup(@nospecialize(reaction::AbstractReaction), methodname::AbstractString; allow_not_found=false) =
     _get_method(reaction.base.methods_setup, "setup", reaction, methodname, allow_not_found)
 
-get_method_initialize(reaction::AbstractReaction, methodname::AbstractString; allow_not_found=false) =
+get_method_initialize(@nospecialize(reaction::AbstractReaction), methodname::AbstractString; allow_not_found=false) =
     _get_method(reaction.base.methods_initialize, "initialize", reaction, methodname, allow_not_found)
 
-get_method_do(reaction::AbstractReaction, methodname::AbstractString; allow_not_found=false) =
+get_method_do(@nospecialize(reaction::AbstractReaction), methodname::AbstractString; allow_not_found=false) =
     _get_method(reaction.base.methods_do, "do", reaction, methodname, allow_not_found)
 
 function _get_method(methodlist, methodtype, reaction, methodname, allow_not_found)
@@ -124,13 +128,13 @@ end
 Get matching Variables from all ReactionMethods.
 """
 function get_variables(
-    reaction::AbstractReaction, localname::AbstractString
+    @nospecialize(reaction::AbstractReaction), localname::AbstractString
 )
     return get_variables(reaction, filterfn = v -> v.localname==localname)
 end
 
 function get_variables(
-    reaction::AbstractReaction; 
+    @nospecialize(reaction::AbstractReaction); 
     filterfn = v -> true
 )
     matchvars = VariableReaction[]
@@ -149,7 +153,7 @@ end
 Get a single VariableReaction or nothing if match not found.
 """
 function get_variable(
-    reaction::AbstractReaction, methodname::AbstractString, localname::AbstractString;
+    @nospecialize(reaction::AbstractReaction), methodname::AbstractString, localname::AbstractString;
     allow_not_found=false
 )
     matchvars = get_variables(reaction, filterfn = v -> (v.method.name == methodname && v.localname==localname))
@@ -236,7 +240,7 @@ Add a single parameter or parameters from fields of `objectwithpars` to a new Re
 Not usually needed: Parameters in `pars::ParametersTuple`` will be added automatically, only needed if there are additional
 Parameters that are not members of `pars`.
 """
-function add_par(reaction::AbstractReaction, par::AbstractParameter)
+function add_par(@nospecialize(reaction::AbstractReaction), par::AbstractParameter)
     
     if isnothing(get_parameter(reaction, par.name, allow_not_found=true))
         push!(reaction.base.parameters, par)
@@ -247,7 +251,7 @@ function add_par(reaction::AbstractReaction, par::AbstractParameter)
     return nothing
 end
 
-function add_par(reaction::AbstractReaction, objectwithpars)
+function add_par(@nospecialize(reaction::AbstractReaction), objectwithpars)
     for f in fieldnames(typeof(objectwithpars))
         if getfield(objectwithpars, f) isa AbstractParameter
             add_par(reaction, getfield(objectwithpars, f))
@@ -263,12 +267,12 @@ end
 Add or create-and-add a setup method (called before main loop) eg to set persistent data or initialize state variables.
 `methodfn`, `vars`, `kwargs` are passed to [`ReactionMethod`](@ref).
 """
-function add_method_setup!(reaction::AbstractReaction, method::AbstractReactionMethod)
+function add_method_setup!(@nospecialize(reaction::AbstractReaction), method::AbstractReactionMethod)
     push!(reaction.base.methods_setup, method)
     return nothing
 end
 
-add_method_setup!(reaction::AbstractReaction, methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
+add_method_setup!(@nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
     _add_method!(reaction, methodfn, vars, add_method_setup!; kwargs...)
 
 """
@@ -279,12 +283,12 @@ Add or create-and-add an initialize method (called at start of each main loop it
 eg to zero out accumulator Variables.
 `methodfn`, `vars`, `kwargs` are passed to [`ReactionMethod`](@ref).
 """
-function add_method_initialize!(reaction::AbstractReaction, method::AbstractReactionMethod)
+function add_method_initialize!(@nospecialize(reaction::AbstractReaction), method::AbstractReactionMethod)
     push!(reaction.base.methods_initialize, method)
     return nothing
 end
 
-add_method_initialize!(reaction::AbstractReaction, methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
+add_method_initialize!(@nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
     _add_method!(reaction, methodfn, vars, add_method_initialize!; kwargs...)
 
 
@@ -295,16 +299,16 @@ add_method_initialize!(reaction::AbstractReaction, methodfn::Function, vars::Tup
 Add or create and add a main loop method.
 `methodfn`, `vars`, `kwargs` are passed to [`ReactionMethod`](@ref).
 """
-function add_method_do!(reaction::AbstractReaction, method::AbstractReactionMethod)
+function add_method_do!(@nospecialize(reaction::AbstractReaction), method::AbstractReactionMethod)
     push!(reaction.base.methods_do, method)
     return nothing
 end
 
-add_method_do!(reaction::AbstractReaction, methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
+add_method_do!(@nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
     _add_method!(reaction, methodfn, vars, add_method_do!; kwargs...)
 
 function _add_method!(
-    reaction::AbstractReaction, methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}, add_method_fn;
+    @nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}, add_method_fn;
     name=string(methodfn),
     p=nothing,
     preparefn=nothing,
@@ -404,7 +408,7 @@ function create_reaction_from_config(
 end
 
 
-function _register_methods!(reaction::AbstractReaction, model::Model)
+function _register_methods!(@nospecialize(reaction::AbstractReaction), model::Model)
     empty!(reaction.methods_setup)
     empty!(reaction.methods_initialize)
     empty!(reaction.methods_do)
@@ -417,7 +421,7 @@ end
 NB: runs twice:
  - after register_methods! (with allow_missing true)
  - after register_dynamic_methods! (with allow_missing false)"
-function _configure_variables(reaction::AbstractReaction; allow_missing::Bool, dolog::Bool)
+function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_missing::Bool, dolog::Bool)
     function sortstarfirst(x, y) 
         if occursin("*", x) && !occursin("*", y)
             lt = true

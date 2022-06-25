@@ -77,4 +77,65 @@ DEPRECATED - moved to PALEOmodel
 """
 function get_statevar_norm end
 
+#####################################################
+# Precompilation
+# Run code to precompile
+#######################################################
+
+# create Reactions and register methods to precompile this code
+function precompile_reaction(rdict, classname)
+    rj = create_reaction(rdict, classname, "test", Dict{String, Any}())
+    rj.base.domain = Domain(name="test", ID=1, parameters=Dict{String, Any}())
+    register_methods!(rj)
+
+    return nothing
+end
+
+function precompile_reactions()
+    rdict = find_all_reactions()
+    reactionlist = [
+        "ReactionFluxTransfer", "ReactionReservoirScalar", "ReactionFluxPerturb", "ReactionReservoir",
+        "ReactionReservoirForced", "ReactionSum", "ReactionFluxTarget", "ReactionForceInterp", "ReactionGrid2DNetCDF",
+        "ReactionAreaVolumeValInRange", "ReactionReservoirWellMixed", "ReactionForceGrid", "ReactionConst", 
+        "ReactionRestore", "ReactionScalarConst", "ReactionForceInsolation", "ReactionVectorSum", "ReactionWeightedMean",
+        "ReactionReservoirTotal", "ReactionUnstructuredVectorGrid", "ReactionCartesianGrid", "ReactionReservoirConst",
+    ]
+    for r in reactionlist
+        precompile_reaction(rdict, r)
+    end
+
+    return nothing
+end
+
+precompile_reactions()
+
+# create and take a timestep for a test configuration
+# function run_model(configfile, configname)
+    
+#     model =  create_model_from_config(configfile, configname)
+
+#     modeldata =  create_modeldata(model)
+#     allocate_variables!(model, modeldata)
+
+#     check_ready(model, modeldata)
+
+#     initialize_reactiondata!(model, modeldata)
+
+#     check_configuration(model)
+
+#     dispatch_setup(model, :setup, modeldata)
+#     dispatch_setup(model, :norm_value, modeldata)   
+#     dispatch_setup(model, :initial_value, modeldata)
+
+#     # take a time step
+#     # dispatchlists = modeldata.dispatchlists_all
+#     # do_deriv(dispatchlists)
+
+#     return nothing
+# end
+
+# Negligible difference
+# run_model(joinpath(@__DIR__, "../test/configreservoirs.yaml"), "model1")
+# run_model(joinpath(@__DIR__, "../test/configfluxes.yaml"), "model1")
+
 end # module
