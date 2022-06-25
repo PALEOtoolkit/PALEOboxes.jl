@@ -164,6 +164,7 @@ function setup_grid_2DNetCDF(
 
     attribute_name == :setup || return
 
+    @info "$(PB.fullname(m)):"
 
     grid2D = rj.domain.grid
 

@@ -542,7 +542,6 @@ end
 # Pretty printing
 ############################################
 
-"compact form"
 function Base.show(io::IO, react::AbstractReaction)
     print(
         io, 
@@ -555,7 +554,6 @@ function Base.show(io::IO, react::AbstractReaction)
     )
 end
 
-"multiline form"
 function Base.show(io::IO, ::MIME"text/plain", react::AbstractReaction)
     println(io, typename(react))
     println(io, "  name='", react.name, "'")

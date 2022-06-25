@@ -79,6 +79,7 @@ function setup_initialvalue_vars_default(
 
     (convertfn, convertinfo, setup_callback) = m.p
 
+    @info "$(fullname(m)):"
     # VariableReactions corresponding to (vardata, transfervardata, convertvarsdata)
     vars, transfer_attribute_vars, convertvars = get_variables_tuple(m)
 

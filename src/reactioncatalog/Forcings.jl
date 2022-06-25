@@ -55,6 +55,8 @@ end
 function setup_forceinterp(m::PB.ReactionMethod, _, cellrange::PB.AbstractCellRange, attribute_name)
     attribute_name == :setup || return
 
+    @info "$(PB.fullname(m)):"
+
     rj = m.reaction
 
     rj.interp_F = PB.LinInterp(rj.pars.force_times.v)
