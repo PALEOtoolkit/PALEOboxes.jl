@@ -361,7 +361,7 @@ function create_accessors(va::VarList_components, modeldata::AbstractModelData)
             if va.allow_unlinked
                 append!(accessors_generic, fill(nothing, num_components(v)))
             else
-                error("create_accessors(::VarList_components, ) - unlinked variable $(v.reaction.name).$(v.localname) $v")
+                error("create_accessors(::VarList_components, ) - unlinked variable $(fullname(v)) $v")
             end
         else
             append!(accessors_generic, a)

@@ -88,7 +88,12 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
 
     if rj.pars.const.v
         R            = PB.VarPropScalar(      "R", "mol", "scalar constant reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
-        PB.add_method_setup_initialvalue_vars_default!(rj, [R], filterfn = v->true, setup_callback=setup_callback)  # force setup even though R is not a state Variable
+        PB.add_method_setup_initialvalue_vars_default!(
+            rj, [R], 
+            filterfn = v->true, # force setup even though R is not a state Variable
+            force_initial_norm_value=true, # setup :norm_value, :initial_value to get norm_value callback, even though R is not a state Variable
+            setup_callback=setup_callback
+        )  
         # no _sms variable
     else        
         R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data.v,))

@@ -6,10 +6,19 @@
     add_method_setup_initialvalue_vars_default!(react::AbstractReaction, variables [; kwargs...])
 
 Create and add a default method to initialize Variables matching `filterfn` (defaults to state Variables)
-from Attributes `:initial_value`, `:norm_value` at beginning of integration.
+at beginning of integration.
 
+# Setup callbacks used
+- State Variables and similar (`:vfunction != VF_Undefined`) are initialized in a setup callback with 
+  `attribute_name in (:initial_value, :norm_value)`, with values from those Variable attributes.
+- If `force_state_norm_value=false`, other Variables (with `:vfunction == VF_Undefined`) are initialized in a setup callback with 
+  `attribute_name=:setup`, with values from the `:initial_value` Variable attribute. NB: `filterfn` must be set to include these Variables.
+- If `force_initial_norm_value=true`, all Variables (including those with `:vfunction == VF_Undefined`) are initialised as state Variables
+  
 # Keywords
-- `filterfn`: set to f(var)::Bool to override the default selection on :vfunction for state variables.
+- `filterfn`: set to f(var)::Bool to override the default selection for state variables only
+  (Variables with `:vfunction in (VF_StateExplicit, VF_State, VF_Total, VF_Constraint)`)
+- `force_initial_norm_value=false`: `true` to always use `:initial_value`, `:norm_value`, even for variables with `:vfunction=VF_Undefined`
 - `transfer_attribute_vars=[]`: Set to a list of the same length as `variables` to initialise `variables`
   from attributes of `transfer_attribute_vars`.
 - `setup_callback=(method, attribute_name, var, vardata) -> nothing`: Set to a function that is called 
@@ -33,6 +42,7 @@ Example: To interpret `:initial_value` as a concentration-like quantity:
 function add_method_setup_initialvalue_vars_default!(
     react::AbstractReaction, variables;
     filterfn=var -> get_attribute(var, :vfunction) in (VF_StateExplicit, VF_State, VF_Total, VF_Constraint),
+    force_initial_norm_value=false,
     transfer_attribute_vars = [],
     convertvars = [],
     convertfn = (convertvars_tuple, i) -> 1.0, 
@@ -58,7 +68,7 @@ function add_method_setup_initialvalue_vars_default!(
         react,
         setup_initialvalue_vars_default,
         (VarList_fields(setup_vars), VarList_tuple(setup_transfer_vars), VarList_tuple(convertvars)),
-        p = (convertfn, convertinfo, setup_callback),
+        p = (force_initial_norm_value, convertfn, convertinfo, setup_callback),
     )
     
     return nothing
@@ -75,11 +85,8 @@ function setup_initialvalue_vars_default(
     cellrange::AbstractCellRange,
     attribute_name
 )    
-    attribute_name in (:norm_value, :initial_value) || return
-
-    (convertfn, convertinfo, setup_callback) = m.p
-
-    @info "$(fullname(m)):"
+    (force_initial_norm_value, convertfn, convertinfo, setup_callback) = m.p
+   
     # VariableReactions corresponding to (vardata, transfervardata, convertvarsdata)
     vars, transfer_attribute_vars, convertvars = get_variables_tuple(m)
 
@@ -90,8 +97,24 @@ function setup_initialvalue_vars_default(
         attrbvars = [v.linkvar for v in transfer_attribute_vars]
     end
 
-    for (rv, v, attrbv, vfield) in IteratorUtils.zipstrict(vars, domvars, attrbvars, varfields)
-      
+    first_var = true
+    for (rv, v, attrbv, vfield) in IteratorUtils.zipstrict(vars, domvars, attrbvars, varfields)        
+        vfunction = get_attribute(v, :vfunction, VF_Undefined)
+        if vfunction == VF_Undefined && !force_initial_norm_value
+            # non-state Variables are initialized in :setup, from :initial_value attribute
+            attribute_name == :setup || continue
+            attribute_to_read = :initial_value
+        else
+            # state Variables etc are initialized in :initial_value, :norm_value, from that attribute
+            attribute_name in (:initial_value, :norm_value) || continue
+            attribute_to_read = attribute_name
+        end
+
+        if first_var
+            @info "$(fullname(m)):"
+            first_var = false
+        end
+
         if v === attrbv
             trsfrinfo = ""
         else
@@ -99,7 +122,7 @@ function setup_initialvalue_vars_default(
         end
 
         init_field!(
-            vfield, attribute_name, attrbv, convertfn, convertvarsdata, cellrange, (fullname(v), convertinfo, trsfrinfo)
+            vfield, attribute_to_read, attrbv, convertfn, convertvarsdata, cellrange, (fullname(v), convertinfo, trsfrinfo)
         )
        
         setup_callback(m, attribute_name, rv, vfield.values)
