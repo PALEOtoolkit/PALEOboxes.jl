@@ -5,7 +5,7 @@ CurrentModule = PALEOboxes
 API calls used by [`AbstractReaction`](@ref) implementations.
 
 Implementations should create a subclass of [`AbstractReaction`](@ref) containing a [`ReactionBase`](@ref) and
-[`Parameter`](@ref)s, register a reaction factory, and implement callbacks to define [`VariableReaction`](@ref)s and [`ReactionMethod`](@ref)s.
+[`Parameter`](@ref)s, optionally provide a [`create_reaction`](@ref), and implement callbacks to define [`VariableReaction`](@ref)s and register [`ReactionMethod`](@ref)s.
 
 ## Reaction struct
 ```@meta
@@ -27,7 +27,13 @@ add_par
 setvalue!
 ```
 
-## Registering with PALEOboxes framework
+## Registering Reactions with the PALEOboxes framework
+
+All subtypes of [`AbstractReaction`](@ref) that are present in loaded modules are
+available to the PALEO framework.  Available Reactions can be listed with [`find_reaction`](@ref)
+and [`find_all_reactions`](@ref).  The default [`create_reaction`](@ref) is called to create Reactions
+when the model is created (this method can be overridden if needed).
+
 ```@docs
 create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
 
@@ -35,18 +41,25 @@ find_reaction
 find_all_reactions
 ```
 
-## Optional initialisation callbacks to define Domain Grids and array sizes
-One Reaction per domain may implement [`set_model_geometry`](@ref) to create and attach
-a grid, and [`set_data_dimension!`](@ref).
+## Defining Domain Grids and array sizes
 ```@docs
 set_model_geometry
 set_data_dimension!
 ```
 
-## Initialisation callbacks
+## Registering Reaction methods
+All Reactions should implement [`register_methods!`](@ref), and may optionally implement [`register_dynamic_methods!`](@ref).
 ```@docs
 register_methods!
 register_dynamic_methods!
+```
+
+## Implementing ReactionMethods
+```@docs
+ReactionMethod
+add_method_setup!
+add_method_initialize!
+add_method_do!
 ```
 
 ### Defining [`VariableReaction`](@ref)s
@@ -68,14 +81,6 @@ VarList_nothing
 VarList_tuple_nothing
 ```
 
-### Registering ReactionMethods
-```@docs
-ReactionMethod
-add_method_setup!
-add_method_initialize!
-add_method_do!
-```
-
 ## Predefined ReactionMethods
 
 ### Setup and initialization of Variables
@@ -95,10 +100,8 @@ RateStoich
 create_ratestoich_method
 ```
 
-## Implementing Reaction method functions
-Method functions should iterate over cells using the supplied `cellrange.indices`.
 
-### Optimising loops over cells using explicit SIMD instructions
+## Optimising loops over cells using explicit SIMD instructions
 Reactions with simple loops over `cellindices` that implement time-consuming per-cell calculations 
 may be optimised by using explicit SIMD instructions.
 ```@docs

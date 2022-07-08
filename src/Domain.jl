@@ -3,6 +3,12 @@ import Infiltrator
     Domain
     
 A model region containing Variables and Reactions that act on them.
+
+Domain spatial size is defined by `grid`, which may be `nothing` to define a scalar Domain,
+or an [`AbstractMesh`](@ref) to define a spatially-resolved Domain with multiple cells.
+
+Named `data_dims` may be set by [`set_data_dimension!`](@ref) to allow Variables with additional non-spatial dimensions, eg
+to represent quantities on a wavelength grid.
 """
 Base.@kwdef mutable struct Domain <: AbstractDomain
     name::String
@@ -18,9 +24,9 @@ end
 """
     set_data_dimension!(domain::Domain, dim::NamedDimension; allow_exists=false)
 
-Define a Domain data dimension.
+Define a Domain data dimension as a [`NamedDimension`](@ref)
 
-Variable data dimensions are then defined as Tuples of `dim.name`s using the `:data_dims` Attribute.
+Variables may then specify data dimensions as a list of names using the `:data_dims` Variable Attribute.
 """
 function set_data_dimension!(domain::Domain, dim::NamedDimension; allow_exists=false)
 
@@ -195,7 +201,7 @@ function allocate_variables!(
             for dimname in get_attribute(v, :data_dims)
         )
     
-        # eltype usually is eltype(modeldata), but can be overriden by :datatype attribute 
+        # eltype usually is eltype(modeldata), but can be overridden by :datatype attribute 
         # (can be used by a Reaction to define a fixed type eg Float64 for a constant Property)
         mdeltype = get_attribute(v, :datatype, eltype(modeldata))
         if mdeltype isa AbstractString

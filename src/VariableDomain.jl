@@ -1,5 +1,16 @@
 """
-    VariableDomPropDep
+    VariableDomain <: VariableBase
+
+Abstract base Type for a ([`Domain`](@ref)) model variable.
+    
+Defines a named Variable and corresponding data [`Field`](@ref)s that are linked to by [`VariableReaction`](@ref)s.
+
+See [`VariableDomPropDep`](@ref), [`VariableDomContribTarget`](@ref) 
+"""
+VariableDomain
+
+"""
+    VariableDomPropDep <: VariableDomain
 
 [`Model`](@ref) ([`Domain`](@ref)) `VariableDomain` linking a single `VariableReaction{VT_ReactProperty}`
 to multiple `VariableReaction{VT_ReactDependency}`.
@@ -29,7 +40,7 @@ end
 get_var_type(var::VariableDomPropDep) = VT_DomPropDep
 
 """
-    VariableDomContribTarget
+    VariableDomContribTarget <: VariableDomain
 
 [`Model`](@ref) ([`Domain`](@ref)) `VariableDomain` linking a single `VariableReaction{VT_ReactTarget}`
 to multiple `VariableReaction{VT_ReactContributor}` and `VariableReaction{VT_ReactDependency}`.

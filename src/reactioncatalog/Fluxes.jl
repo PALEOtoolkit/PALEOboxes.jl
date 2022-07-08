@@ -358,7 +358,7 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
 
     # write diagnostic output
     @info "  active fluxes:"
-    var_inputs, var_outputs = PB.get_variables.(m.vars)
+    var_inputs, var_outputs = PB.get_variables_tuple(m)
     flux_names = m.p
     nactive = 0
     for (var_input, var_output, fluxname) in PB.IteratorUtils.zipstrict(var_inputs, var_outputs, flux_names)
@@ -424,7 +424,7 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
         @warn "ReactionMethod $(PB.fullname(m)) no active fluxes found"
     end
      
-    rt = ([v for v in input_vardata_active], [v for v in output_vardata_active]) # recreate Vectors to make them typed
+    rt = ([v for v in input_vardata_active], [v for v in output_vardata_active]) # narrow Types of Vectors
     
     return rt
 end

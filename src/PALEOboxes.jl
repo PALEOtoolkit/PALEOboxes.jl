@@ -23,6 +23,7 @@ module PALEOboxes
 import YAML
 import Graphs # formerly LightGraphs
 import DataFrames
+using DocStringExtensions
 
 include("utils/DocStrings.jl")
 

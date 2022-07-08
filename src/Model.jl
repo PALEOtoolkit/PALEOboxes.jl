@@ -433,31 +433,23 @@ function initialize_reactiondata!(
 
     check_modeldata(model, modeldata)
 
-    function prepfn(m , modeldata)
-        if isnothing(m.preparefn)
-            return create_accessors(m, modeldata)
-        else
-            return m.preparefn(m, create_accessors(m, modeldata))
-        end
-    end
-
     modeldata.sorted_methodsdata_setup = 
-        Tuple(
-            (m, Ref(prepfn(m, modeldata))) 
+        [
+            (m, Ref(m.preparefn(m, create_accessors(m, modeldata))))
             for m in get_methods(model.sorted_methods_setup)
-        )
+        ]
 
     modeldata.sorted_methodsdata_initialize = 
-        Tuple(
-            (m, Ref(prepfn(m, modeldata))) 
+        [
+            (m, Ref(m.preparefn(m, create_accessors(m, modeldata)))) 
             for m in get_methods(model.sorted_methods_initialize, method_barrier=method_barrier)
-        )
+        ]
 
     modeldata.sorted_methodsdata_do = 
-        Tuple(
-            (m, Ref(prepfn(m, modeldata)))
+        [
+            (m, Ref(m.preparefn(m, create_accessors(m, modeldata))))
             for m in get_methods(model.sorted_methods_do, method_barrier=method_barrier)
-        )
+        ]
 
     # create default dispatchlists_all corresponding to cellranges_all
     modeldata.dispatchlists_all =
@@ -478,20 +470,17 @@ Call setup methods, eg to initialize data arrays (including state variables).
 - `:initial_value` (optional): set state Variable values from `:initial_value` attribute in .yaml file.
 """
 function dispatch_setup(
-    model::Model, attribute_value, modeldata::AbstractModelData, cellranges=modeldata.cellranges_all
+    model::Model, attribute_name, modeldata::AbstractModelData, cellranges=modeldata.cellranges_all
 )
     @info lpad("", 80, "=")
-    @info "dispatch_setup :$attribute_value"
+    @info "dispatch_setup :$attribute_name"
     @info lpad("", 80, "=")
 
     check_modeldata(model, modeldata) 
 
     for (method, vardata) in modeldata.sorted_methodsdata_setup
-        for cr in cellranges
-            if (cr.operatorID == 0 || cr.operatorID in method.operatorID) &&
-                (cr.domain === method.domain)
-                method.methodfn(method, vardata[], cr, attribute_value)
-            end
+        for cr in _dispatch_cellranges(method, cellranges)
+           method.methodfn(method, vardata[], cr, attribute_name)
         end
     end
 
@@ -530,34 +519,31 @@ end
 
 
 function _create_dispatch_methodlist(methodsdata, cellranges; verbose=false)
-    fns, methods, vardatas, crs = [], [], [], []
+    methods, vardatas, crs = [], [], []
    
     for (method, vardata) in methodsdata
-        if is_do_barrier(method)
-            # thread barrier 
+        for cr in _dispatch_cellranges(method, cellranges)
             verbose && @info "   $method"
-            push!(fns, method.methodfn)
             push!(methods, method)
             push!(vardatas, vardata)
-            push!(crs, nothing)
-        else
-            for cr in cellranges
-                if ((cr.operatorID == 0 || cr.operatorID in method.operatorID) 
-                    && (cr.domain === method.domain))
-
-                    verbose && @info "   $method"
-                    push!(fns, method.methodfn)
-                    push!(methods, method)
-                    push!(vardatas, vardata)
-                    push!(crs, cr)
-                end
-            end
+            push!(crs, cr)
         end
     end
 
-    return ReactionMethodDispatchList(Tuple(fns), Tuple(methods), Tuple(vardatas), Tuple(crs))
+    return ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(crs))
 end
 
+function _dispatch_cellranges(method::AbstractReactionMethod, cellranges)
+    if is_do_barrier(method)
+        return (nothing, )
+    else
+        return Iterators.filter(
+            cr -> (cr.domain === method.domain) && 
+                (cr.operatorID == 0 || cr.operatorID in method.operatorID),
+            cellranges
+        )
+    end
+end
 
 ####################################
 # Main loop methods
@@ -593,17 +579,17 @@ and to avoid dynamic dispatch, instead of iterating over lists.
 function emits unrolled code with a function call for each Tuple element. 
 """
 @generated function dispatch_methodlist(
-    dl::ReactionMethodDispatchList{MF, M, V, C}, 
+    dl::ReactionMethodDispatchList{M, V, C}, 
     deltat::Float64=0.0
-) where {MF, M, V, C}
+) where {M, V, C}
 
     # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
      
     ex = quote ; end  # empty expression
-    for j=1:fieldcount(MF)
+    for j=1:fieldcount(M)
         push!(ex.args,
             quote
-                dl.methodfns[$j](dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                dl.methods[$j].methodfn(dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
             end
             )
     end
