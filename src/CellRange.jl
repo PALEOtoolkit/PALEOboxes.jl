@@ -1,12 +1,28 @@
 
 
 """
-    CellRange
+    AbstractCellRange
+
+Defines a range of cells within a [`Domain`](@ref).
+
+# Fields
+All implementations should define:
+- `domain::Domain`: the [`Domain`](@ref) covered by this cellrange.
+- `operatorID::Int`: If `operatorID==0`, call all `Reaction`s, otherwise
+  only call those with matching `operatorID` (this enables operator splitting).
+- `indices`: an iterable list of cell indices.
+
+And then may provide subtype-specific fields defining additional ranges of cells.
+"""
+AbstractCellRange
+
+""" 
+    CellRange <: AbstractCellRange
 
 Defines a range of cells in a specified [`Domain`](@ref) as a linear list.
 
-If `operatorID==0`, call all `Reaction`s, otherwise
-only call those with matching `operatorID` (this enables operator splitting).
+# Fields
+$(FIELDS)
 """
 Base.@kwdef mutable struct CellRange{T} <: AbstractCellRange
     domain::Domain
@@ -28,16 +44,17 @@ end
 
 
 """
-    CellRangeColumns
+    CellRangeColumns <: AbstractCellRange
 
-Defines a range of cells in a specified [`Domain`](@ref), organised by columns.
-If `operatorID==0`, call all `Reaction`s, otherwise
-only call those with matching `operatorID` (this enables operator splitting).
+Defines a range of cells in a specified [`Domain`](@ref), organised by `columns`.
+
+# Fields
+$(FIELDS)
 """
 Base.@kwdef mutable struct CellRangeColumns{T1, T2} <: AbstractCellRange
     domain::Domain
     operatorID::Int     = 0
-    "iterator through cells in arbitrary order"
+    "iterator through all cells in arbitrary order"
     indices::T1
     "iterator through columns: columns[n] returns a Pair icol=>cells where cells are ordered top to bottom"
     columns::T2

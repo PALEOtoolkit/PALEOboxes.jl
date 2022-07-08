@@ -45,8 +45,7 @@ function bench_method(dispatchlist, domainname="", reactionname="", methodname="
 
     # fns, methods, vardatas, crs = dispatchlist
     # iterate through dispatchlist, if names match then benchmark method else just call method
-    for (fn, method, vardata, cr) in PB.IteratorUtils.zipstrict(
-                                        dispatchlist.methodfns, 
+    for (method, vardata, cr) in PB.IteratorUtils.zipstrict(
                                         dispatchlist.methods,
                                         dispatchlist.vardatas, 
                                         dispatchlist.cellranges)
@@ -57,16 +56,16 @@ function bench_method(dispatchlist, domainname="", reactionname="", methodname="
             println(PB.fullname(method), ":")
             if use_time
                 println("    @time:")
-                @time fn(method, vardata[], cr, deltat)
+                @time method.methodfn(method, vardata[], cr, deltat)
             elseif use_btime
                 println("    @btime:")
-                @btime $fn($method, $vardata[], $cr, $deltat)
+                @btime $method.methodfn($method, $vardata[], $cr, $deltat)
             elseif do_code_llvm
                 println("    @code_llvm:")
-                @code_llvm fn(method, vardata[], cr, deltat)
+                @code_llvm method.methodfn(method, vardata[], cr, deltat)
             elseif do_code_native
                 println("    @code_native:")
-                @code_native fn(method, vardata[], cr, deltat)
+                @code_native method.methodfn(method, vardata[], cr, deltat)
             elseif do_code_warntype
                 println("    @code_warntype:")
                 # b = IOBuffer()
@@ -74,10 +73,10 @@ function bench_method(dispatchlist, domainname="", reactionname="", methodname="
                 #    fn, (typeof(method), typeof(vardata[]), typeof(cr), typeof(deltat))
                 #    )
                 # println(String(take!(b)))
-                @code_warntype fn(method, vardata[], cr, deltat)
+                @code_warntype method.methodfn(method, vardata[], cr, deltat)
             end
         elseif call_all
-            fn(method, vardata[], cr, deltat)
+            method.methodfn(method, vardata[], cr, deltat)
         end
         
     end

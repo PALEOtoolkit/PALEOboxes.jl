@@ -1,24 +1,20 @@
-
-
-
-
-
 """
-    ReactionMethod
+    ReactionMethod(
+        methodfn::Function,
+        reaction::AbstractReaction,
+        name::String,
+        varlists::Tuple{Vararg{AbstractVarList}},
+        p, 
+        operatorID::Vector{Int64}, 
+        domain::AbstractDomain; 
+        preparefn = (m, vardata) -> vardata
+    ) -> m::ReactionMethod
 
-Defines a callback function `methodfn` with Variables `vars`, to be called from the Model framework
+Defines a callback function `methodfn` with Variables `varlists`, to be called from the Model framework
 either during setup or as part of the main loop.
 
 # Fields
-- `methodfn::Function`: callback from Model framework
-- `reaction::AbstractReaction`: the Reaction that created this ReactionMethod.
-- `name::String`: a descriptive name, eg generated from the name of methodfn
-- `vars::Tuple{Vararg{AbstractVarList}}`: [`AbstractVarList`](@ref)s of [`VariableReaction`](@ref)s.
-  Corresponding Variable accessors (views on Arrays) will be provided to the `methodfn` callback.
-- `p::P`: optional context field (of arbitrary type) to store data needed by methodfn.
-- `operatorID::Vector{Int64}`: operator ID (to allow operator splitting)
-- `domain::Domain`: the Domain that `methodfn` operates on (ie will be called with `cellrange` for this `domain`).
-- `preparefn::Function`: optional function to eg define buffers before main loop starts.
+$(FIELDS)
 
 # methodfn
 The `methodfn` callback is:
@@ -28,91 +24,109 @@ The `methodfn` callback is:
 With arguments:
 - `m::ReactionMethod`: context is available as `m.reaction::AbstractReaction` (the Reaction that defined the `ReactionMethod`),
   and `m.p` (an arbitrary extra context field supplied when `ReactionMethod` created).
-- `vardata`: A Tuple of collections of views on Domain data arrays, defined by `vars`
+- `vardata`: A Tuple of collections of views on Domain data arrays corresponding to [`VariableReaction`](@ref)s defined by `varlists`
 - `cellrange::AbstractCellRange`: range of cells to calculate.
 - `modelctxt`:
-    - for a setup method, `:initial_value` or `:norm_value` defining the type of setup requested
+    - for a setup method, `:setup`, `:initial_value` or `:norm_value` defining the type of setup requested
     - for a main loop method `deltat` providing timestep information eg for rate throttling.
 
 # preparefn
 An optional `preparefn` callback can be supplied eg to allocate buffers that require knowledge of
 the data types of `vardata` or to cache expensive calculations:
 
-    preparefn(m::ReactionMethod, vardata::Tuple) -> vardata
+    preparefn(m::ReactionMethod, vardata::Tuple) -> modified_vardata::Tuple
 
 This is called after model arrays are allocated, and prior to setup.
 """
-mutable struct ReactionMethod{M, R, P, V} <: AbstractReactionMethod
-    methodfn::M 
+mutable struct ReactionMethod{M, R, P, V} <: AbstractReactionMethod    
+    "methodfn(m::ReactionMethod, vardata::Tuple, cellrange::AbstractCellRange, modelctxt)
+     callback from Model framework"
+    methodfn::M
+
+    "the Reaction that created this ReactionMethod"
     reaction::R
+
+    "a descriptive name, eg generated from the name of methodfn"
     name::String
-    vars::V
+
+    "Tuple{Vararg{AbstractVarList}} of [`VariableReaction`](@ref)s.
+    Corresponding Variable accessors `vardata` (views on Arrays) will be provided to the `methodfn` callback."
+    varlists::V
+
+    "optional context field (of arbitrary type) to store data needed by methodfn."
     p::P
+
     operatorID::Vector{Int64}
     domain::Domain
-    preparefn::Union{Nothing, Function} # NB: not concretely typed as not performance-critical
+
+    "preparefn(m::ReactionMethod, vardata::Tuple) -> modified_vardata::Tuple
+     optionally modify `vardata` to eg add buffers. NB: not concretely typed as not performance-critical"
+    preparefn::Function
 
     function ReactionMethod(
         methodfn::M,
         reaction::R,
         name,
-        vars::V,
+        varlists::V,
         p::P, 
         operatorID::Vector{Int64}, 
         domain; 
-        preparefn = nothing
+        preparefn = (m, vardata) -> vardata,
     ) where {M <: Function, R <: AbstractReaction, P, V <: Tuple{Vararg{AbstractVarList}}}        
         
-        copy_vars = deepcopy(vars)
-
         newmethod = new{M, R, P, V}(
             methodfn, 
             reaction,
             name,
-            copy_vars,
+            deepcopy(varlists),
             p,
             operatorID, 
             domain, 
-            preparefn
+            preparefn,
         )
 
-        for va in copy_vars
-            for v in get_variables(va)
-                v.method = newmethod
-                set_attribute!(v, :operatorID, newmethod.operatorID, allow_create=true)
-            end
+        for v in get_variables(newmethod)
+            v.method = newmethod
+            set_attribute!(v, :operatorID, newmethod.operatorID, allow_create=true)
         end
 
         return newmethod
     end
 end
 
-"Get VariableReactions from `vars` as a Tuple"
-function get_variables_tuple(method::AbstractReactionMethod)
-    vars_tuple = []
-    for va in method.vars
-        push!(vars_tuple, get_variables(va))
-    end
-    return Tuple(vars_tuple)
-end
+"""
+    get_variables_tuple(method::AbstractReactionMethod) -> (Vector{VariableReaction}, ...)
+    
+Get all [`VariableReaction`](@ref)s from `method` as a Tuple of `Vector{VariableReaction}`
+"""
+get_variables_tuple(method::AbstractReactionMethod) = Tuple(get_variables(vl) for vl in method.varlists)
 
 """
-    get_variables(method::AbstractReactionMethod; filterfn = v -> true) -> Vector
+    get_variables(method::AbstractReactionMethod; filterfn = v -> true) -> Vector{VariableReaction}
 
-Get VariableReactions from `method.vars` as a flat Vector, optionally restricting to those that match `filterfn`
+Get VariableReactions from `method.varlists` as a flat Vector, optionally restricting to those that match `filterfn`
 """
 function get_variables(
     method::AbstractReactionMethod;
     filterfn = v -> true
 )
     vars = VariableReaction[]
-    for va in method.vars
-        append!(vars, filter(filterfn, get_variables(va)))
+    for vl in method.varlists
+        append!(vars, filter(filterfn, get_variables(vl)))
     end
     return vars
 end
 
-"Get a single VariableReaction by localname"
+"""
+    get_variable(
+        method::AbstractReactionMethod, localname::AbstractString; 
+        allow_not_found=false
+    ) -> v
+
+Get a single VariableReaction `v` by `localname`.
+
+If `localname` not present, returns `nothing` if `allow_not_found==true` otherwise errors.
+"""
 function get_variable(
     method::AbstractReactionMethod, localname::AbstractString; 
     allow_not_found=false

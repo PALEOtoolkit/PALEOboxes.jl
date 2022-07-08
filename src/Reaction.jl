@@ -1,4 +1,31 @@
 
+"""
+    AbstractReaction
+
+Abstract base Type for Reactions.
+
+# Implementation
+Derived types should include a field `base::`[`ReactionBase`](@ref), and usually a [`ParametersTuple`](@ref), eg
+
+    Base.@kwdef mutable struct ReactionHello{P} <: PB.AbstractReaction
+        base::PB.ReactionBase
+
+        pars::P = PB.ParametersTuple(
+            PB.ParDouble("my_par", 42.0, units="yr", 
+                description="an example of a Float64-valued scalar parameter called 'my_par'"),
+        )
+
+        some_additional_field::Float64   # additional fields to eg cache data read from disk etc
+    end
+
+Derived types should implement [`register_methods!`](@ref), and may optionally implement [`create_reaction`](@ref), 
+[`set_model_geometry`](@ref), [`check_configuration`](@ref), [`register_dynamic_methods!`](@ref).
+
+Methods should be registered using [`add_method_setup!`](@ref), [`add_method_initialize!`](@ref), [`add_method_do!`](@ref).
+
+Any parameters not included in `pars` should be added explicitly with [`add_par`](@ref) (this is rarely needed).
+"""
+AbstractReaction
 
 """
     ReactionBase
@@ -187,8 +214,11 @@ end
 """
     set_model_geometry(reaction, model)
 
-Optional: define model `Domain` size, Subdomains etc (only implemented by
-Reactions that define grids).
+Optional: define [`Domain`](@ref) `grid`, `data_dims`.
+
+One Reaction per Domain may create a grid (an [`AbstractMesh`](@ref) subtype) and set the `domain.grid` field.
+
+Multiple Reactions per domain may call [`set_data_dimension!`](@ref) to define (different) named data dimensions (eg wavelength grids).
 """
 function set_model_geometry(reaction::AbstractReaction, model::Model)
 end
@@ -311,7 +341,7 @@ function _add_method!(
     @nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}, add_method_fn;
     name=string(methodfn),
     p=nothing,
-    preparefn=nothing,
+    preparefn=(m, vardata) -> vardata,
     operatorID=reaction.operatorID,
     domain=reaction.domain
 )
@@ -434,7 +464,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
     end
 
     if !isnothing(reaction.base._conf_variable_links) # missing or empty 'variable_links:' will return nothing
-        # sort Dict so wild cards (ending in *) are processed first, so they can be selectively overriden
+        # sort Dict so wild cards (ending in *) are processed first, so they can be selectively overridden
         cvl = sort(reaction.base._conf_variable_links, lt=sortstarfirst)
         dolog && @info "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction))"
         for (name, fullmapnameraw) in cvl

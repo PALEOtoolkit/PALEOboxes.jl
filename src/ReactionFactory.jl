@@ -56,7 +56,7 @@ end
 
 Create a `ReactionType` and set `base` field.
 
-Default implementation may be overriden to eg set additional fields
+Default implementation may be overridden to eg set additional fields
 """
 function create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
     return ReactionType(base=base)

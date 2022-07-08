@@ -38,14 +38,6 @@ abstract type AbstractReactionMethod
 end
 
 
-"""
-    AbstractReaction
-
-Base Type for Reactions.
-
-# Implementation
-Derived types should include a field `base::`[`ReactionBase`](@ref)
-"""
 abstract type AbstractReaction
 end
 
@@ -102,13 +94,7 @@ Enumeration of `VariableBase` subtypes. Allowed values:
     VT_DomContribTarget
 end
 
-"""
-    VariableDomain
 
-Host ([`Domain`](@ref)) model variable.
-
-See also: [`VariableDomPropDep`](@ref), [`VariableDomContribTarget`](@ref)
-"""
 abstract type VariableDomain <: VariableBase
 end
 
@@ -133,11 +119,6 @@ Return an [`AbstractMesh`](@ref) for PALEO object `obj`
 """
 function get_mesh end
 
-"""
-    AbstractCellRange
-
-Defines a range of cells within a [`Domain`](@ref)
-"""
 abstract type AbstractCellRange
 end
 
@@ -196,8 +177,7 @@ function get_table end
 Defines a list of [`ReactionMethod`](@ref) with corresponding [`CellRange`](@ref)
 and views on Variable data (sub)arrays.
 """
-struct ReactionMethodDispatchList{MF <:Tuple, M <:Tuple, V <:Tuple, C <: Tuple}
-    methodfns::MF
+struct ReactionMethodDispatchList{M <:Tuple, V <:Tuple, C <: Tuple}
     methods::M
     vardatas::V
     cellranges::C
@@ -205,8 +185,8 @@ end
 
 # See https://discourse.julialang.org/t/pretty-print-of-type/19555
 # Customize typeof function, as full type name is too verbose (as Tuples are of length ~ number of ReactionMethods to call)
-Base.show(io::IO, ::Type{PALEOboxes.ReactionMethodDispatchList{MF, M, V, C}}) where {MF, M, V, C} = 
-    print(io, "PALEOboxes.ReactionMethodDispatchList{MF::Tuple, M::Tuple, V::Tuple, C::Tuple each of length=$(fieldcount(MF))}")
+Base.show(io::IO, ::Type{PALEOboxes.ReactionMethodDispatchList{M, V, C}}) where {M, V, C} = 
+    print(io, "PALEOboxes.ReactionMethodDispatchList{M::Tuple, V::Tuple, C::Tuple each of length=$(fieldcount(M))}")
 
 "compact form"
 function Base.show(io::IO, dispatchlist::ReactionMethodDispatchList)
