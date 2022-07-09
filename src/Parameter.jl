@@ -358,7 +358,13 @@ function setvalue!(par::VecVecParameter, values)
     return nothing
 end
 
-"Set Parameter value and default"
+"""
+    setvalueanddefault!(par::Parameter, value; freeze=false)
+
+Set Parameter value and default to `value`.
+
+Optionally (if [`Parameter`](@ref) has Type parameter `ParseFromString != Nothing`) parse `value` from a String.
+"""
 function setvalueanddefault!(par::Union{Parameter, VecParameter, VecVecParameter}, rawvalue; freeze=false)
     value = _parsevalue(par, rawvalue)
     setvalue!(par, value)
