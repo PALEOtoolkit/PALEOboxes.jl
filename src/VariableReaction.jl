@@ -670,7 +670,7 @@ function split_link_name(fullname::AbstractString)
     elseif length(splitname) == 3
         (domain, subdomain, name) = (splitname[1], splitname[2], splitname[3])          
     else
-        error("invalid format $name")
+        error("invalid format $fullname")
     end
 
     return (domain, subdomain, name)

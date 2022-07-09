@@ -41,11 +41,11 @@ module DocStrings
                 md *= isempty(p.units) ? "," : "  ($(p.units)),"
                 md *= " `default_value`="*md_value(p.default_value)*","
                 md *= isempty(p.allowed_values) ? "" : " `allowed_values`=$(p.allowed_values),"
-                md *= " `description`=\"$(escape_md(p.description))\""
+                md *= " `description`=\"$(PB.escape_markdown(p.description))\""
                 println(buf, md)
             end
         catch e
-            println(buf, escape_md("PARS exception: $e"))
+            println(buf, PB.escape_markdown("PARS exception: $e"))
         end
         return nothing
     end
@@ -83,38 +83,30 @@ module DocStrings
                     md *= "`$(v.localname)`"
                     md *= v.link_optional ? "\\]" : ""
                     ln = PB.combine_link_name(v)
-                    md *= (ln == v.localname) ? "" : " --> $(escape_md(ln))"
+                    md *= (ln == v.localname) ? "" : " --> $(PB.escape_markdown(ln))"
                     units = PB.get_attribute(v, :units)
                     md *= "  ($(units)),"
                     md *= " `$(PB.get_var_type(v))`,"
                     vfunction = PB.get_attribute(v, :vfunction)
                     md *= (ismissing(vfunction) || vfunction == PB.VF_Undefined) ? "" : " `$vfunction`,"
                     description = PB.get_attribute(v, :description)
-                    md *= " `description`=\"$(escape_md(description))\""
+                    md *= " `description`=\"$(PB.escape_markdown(description))\""
                     
                     println(buf, md)
                 end
             end
         catch e
-            println(buf, escape_md("METHODS $methods exception: $e"))
+            println(buf, PB.escape_markdown("METHODS $methods exception: $e"))
         end
 
         return nothing
     end
 
 
-
-    function escape_md(str::AbstractString)
-        str = replace(str, "_"=>"\\_")
-        str = replace(str, "\$"=>"\\\$")
-        str = replace(str, "*"=>"\\*")
-        return str
-    end
-
     md_value(v) = "$v"
-    md_value(v::AbstractString) = "\"$(escape_md(v))\""
+    md_value(v::AbstractString) = "\"$(PB.escape_markdown(v))\""
     function md_value(vv::Vector{<:AbstractString})
-        evv = [escape_md(v) for v in vv]
+        evv = [PB.escape_markdown(v) for v in vv]
         return "$evv"
     end
     function md_value(vv::Vector)
