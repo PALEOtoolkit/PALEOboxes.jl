@@ -195,47 +195,12 @@ function allocate_variables!(
     @info "Domain $(rpad(domain.name,20)) data dimensions $(rpad(domain.data_dims,20)) "*
         "allocating $(rpad(length(vars),4)) variables (hostdep=$(hostdep))"  
  
-    for v in vars
-        data_dims = Tuple(
-            get_data_dimension(domain, dimname) 
-            for dimname in get_attribute(v, :data_dims)
-        )
+    allocate_variables!(
+        vars, modeldata; 
+        eltypemap=eltypemap,
+        default_host_dependent_field_data=ScalarData,
+    )
     
-        # eltype usually is eltype(modeldata), but can be overridden by :datatype attribute 
-        # (can be used by a Reaction to define a fixed type eg Float64 for a constant Property)
-        mdeltype = get_attribute(v, :datatype, eltype(modeldata))
-        if mdeltype isa AbstractString
-            mdeltype = get(eltypemap, mdeltype, Float64)
-        end
-        
-        thread_safe = false
-        if get_attribute(v, :atomic, false) && modeldata.threadsafe
-            @info "  $(fullname(v)) allocating Atomic data"
-            thread_safe = true
-        end
-
-        field_data = get_attribute(v, :field_data)
-        space = get_attribute(v, :space)
-
-        if field_data == UndefinedData
-            if host_dependent(v) && (get_attribute(v, :vfunction, VF_Undefined) == VF_Undefined)
-                field_data = ScalarData
-                set_attribute!(v, :field_data, ScalarData)
-                field_data = get_attribute(v, :field_data)
-                @info "    set :field_data=$field_data for host-dependent Variable $(fullname(v))"
-            else
-                error("allocate_variables! :field_data=UndefinedData for Variable $(fullname(v)) $v")
-            end
-        end
-        v_field = allocate_field(
-            field_data, data_dims, mdeltype, space, domain.grid,
-            thread_safe=thread_safe, allocatenans=modeldata.allocatenans
-        )        
-        
-        set_field!(v, modeldata, v_field)
-      
-    end
-
     return nothing
 end
 
