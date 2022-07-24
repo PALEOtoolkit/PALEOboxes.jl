@@ -217,8 +217,15 @@ function create_model_from_config(
         isfile(fn) || error("config file $(abspath(fn)) not found")
         yamltext *= read(fn, String)
     end
-        
-    data = YAML.load(yamltext)
+
+    data = nothing
+    try
+        data = YAML.load(yamltext)
+    catch e
+        error("$(typeof(e)) while reading .yaml config file(s) $(abspath.(config_files)).\n"*
+            "If the error isn't obvious by looking at the file(s) (often this is a whitespace issue), "*
+            "try an online YAML validator eg http://www.yamllint.com")
+    end
 
     conf_model = data[configmodel]
     for k in keys(conf_model)

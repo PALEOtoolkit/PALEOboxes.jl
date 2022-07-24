@@ -24,6 +24,7 @@ import YAML
 import Graphs # formerly LightGraphs
 import DataFrames
 using DocStringExtensions
+import OrderedCollections
 
 include("utils/DocStrings.jl")
 

@@ -47,22 +47,21 @@ set_model_geometry
 set_data_dimension!
 ```
 
-## Registering Reaction methods
+## Creating and registering Reaction methods
 All Reactions should implement [`register_methods!`](@ref), and may optionally implement [`register_dynamic_methods!`](@ref).
 ```@docs
 register_methods!
 register_dynamic_methods!
 ```
 
-## Implementing ReactionMethods
-```@docs
-ReactionMethod
-add_method_setup!
-add_method_initialize!
-add_method_do!
-```
+These methods should then define one or more [`ReactionMethod`](@ref)s, which requires:
+- Defining collections of [`VariableReaction`](@ref)s (see [Defining VariableReactions](@ref),  [Defining collections of VariableReactions](@ref)).
+- Implementing a function to iterate over model cells and calculate the required fluxes etc (see [Implementing method functions](@ref))
+- Adding methods (see [Adding ReactionMethods](@ref)).
 
-### Defining [`VariableReaction`](@ref)s
+In addition it is possible to add [Predefined ReactionMethods](@ref) for some common operations (Variable initialisation, calculating totals, etc).
+
+### Defining VariableReactions
 ```@docs
 CreateVariableReaction
 parse_variablereaction_namestr
@@ -79,6 +78,93 @@ VarList_vector
 VarList_vvector
 VarList_nothing
 VarList_tuple_nothing
+```
+
+### Implementing method functions
+
+Reaction method functions should iterate over the cells in the Domain supplied by `cellrange` argument and calculate appropriate biogeochemical fluxes etc (which may include the model time derivative and any intermediate or diagnostic output).
+
+#### Iterating over cells
+
+The simplest case is a method function that iterates over individual cells, with skeleton form:
+
+    function do_something_cellwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+
+        @inbounds for i in cellrange.indices
+            vars.A[i]  = something*vars.B[i]*vars.C[i]  # in general A is some function of B, C, etc
+            # etc
+        end
+
+        return nothing
+    end
+
+#### Iterating over cells in columns
+
+If necessary (eg to calculate vertical transport), provided the model grid and cellrange allow,
+it is possible to iterate over columns and then cells within columns (in order from top to bottom):
+
+    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+
+        @inbounds for (icol, colindices) in cellrange.columns
+            accum = zero(vars.A[first(colindices)]) # accumulator of appropriate type
+            for i in colindices  # order is top to bottom
+                accum += vars.A[i]
+                vars.C[i] = accum  # C = sum of A in cells above                 
+                # etc
+            end
+
+            vars.floor_C[icol] = vars.C[last(colindices)] # assumes model has a floor domain with one floor cell per column in the interior domain
+        end
+
+        return nothing
+    end
+
+Iteration from bottom to top within a column can be implemented using `Iterators.reverse`, eg
+
+    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+        @inbounds for (icol, colindices) in cellrange.columns
+            colreverse = Iterators.reverse(colindices)
+            for i in colreverse  # order is bottom to top
+                # etc
+            end
+        end
+
+        return nothing
+    end
+
+!!! note
+    The method function shouldn't make any assumptions about `colindices` other than that it is a list of indices ordered from top to bottom in a column.  Depending on the grid in use, the indices may not be contiguous, and may not be integers.
+
+!!! note
+    The example above made the additional assumption that a `floor` domain had been defined (containing Variable `floor_C`) with one floor cell per column. This is determined by the model configuration, and is not true in general.
+
+In rare cases where it is necessary to operate on a Vector representing a quantity for the whole column (rather than just iterate through it), this can be implemented using `view`, eg
+
+    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+        @inbounds for (icol, colindices) in cellrange.columns
+            A_col = view(vars.A, colindices)  # A_col is an AbstractVector with contiguous indices 1:length(colindices)
+            B_col = view(vars.B, colindices)  # B_col is an AbstractVector with contiguous indices 1:length(colindices)
+            
+            # do something that needs a vector of cells for a whole column
+        end
+
+        return nothing
+    end
+
+
+#### Optimising loops over cells using explicit SIMD instructions
+Reactions with simple loops over `cellindices` that implement time-consuming per-cell calculations 
+may be optimised by using explicit SIMD instructions.
+```@docs
+SIMDutils.SIMDIter
+```
+
+### Adding ReactionMethods
+```@docs
+ReactionMethod
+add_method_setup!
+add_method_initialize!
+add_method_do!
 ```
 
 ## Predefined ReactionMethods
@@ -98,14 +184,6 @@ add_method_do_totals_default!
 ```@docs
 RateStoich
 create_ratestoich_method
-```
-
-
-## Optimising loops over cells using explicit SIMD instructions
-Reactions with simple loops over `cellindices` that implement time-consuming per-cell calculations 
-may be optimised by using explicit SIMD instructions.
-```@docs
-SIMDutils.SIMDIter
 ```
 
 ## Internal details of Variable arrays accessor generation
