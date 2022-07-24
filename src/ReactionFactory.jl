@@ -95,7 +95,7 @@ Examples:
 """
 function show_all_reactions(classnamefilter="", typenamefilter="")
     
-    for (classname, ReactionType) in sort(find_all_reactions())
+    for (classname, ReactionType) in sort!(OrderedCollections.OrderedDict(find_all_reactions()))
         if occursin(classnamefilter, classname)
             println(classname)
             

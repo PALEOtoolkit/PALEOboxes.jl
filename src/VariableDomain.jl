@@ -229,7 +229,7 @@ function allocate_variables!(
     
     for v in vars
         data_dims = Tuple(
-            get_data_dimension(domain, dimname) 
+            get_data_dimension(v.domain, dimname) 
             for dimname in get_attribute(v, :data_dims)
         )
     
