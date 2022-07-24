@@ -1,13 +1,10 @@
 
 # import Infiltrator
 
-"""
-    VariableAggregator{T, F, C}
+#################################################################
+# VariableAggregator
+#################################################################
 
-Aggregate multiple VariableDomains into a contiguous Vector for use by a numerical solver.
-    
-Access as a contiguous Vector using `copyto!(va::VariableAggregator, x)` and `copyto!(x, va::VariableAggregator)`
-"""
 mutable struct VariableAggregator{T, F <: Tuple, C <: Tuple}
     # Variables 
     vars::Vector{VariableDomain}
@@ -21,12 +18,16 @@ mutable struct VariableAggregator{T, F <: Tuple, C <: Tuple}
 end
 
 """
-    VariableAggregator(vars, cellranges, modeldata)
+    VariableAggregator(vars, cellranges, modeldata) -> VariableAggregator
 
-Create a [`VariableAggregator`](@ref) for collection of Variables `vars`,
-with indices from corresponding `cellranges`, for `modeldata`.
+Aggregate multiple VariableDomains into a flattened list (a contiguous Vector).
+
+Creates a `VariableAggregator` for collection of Variables `vars`, with indices from corresponding `cellranges`,
+for data arrays in `modeldata`.
 
 `cellranges` may contain `nothing` entries to indicate whole Domain.
+
+This is mostly useful for aggregating state Variables, derivatives, etc to implement an interface to a generic ODE/DAE etc solver.
 """
 function VariableAggregator(vars, cellranges, modeldata)
 
@@ -57,13 +58,13 @@ function VariableAggregator(vars, cellranges, modeldata)
 end
 
 
-"compact form"
+# compact form
 function Base.show(io::IO, va::VariableAggregator)
     print(io, "VariableAggregator(length=$(length(va)), number of variables=$(length(va.vars)))")
     return nothing
 end
 
-"multiline form"
+# multiline form
 function Base.show(io::IO, ::MIME"text/plain", va::VariableAggregator)
     println(io, "VariableAggregator(length=$(length(va)), number of variables=$(length(va.vars))):")
     if length(va) > 0
@@ -181,96 +182,126 @@ get_vars(va::VariableAggregator) = va.vars
    
 num_vars(va::VariableAggregator) = length(va.vars)
 
+#################################################################
+# VariableAggregatorNamed
+#################################################################
 
 
-
-mutable struct VariableAggregatorNamed{V <: NamedTuple}
-    # Variables 
-    vars::Vector{VariableDomain}
+struct VariableAggregatorNamed{V <: NamedTuple, VV <: NamedTuple}
+    # Variables as a NamedTuple 
+    vars::V
 
     # Values for each Variable as NamedTuple
-    values::V
+    values::VV
 end
 
 Base.length(va::VariableAggregatorNamed) = length(va.vars)
 
-"compact form"
-function Base.show(io::IO, va::VariableAggregatorNamed)
-    print(io, "VariableAggregatorNamed($([fullname(v) for v in va.vars]))")
+# compact form
+function Base.show(io::IO, van::VariableAggregatorNamed)
+    print(io, "VariableAggregatorNamed(")
+    for (domainname, dvarsnt) in zip(keys(van.vars), van.vars)
+        print(io, "$domainname.*$([k for k in keys(dvarsnt)]), ")
+    end
+    print(io, ")")
+    return nothing
+end
+
+# multiline form
+function Base.show(io::IO, ::MIME"text/plain", van::VariableAggregatorNamed)
+    println(io, "VariableAggregatorNamed:")
+    for (domainname, dvaluesnt) in zip(keys(van.vars), van.values)
+        println(io, "  $domainname:")
+        for (varname, varvalues) in zip(keys(dvaluesnt), dvaluesnt)
+            println(io, "    $(rpad(varname, 20))$varvalues")
+        end
+    end
     return nothing
 end
 
 """
-    VariableAggregatorNamed(vars, modeldata [; reallocate_hostdep_eltype=nothing]) -> VariableAggregatorNamed
+    VariableAggregatorNamed(modeldata) -> VariableAggregatorNamed
+    VariableAggregatorNamed(vars, modeldata) -> VariableAggregatorNamed
 
-Aggregate multiple VariableDomains into nested NamedTuples, with Variable or Domain names as keys and
+Aggregate VariableDomains into nested NamedTuples, with Domain and Variable names as keys and
 data arrays (from `get_data`) as values.
 
-Intended use is to provide easy access by name to raw data arrays of host-dependent Variables that are not state variables.
+Any `/` characters in Variable names are replaced with `__` (double underscore)
 
-If `reallocate_hostdep_eltype != nothing`, then Variables are reallocated to Arrays of the supplied Type eg to remove AD types.
+This provides direct access to Variables by name, and is mostly useful for testing or for small models.
+
+# Fields
+- `vars`: nested NamedTuples (domainname, varname) of VariableDomains
+- `values`: nested NamedTuples (domainname, varname) of data arrays.
 """
 function VariableAggregatorNamed(
-    vars, modeldata::AbstractModelData;
-    reallocate_hostdep_eltype=nothing,
+    modeldata::AbstractModelData
 )
-
-    # If requested, change data type eg to remove AD type
-    if !isnothing(reallocate_hostdep_eltype)
-        io = IOBuffer()
-        println(io, "VariableAggregatorNamed:")
-        reallocated = false
-        for v in vars
-            v_data = get_data(v, modeldata)
-            if v_data isa AbstractArray && eltype(v_data) != reallocate_hostdep_eltype
-                println(io, "    reallocate $(fullname(v)) data $(eltype(v_data)) -> $reallocate_hostdep_eltype")
-                set_data!(v, modeldata, similar(v_data, reallocate_hostdep_eltype))
-                reallocated = true
-            end
-        end
-        reallocated && @info String(take!(io))
+    # get all domain Variables
+    all_domvars = Vector{VariableDomain}()
+    for dom in modeldata.model.domains
+        append!(all_domvars, get_variables(dom))
     end
 
-    # sort by Domain into Dict of Dicts
-    vars_domains = Dict()
-    for v in vars
-        d = get!(vars_domains, Symbol(v.domain.name), Dict())
-        d[Symbol(v.name)] = get_data(v, modeldata)
-    end
-
-    # convert to Dict of NamedTuples
-    vars_domains_nt = Dict()
-    for (dname, dvars) in vars_domains
-        vars_domains_nt[dname] = NamedTuple{Tuple(keys(dvars))}(Tuple(values(dvars)))
-    end
-    
-    vars_values = NamedTuple{Tuple(keys(vars_domains_nt))}(Tuple(values(vars_domains_nt)))
-
-    return VariableAggregatorNamed(copy(vars), vars_values)
+    return VariableAggregatorNamed(all_domvars, modeldata)
 end
 
-"""
-    set_values!(van::VariableAggregatorNamed, domainname, varname, val; allow_missing=false)
-
-Set a data array in `van` to `val`.
-"""
-function set_values!(
-    van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; 
-    allow_missing::Bool=false
+function VariableAggregatorNamed(
+    vars, modeldata::AbstractModelData
 )
-    return set_values!(van, Symbol(domainname), Symbol(varname), val, allow_missing=allow_missing)
+
+    # sort into Dicts of
+    #    domain.name => (Dict of v.name=>v)
+    #    domain.name => (Dict of v.name=>data)
+
+    # Sort by name and then use OrderedDict to preserve alphabetical order (domain, varname)
+    domains_vars = OrderedCollections.OrderedDict()
+    domains_values = OrderedCollections.OrderedDict()
+    for v in sort(vars, by=fullname)
+        sym_vname = Symbol(replace(v.name, "/"=>"__")) # Reaction-private Variables use <reactionname>/<varname>, but / isn't a legal Symbol name
+        d_vars = get!(domains_vars, Symbol(v.domain.name), OrderedCollections.OrderedDict())
+        d_vars[sym_vname] = v
+        d_values = get!(domains_values, Symbol(v.domain.name), OrderedCollections.OrderedDict())
+        d_values[sym_vname] = get_data(v, modeldata)
+    end
+
+    # convert to nested NamedTuples, via a Dict of NamedTuples
+    vars_dictnt = OrderedCollections.OrderedDict()
+    for (dname, d_vars) in domains_vars
+        vars_dictnt[dname] = NamedTuple{Tuple(keys(d_vars))}(Tuple(values(d_vars)))
+    end
+    vars_nt = NamedTuple{Tuple(keys(vars_dictnt))}(Tuple(values(vars_dictnt)))
+
+    vars_values_dictnt = OrderedCollections.OrderedDict()
+    for (dname, d_values) in domains_values
+        vars_values_dictnt[dname] = NamedTuple{Tuple(keys(d_values))}(Tuple(values(d_values)))
+    end
+    vars_values_nt = NamedTuple{Tuple(keys(vars_values_dictnt))}(Tuple(values(vars_values_dictnt)))
+
+    return VariableAggregatorNamed(vars_nt, vars_values_nt)
 end
 
+
+"""
+    set_values!(van::VariableAggregatorNamed, domainname_sym::Symbol, varname_sym::Symbol, val; allow_missing=false)
+    set_values!(van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; allow_missing=false)
+    set_values!(van::VariableAggregatorNamed, ::Val{domainname_sym}, ::Val{varname_sym}, val; allow_missing=false)    
+
+Set a data array in `var`: ie set `van.values.domainname.varname .= val`.
+
+If Variable `domainname.varname` not present, errors if `allow_missing==false`, or has no effect if `allow_missing==true`.
+
+As an optimisation where `domainname` and `varname` are known at compile time, they can be passed as Val(domainname_sym), Val(varname_sym) to maintain
+type stability and avoid allocations.
+"""
 function set_values!(
     van::VariableAggregatorNamed, domainname::Symbol, varname::Symbol, val;
     allow_missing::Bool=false
 )
-    
+    # check Variable exists
     if hasfield(typeof(van.values), domainname)
-        dvalues = getfield(van.values, domainname) 
-        if hasfield(typeof(dvalues), varname)
-            vvalues = getfield(dvalues, varname)
-            vvalues .= val
+        if hasfield(typeof(getfield(van.values, domainname)), varname)
+            getfield(getfield(van.values, domainname), varname) .= val
         else
             allow_missing ||
                 error("VariableAggregatorNamed has no Variable $domainame.$varname")
@@ -283,30 +314,28 @@ function set_values!(
     return nothing
 end
 
-"""
-    set_tforce!(van::VariableAggregatorNamed, val; allow_missing::Bool=true)
+set_values!(
+    van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; 
+    allow_missing::Bool=false
+) = set_values!(van, Symbol(domainname), Symbol(varname), val; allow_missing=allow_missing)
 
-Optimised non-allocating version of `set_values!(van, :global, :tforce, val)`
-"""
-function set_tforce!(
-    van::VariableAggregatorNamed, val;
-    allow_missing::Bool=true
-)
-    
-    if hasfield(typeof(van.values), :global)
-        dvalues = getfield(van.values, :global) 
-        if hasfield(typeof(dvalues), :tforce)
-            vvalues = getfield(dvalues, :tforce)
-            vvalues .= val
+# type stable version
+function set_values!(
+    van::VariableAggregatorNamed, domainname::Val{DN}, varname::Val{VN}, val;
+    allow_missing::Bool=false
+) where {DN, VN}
+    # check Variable exists
+    if hasfield(typeof(van.values), DN)
+        if hasfield(typeof(getfield(van.values, DN)), VN)
+            getfield(getfield(van.values, DN), VN) .= val
         else
             allow_missing ||
-                error("VariableAggregatorNamed has no Variable global.tforce")
+                error("VariableAggregatorNamed has no Variable $DN.$VN")
         end
     else
         allow_missing ||
-            error("VariableAggregatorNamed has no Variable global.tforce")
+            error("VariableAggregatorNamed has no Variable $DN.$VN")
     end
 
     return nothing
 end
-

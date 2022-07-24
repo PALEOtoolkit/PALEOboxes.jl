@@ -201,6 +201,98 @@ end
     return newvar
 end
 
+#############################################################
+# Allocate data arrays
+#############################################################
+
+"""
+    allocate_variables!(
+        vars, modeldata; 
+        [, eltypemap::Dict{String, DataType}],
+        [, default_host_dependent_field_data=nothing])
+
+Allocate memory for [`VariableDomain`](@ref)s `vars`.
+
+Element type of allocated Arrays is determined by `eltype(modeldata)` (the usual case, allowing use of AD types), 
+which can be overridden by Variable `:datatype` attribute if present (allowing Variables to ignore AD types).
+`:datatype` may be either a Julia `DataType` (eg Float64), or a string to be looked up in `eltypemap`.
+
+Field data type (<:[`AbstractFieldData`](@ref)) is determined by Variable `:field_data` attribute, optionally this can take a
+`default_host_dependent_field_data` default for Variables with `host_dependent(v)==true` (these are Variables with no Target or no Property linked,
+intended to be external dependencies supplied by the solver).
+"""
+function allocate_variables!(
+    vars, modeldata::AbstractModelData; 
+    eltypemap=Dict{String, DataType}(),
+    default_host_dependent_field_data=nothing,
+)
+    
+    for v in vars
+        data_dims = Tuple(
+            get_data_dimension(domain, dimname) 
+            for dimname in get_attribute(v, :data_dims)
+        )
+    
+        # eltype usually is eltype(modeldata), but can be overridden by :datatype attribute 
+        # (can be used by a Reaction to define a fixed type eg Float64 for a constant Property)
+        mdeltype = get_attribute(v, :datatype, eltype(modeldata))
+        if mdeltype isa AbstractString
+            mdeltype = get(eltypemap, mdeltype, Float64)
+        end
+        
+        thread_safe = false
+        if get_attribute(v, :atomic, false) && modeldata.threadsafe
+            @info "  $(fullname(v)) allocating Atomic data"
+            thread_safe = true
+        end
+
+        field_data = get_attribute(v, :field_data)
+        space = get_attribute(v, :space)
+
+        if field_data == UndefinedData
+            if host_dependent(v) && (get_attribute(v, :vfunction, VF_Undefined) == VF_Undefined) && !isnothing(default_host_dependent_field_data)               
+                set_attribute!(v, :field_data, default_host_dependent_field_data)
+                field_data = get_attribute(v, :field_data)
+                @info "    set :field_data=$field_data for host-dependent Variable $(fullname(v))"
+            else
+                error("allocate_variables! :field_data=UndefinedData for Variable $(fullname(v)) $v")
+            end
+        end
+        v_field = allocate_field(
+            field_data, data_dims, mdeltype, space, v.domain.grid,
+            thread_safe=thread_safe, allocatenans=modeldata.allocatenans
+        )        
+        
+        set_field!(v, modeldata, v_field)
+      
+    end
+
+    return nothing
+end
+
+"""
+    reallocate_variables!(vars, modeldata, new_eltype) -> [(v, old_eltype), ...]
+
+Reallocate memory for [`VariableDomain`](@ref)s `vars` to `new_eltype`. Returns Vector of
+`(reallocated_variable, old_eltype)`.
+"""
+function reallocate_variables!(vars, modeldata, new_eltype)
+    
+    reallocated_variables = []
+    for v in vars
+        v_data = get_data(v, modeldata)        
+        if v_data isa AbstractArray
+            old_eltype = eltype(v_data)
+            if old_eltype != new_eltype            
+                set_data!(v, modeldata, similar(v_data, new_eltype))
+                push!(reallocated_variables, (v, old_eltype))
+            end
+        end
+    end
+
+    return reallocated_variables
+end
+
 ####################################################################
 # Manage linked VariableReactions
 ##################################################################

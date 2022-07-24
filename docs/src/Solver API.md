@@ -26,10 +26,10 @@ ReactionMethodDispatchList
 ```
 
 ## Attaching numerical solvers
-High-level access to aggregated collections of state Variables and derivatives is provided by [`VariableAggregator`](@ref) (see [Accessing model objects](@ref) for low-level access).
+High-level access to aggregated collections of Variables is provided by [`VariableAggregator`](@ref) and [`VariableAggregatorNamed`](@ref) (see [Accessing model objects](@ref) for low-level access).
 ```@docs
 VariableAggregator
-VariableAggregator(vars, cellranges, modeldata)
+VariableAggregatorNamed
 ```
 
 ## Defining CellRanges
@@ -55,7 +55,6 @@ cellrange_cartesiantile
 CurrentModule = PALEOboxes
 ```
 ```@docs
-set_tforce!
 do_deriv
 dispatch_methodlist
 ```
