@@ -28,6 +28,9 @@ for data arrays in `modeldata`.
 `cellranges` may contain `nothing` entries to indicate whole Domain.
 
 This is mostly useful for aggregating state Variables, derivatives, etc to implement an interface to a generic ODE/DAE etc solver.
+
+Values may be copied to and from a Vector using [`copyto!`](@ref)
+
 """
 function VariableAggregator(vars, cellranges, modeldata)
 
@@ -195,7 +198,9 @@ struct VariableAggregatorNamed{V <: NamedTuple, VV <: NamedTuple}
     values::VV
 end
 
-Base.length(va::VariableAggregatorNamed) = length(va.vars)
+num_vars(va::VariableAggregatorNamed) = sum(length(vnt) for vnt in va.vars)
+
+Base.length(va::VariableAggregatorNamed) = num_vars(va)
 
 # compact form
 function Base.show(io::IO, van::VariableAggregatorNamed)
@@ -254,7 +259,7 @@ function VariableAggregatorNamed(
     #    domain.name => (Dict of v.name=>v)
     #    domain.name => (Dict of v.name=>data)
 
-    # Sort by name and then use OrderedDict to preserve alphabetical order (domain, varname)
+    # Sort by name and then use OrderedDict to preserve alphabetical order (domainname, varname)
     domains_vars = OrderedCollections.OrderedDict()
     domains_values = OrderedCollections.OrderedDict()
     for v in sort(vars, by=fullname)
