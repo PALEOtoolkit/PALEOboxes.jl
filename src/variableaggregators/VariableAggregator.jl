@@ -198,9 +198,23 @@ struct VariableAggregatorNamed{V <: NamedTuple, VV <: NamedTuple}
     values::VV
 end
 
-num_vars(va::VariableAggregatorNamed) = sum(length(vnt) for vnt in va.vars)
+function num_vars(va::VariableAggregatorNamed)
+    nv = 0
+    for vnt in va.vars
+        nv += length(vnt)
+    end
+    return nv
+end
 
-Base.length(va::VariableAggregatorNamed) = num_vars(va)
+function Base.length(va::VariableAggregatorNamed)
+    l = 0
+    for vnt in va.values
+        for v in vnt
+            l += length(v)
+        end
+    end
+    return l
+end    
 
 # compact form
 function Base.show(io::IO, van::VariableAggregatorNamed)
