@@ -16,6 +16,9 @@ include("ReactionRateStoichMock.jl")
     PB.allocate_variables!(model, modeldata)
     PB.check_ready(model, modeldata)
 
+    all_vars = PB.VariableAggregatorNamed(modeldata)
+    all_data = all_vars.values
+
     PB.initialize_reactiondata!(model, modeldata)
     
     PB.dispatch_setup(model, :setup, modeldata)
@@ -25,23 +28,23 @@ include("ReactionRateStoichMock.jl")
     dispatchlists = modeldata.dispatchlists_all
     PB.do_deriv(dispatchlists)
 
-    ocean_H2S = PB.get_data(PB.get_variable(domain, "H2S"), modeldata)
+    ocean_H2S = all_data.ocean.H2S
     # @Infiltrator.infiltrate
     @test PB.get_total.(ocean_H2S) == fill(10.0, 10)
     @test PB.get_delta.(ocean_H2S) == fill(-30.0, 10)
 
-    ocean_H2S_delta = PB.get_data(PB.get_variable(domain, "H2S_delta"), modeldata)
+    ocean_H2S_delta = all_data.ocean.H2S_delta
     @test maximum(ocean_H2S_delta .- fill(-30.0, 10)) < 1e-13
 
-    ocean_myrate = PB.get_data(PB.get_variable(domain, "myrate"), modeldata)
+    ocean_myrate = all_data.ocean.myrate
     @test ocean_myrate == fill(42.0, 10)
 
-    ocean_H2S_sms = PB.get_data(PB.get_variable(domain, "H2S_sms"), modeldata)
+    ocean_H2S_sms = all_data.ocean.H2S_sms
     @test PB.get_total.(ocean_H2S_sms) == fill(-1.0*42.0, 10)   
     deltaabserr = abs.(PB.get_delta.(ocean_H2S_sms) .- fill(-30.0 - 10.0, 10))
     @test maximum(deltaabserr) < 1e-13
 
-    ocean_SO4_sms = PB.get_data(PB.get_variable(domain, "SO4_sms"), modeldata)
+    ocean_SO4_sms = all_data.ocean.SO4_sms
     @test PB.get_total.(ocean_SO4_sms) == fill(1.0*42.0, 10)
     deltaabserr = abs.(PB.get_delta.(ocean_SO4_sms) .- fill(-30.0 - 10.0, 10))
     @test maximum(deltaabserr) < 1e-13

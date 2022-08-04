@@ -1,7 +1,7 @@
 name = "PALEOboxes"
 uuid = "804b410e-d900-4b2a-9ecd-f5a06d4c1fd4"
 authors = ["Stuart Daines <stuart.daines@gmail.com>"]
-version = "0.20.2"
+version = "0.20.3"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
@@ -33,7 +33,7 @@ DocStringExtensions = "0.8, 0.9"
 Documenter = "0.27"
 Graphs = "1.4"
 Infiltrator = "1.0"
-Interpolations = "0.13"
+Interpolations = "0.13, 0.14"
 MAT = "0.10"
 NCDatasets = "0.12"
 OrderedCollections = "1.4"

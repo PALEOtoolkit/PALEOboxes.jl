@@ -19,7 +19,6 @@ include("ReactionPaleoMockModule.jl")
     @test PB.get_length(ocean_domain) == prod(dsize)
 
     hostvars = PB.get_variables(ocean_domain, hostdep=true)
-    modelvars = Dict((var.name, var) for var in PB.get_variables(ocean_domain, hostdep=false))
 
     modeldata = PB.create_modeldata(model)
 
@@ -48,13 +47,15 @@ include("ReactionPaleoMockModule.jl")
 
     hostvardata[] = 23.0
     PB.do_deriv(dispatchlists)
-    @test PB.get_data(modelvars["julia_paleo_mock/scalar_prop"], modeldata) == hostvardata
 
-    mock_phy_var = modelvars["mock_phy"]
-    @test size(PB.get_data(mock_phy_var, modeldata)) == dsize
-    expected_result = Array{Float64, length(dsize)}(undef, dsize)
-    fill!(expected_result, 0.15)
-    @test PB.get_data(mock_phy_var, modeldata) == expected_result 
+    all_vars = PB.VariableAggregatorNamed(modeldata)
+    @info "allvars: $all_vars"
+    all_data = all_vars.values
+
+    # NB: "ocean.julia_paleo_mock/scalar_prop" substitute / --> __
+    @test all_data.ocean.julia_paleo_mock__scalar_prop == hostvardata
+
+    @test all_data.ocean.mock_phy == fill(0.15, dsize)
 
     model = nothing
 end
