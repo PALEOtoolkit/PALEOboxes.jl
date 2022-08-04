@@ -23,8 +23,10 @@ import PALEOboxes as PB
     @test  PB.check_ready(model, modeldata) == true    
 
     # get variables
-    global_vars_dict =  Dict(var.name=>var for var in PB.get_variables(global_domain))
-    ocean_vars_dict =  Dict(var.name=>var for var in PB.get_variables(ocean_domain))
+    all_vars = PB.VariableAggregatorNamed(modeldata)
+    @test PB.num_vars(all_vars) == 9
+    @info "all_vars: $all_vars"
+    all_data = all_vars.values
 
     PB.initialize_reactiondata!(model, modeldata)
       
@@ -34,9 +36,9 @@ import PALEOboxes as PB
     PB.dispatch_setup(model, :initial_value, modeldata)
     
     @info "const fluxes:"
-    @test PB.get_data(ocean_vars_dict["flux_A"], modeldata) == fill(10.0, ocean_length)
-    @test PB.get_data(ocean_vars_dict["flux_B"], modeldata) == fill(20.0, ocean_length)
-    @test PB.get_data(ocean_vars_dict["flux_C"], modeldata) == 
+    @test all_data.ocean.flux_A == fill(10.0, ocean_length)
+    @test all_data.ocean.flux_B == fill(20.0, ocean_length)
+    @test all_data.ocean.flux_C == 
         fill(PB.isotope_totaldelta(PB.IsotopeLinear, 2.0, -1.0), ocean_length)
    
     dispatchlists = modeldata.dispatchlists_all
@@ -44,18 +46,18 @@ import PALEOboxes as PB
     PB.do_deriv(dispatchlists)
 
     @info "transferred fluxes"
-    @test PB.get_data(ocean_vars_dict["tflux_A"], modeldata) == fill(2*10.0, ocean_length)
-    @test PB.get_data(ocean_vars_dict["tflux_C"], modeldata) == 
+    @test all_data.ocean.tflux_A == fill(2*10.0, ocean_length)
+    @test all_data.ocean.tflux_C == 
         fill(2*PB.isotope_totaldelta(PB.IsotopeLinear, 2.0, -1.0), ocean_length)
 
     @info "transferred flux totals"
-    @test PB.get_data(ocean_vars_dict["tflux_total_A"], modeldata)[] == ocean_length*2*10.0
-    @test PB.get_data(ocean_vars_dict["tflux_total_C"], modeldata)[] == 
+    @test all_data.ocean.tflux_total_A[] == ocean_length*2*10.0
+    @test all_data.ocean.tflux_total_C[] == 
         ocean_length*2*PB.isotope_totaldelta(PB.IsotopeLinear, 2.0, -1.0)
 
     @info "global transferred fluxes"
-    @test PB.get_data(global_vars_dict["tflux_B"], modeldata)[] == ocean_length*-1*20.0
-    @test PB.get_data(global_vars_dict["tflux_C"], modeldata)[] == 
+    @test all_data.global.tflux_B[] == ocean_length*-1*20.0
+    @test all_data.global.tflux_C[] == 
         ocean_length*-1*PB.isotope_totaldelta(PB.IsotopeLinear, 2.0, -1.0)
 
     @info "test complete"

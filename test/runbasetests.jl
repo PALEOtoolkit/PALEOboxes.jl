@@ -80,14 +80,19 @@ include("ReactionPaleoMockModule.jl")
 
     hostvardata[] = 27.3
     PB.do_deriv(dispatchlists)   
+
+    allvars = PB.VariableAggregatorNamed(modeldata)
+    println(allvars)
+    @test PB.num_vars(allvars) == 5
+    @test length(allvars) == 3 + 2*domain_size
+
     @test PB.get_data(modelvars["julia_paleo_mock/scalar_prop"], modeldata) == hostvardata
     @test PB.get_data(modelvars["julia_paleo_mock2/scalar_prop"], modeldata) == hostvardata
-
-
-    mock_phy_var = modelvars["mock_phy"]
-    expected_result = Vector{Float64}(undef, domain_size)
-    expected_result .= 0.15
-    @test PB.get_data(mock_phy_var, modeldata) == expected_result 
+    # NB: / in name --> __ in field, so "ocean.julia_paleo_mock/scalar_prop" -> field ocean.julia_paleo_mock__scalar_prop
+    @test allvars.values.ocean.julia_paleo_mock__scalar_prop == hostvardata
+    @test allvars.values.ocean.julia_paleo_mock2__scalar_prop == hostvardata
+ 
+    @test allvars.values.ocean.mock_phy == fill(0.15, domain_size)
 
 end
 
