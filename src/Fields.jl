@@ -332,7 +332,8 @@ end
 """
     Field{D <: AbstractData, S <: AbstractSpace, V, N, M}
 
-A Field of data type `D` defined on function space `S` over `mesh` and (optionally) `data_dims`
+A Field of `values::V` of data type `D` defined on function space `S` over `mesh::M`
+and (optionally) with `N` `data_dims::NTuple{N, NamedDimensions}`.
 """
 struct Field{D <: AbstractData, S <: AbstractSpace, V, N, M}
     values::V
