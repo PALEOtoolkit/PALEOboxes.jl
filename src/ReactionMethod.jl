@@ -79,8 +79,9 @@ mutable struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
         preparefn = (m, vardata) -> vardata,
     ) where {M <: Function, R <: AbstractReaction, P, V <: Tuple{Vararg{AbstractVarList}}}        
         
-        # number of arguments that methodfn takes
-        nargs = fieldcount(methods(methodfn)[1].sig) - 1
+        # Find number of arguments that methodfn takes
+        # (in order to support two forms of 'methodfn', with and without Parameters)
+        nargs = fieldcount(methods(methodfn).ms[1].sig) - 1
 
         newmethod = new{M, R, P, V, nargs}(
             methodfn, 
