@@ -144,9 +144,9 @@ end
 Provides either a target for fluxes from `fluxlist` in an input `Domain` or a constant stub, optionally calculates totals.
 
 For each `fluxname` in `fluxlist`, creates:
-- if `const_stub==false`, an input `VarTarget` `pars.target_prefix.v*"flux_"*fluxname`
+- if `const_stub==false`, an input `VarTarget` `pars.target_prefix[]*"flux_"*fluxname`
   (or if `const_stub==true`, a constant `VarProp`).
-- if `flux_totals` is `true`, a total `VarPropScalar` `target_prefix.v*"flux_total_"*fluxname`.
+- if `flux_totals` is `true`, a total `VarPropScalar` `target_prefix[]*"flux_total_"*fluxname`.
 
 # Parameters
 $(PARS)
@@ -182,23 +182,23 @@ function PB.register_methods!(rj::ReactionFluxTarget)
     target_variables = []
     total_localnames = []
 
-    target_prefix = rj.pars.target_prefix.v
+    target_prefix = rj.pars.target_prefix[]
     if !isempty(target_prefix) && target_prefix[end] != '_'
         target_prefix = target_prefix*"_"
-        @warn "Reaction $(PB.fullname(rj)) bodging target_prefix without trailing underscore $(rj.pars.target_prefix.v) -> $target_prefix"
+        @warn "Reaction $(PB.fullname(rj)) bodging target_prefix without trailing underscore $(rj.pars.target_prefix[]) -> $target_prefix"
     end
  
-    for fluxnameisotope in rj.pars.fluxlist.v
+    for fluxnameisotope in rj.pars.fluxlist
         fluxname, IsotopeType = PB.split_nameisotope(fluxnameisotope, rj.external_parameters)
 
         targetname = target_prefix*fluxname
         
-        if rj.pars.const_stub.v
+        if rj.pars.const_stub[]
             target_var = PB.VarPropStateIndep(targetname, "mol yr-1", "constant flux", attributes=(:field_data=>IsotopeType,))
         else
             target_var = PB.VarTarget(targetname, "mol yr-1", "flux input", attributes=(:field_data=>IsotopeType,))
         end
-        if rj.pars.flux_totals.v
+        if rj.pars.flux_totals[]
             PB.set_attribute!(target_var, :calc_total, true, allow_create=true)
         end
 
@@ -208,7 +208,7 @@ function PB.register_methods!(rj::ReactionFluxTarget)
   
     end
         
-    if rj.pars.const_stub.v
+    if rj.pars.const_stub[]
         # method to set constant value
         # supply filterfn to initialize supplied Variables even though they aren't state variables
         PB.add_method_setup_initialvalue_vars_default!(rj, target_variables, filterfn = v->true) 
@@ -217,7 +217,7 @@ function PB.register_methods!(rj::ReactionFluxTarget)
         PB.add_method_do_nothing!(rj, target_variables)
     end
 
-    if rj.pars.flux_totals.v
+    if rj.pars.flux_totals[]
         totals_method = PB.create_totals_method(rj, target_variables, total_localnames=total_localnames)        
         PB.add_method_do!(rj, totals_method)
     end
@@ -249,9 +249,7 @@ $(PARS)
 Base.@kwdef mutable struct ReactionFluxTransfer{P} <: PB.AbstractReaction
     base::PB.ReactionBase
 
-    pars::P = PB.ParametersTuple(
-        PB.ParStringVec("fluxlist", String[], 
-            description="available fluxes"),
+    pars::P = PB.ParametersTuple(       
 
         PB.ParString("input_fluxes", "[inputdomain.][inputsubdomain.]flux_\$fluxname\$",
             description="string to match to find input flux Variables. "*
@@ -282,7 +280,7 @@ PB.register_methods!(rj::ReactionFluxTransfer) = nothing
 function PB.register_dynamic_methods!(rj::ReactionFluxTransfer, model::PB.Model)
     
     (input_domain_name, input_subdomain_name, input_var_matchname) =
-        PB.split_link_name(rj.pars.input_fluxes.v)
+        PB.split_link_name(rj.pars.input_fluxes[])
 
     # get Domain for input fluxes 
     rj.input_domain = isempty(input_domain_name) ? rj.domain : PB.get_domain(model, input_domain_name)   
@@ -291,15 +289,15 @@ function PB.register_dynamic_methods!(rj::ReactionFluxTransfer, model::PB.Model)
 
     input_var_matchname_split = split(input_var_matchname, "\$fluxname\$")
     length(input_var_matchname_split) == 2 ||
-        error("$(PB.fullname(rj)) invalid input_fluxes: must contain \$fluxname\$ $(rj.pars.input_fluxes.v)")
+        error("$(PB.fullname(rj)) invalid input_fluxes: must contain \$fluxname\$ $(rj.pars.input_fluxes[])")
 
     # Regular expression so $fluxname$ matches any alphanumeric characters    
     input_var_regex = input_var_matchname_split[1]*r"(\p{Xan}+)"*input_var_matchname_split[2]
 
     (output_domain_name, output_subdomain_name, output_var_patternname) =
-        PB.split_link_name(rj.pars.output_fluxes.v)
+        PB.split_link_name(rj.pars.output_fluxes[])
     occursin("\$fluxname\$", output_var_patternname) ||
-        error("$(PB.fullname(rj)) invalid output_fluxes: must contain \$fluxname\$ $(rj.pars.output_fluxes.v)")
+        error("$(PB.fullname(rj)) invalid output_fluxes: must contain \$fluxname\$ $(rj.pars.output_fluxes[])")
 
     flux_names, var_inputs, var_outputs = [], [], []
 
@@ -406,19 +404,19 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
               
         # define transpose of transfer matrix (for sparse CSR efficiency, so output = input * transfer_matrix_tr)
         rj = m.reaction
-        if rj.pars.transfer_matrix.v == "Custom"
+        if rj.pars.transfer_matrix[] == "Custom"
             # will be supplied (not yet implemented)
-            @error "$(PB.fullname(m)) not implemented  Custom transfer matrix * $(rj.pars.transfer_multiplier.v)"
-        elseif rj.pars.transfer_matrix.v == "Identity"
+            @error "$(PB.fullname(m)) not implemented  Custom transfer matrix * $(rj.pars.transfer_multiplier[])"
+        elseif rj.pars.transfer_matrix[] == "Identity"
             input_length == output_length || 
                 error("$(PB.fullname(m)) Identity transfer_matrix but Variable lengths don't match (input, output) $(input_length) != $(output_length)")
-            rj.transfer_matrix_tr = SparseArrays.sparse(LinearAlgebra.I, input_length, output_length).*rj.pars.transfer_multiplier.v
-            @info "    using Identity transfer matrix * $(rj.pars.transfer_multiplier.v)"
-        elseif rj.pars.transfer_matrix.v == "Distribute"
-            rj.transfer_matrix_tr = SparseArrays.sparse(ones(input_length, output_length)./output_length.*rj.pars.transfer_multiplier.v)
-            @info "    using Distribute transfer matrix size (input, output) $(size(rj.transfer_matrix_tr)) * $(rj.pars.transfer_multiplier.v)"
+            rj.transfer_matrix_tr = SparseArrays.sparse(LinearAlgebra.I, input_length, output_length).*rj.pars.transfer_multiplier[]
+            @info "    using Identity transfer matrix * $(rj.pars.transfer_multiplier[])"
+        elseif rj.pars.transfer_matrix[] == "Distribute"
+            rj.transfer_matrix_tr = SparseArrays.sparse(ones(input_length, output_length)./output_length.*rj.pars.transfer_multiplier[])
+            @info "    using Distribute transfer matrix size (input, output) $(size(rj.transfer_matrix_tr)) * $(rj.pars.transfer_multiplier[])"
         else
-            error("$(PB.fullname(m)) unknown transfer_matrix='$(rj.pars.transfer_matrix.v)'")
+            error("$(PB.fullname(m)) unknown transfer_matrix='$(rj.pars.transfer_matrix[])'")
         end
     else
         @warn "ReactionMethod $(PB.fullname(m)) no active fluxes found"

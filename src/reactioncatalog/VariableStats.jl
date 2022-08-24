@@ -51,13 +51,13 @@ function PB.register_methods!(rj::ReactionSum)
     vars_to_add = []
     var_multipliers = Float64[]
 
-    for varmultname in rj.pars.vars_to_add.v
+    for varmultname in rj.pars.vars_to_add
         # parse multiplier
         svmn = split(varmultname, ['*', ' '], keepempty=false)
         if length(svmn) == 1
-            mult, varname = (1.0, rj.pars.vars_prefix.v*svmn[1])
+            mult, varname = (1.0, rj.pars.vars_prefix[]*svmn[1])
         elseif length(svmn) == 2
-            mult, varname = (parse(Float64, svmn[1]), rj.pars.vars_prefix.v*svmn[2])
+            mult, varname = (parse(Float64, svmn[1]), rj.pars.vars_prefix[]*svmn[2])
         else
             error("reaction ", fullname(rj), "invalid field in vars_to_add ", varmultname)
         end
@@ -75,7 +75,7 @@ function PB.register_methods!(rj::ReactionSum)
         )
     end
 
-    if rj.pars.vectorsum.v
+    if rj.pars.vectorsum[]
         methodfn = do_vectorsum
         var_sum = PB.VarProp("sum", "", "sum of specified variables")
     else
@@ -99,13 +99,13 @@ end
 function PB.register_dynamic_methods!(rj::ReactionSum)
 
     # update method now Variable are linked hence components known
-    method_sum = PB.get_method_do(rj, rj.pars.vectorsum.v ? "do_vectorsum" : "do_scalarsum")
+    method_sum = PB.get_method_do(rj, rj.pars.vectorsum[] ? "do_vectorsum" : "do_scalarsum")
 
     var_sum = PB.get_variable(method_sum, "sum")
     vars_to_add = PB.get_variables(method_sum, filterfn = v->v.localname != "sum")
 
     # check variable components match and update var_sum.components
-    if rj.pars.component_to_add.v == 0
+    if rj.pars.component_to_add[] == 0
         # add all components of vars_to_add Variables
         # check all Variable have the same data
         firstvar_d = nothing
@@ -124,13 +124,13 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
     else
         # add first component of vars_to_add Variables
         PB.set_attribute!(var_sum, :field_data,  PB.ScalarData)
-        @info "Reaction $(PB.fullname(rj)) Variable $(PB.fullname(var_sum.linkvar)) adding single component $(rj.pars.component_to_add.v)"
+        @info "Reaction $(PB.fullname(rj)) Variable $(PB.fullname(var_sum.linkvar)) adding single component $(rj.pars.component_to_add[])"
     end
 
-    if rj.pars.component_to_add.v == 0
+    if rj.pars.component_to_add[] == 0
         comprange = 1:PB.num_components(PB.get_attribute(var_sum, :field_data))
     else
-        comprange = rj.pars.component_to_add.v:rj.pars.component_to_add.v
+        comprange = rj.pars.component_to_add[]:rj.pars.component_to_add[]
     end
 
     # update method_sum
@@ -220,11 +220,11 @@ function PB.register_methods!(rj::ReactionWeightedMean)
 
     vars = [
         PB.VarDep(       "var", "measure-1", "variable to calculate weighted mean from",
-            attributes=(:field_data=>rj.pars.field_data.v,)),
+            attributes=(:field_data=>rj.pars.field_data[],)),
         PB.VarDep(       "measure", "", "cell area or volume"),
         PB.VarDepScalar( "measure_total", "", "total Domain area or volume"),
         PB.VarPropScalar("var_mean", "", "weighted mean over Domain area or volume",
-            attributes=(:field_data=>rj.pars.field_data.v, :initialize_to_zero=>true, :atomic=>true)),
+            attributes=(:field_data=>rj.pars.field_data[], :initialize_to_zero=>true, :atomic=>true)),
     ]
 
     PB.add_method_do!(rj, do_weighted_mean, (PB.VarList_namedtuple(vars),))
@@ -292,13 +292,12 @@ function PB.register_methods!(rj::ReactionAreaVolumeValInRange)
     return nothing
 end
 
-function do_area_volume_in_range(m::PB.ReactionMethod, (vars,), cellrange::PB.AbstractCellRange, deltat)
-    rj = m.reaction
+function do_area_volume_in_range(m::PB.ReactionMethod, pars, (vars,), cellrange::PB.AbstractCellRange, deltat)
 
     # use a subtotal to minimise time lock held if this is one tile of a threaded model
     frac_subtotal = zero(vars.frac[])
     @inbounds for i in cellrange.indices
-        if vars.rangevar[i] >= rj.pars.range_min.v && vars.rangevar[i] <= rj.pars.range_max.v
+        if vars.rangevar[i] >= pars.range_min[] && vars.rangevar[i] <= pars.range_max[]
             frac_subtotal += vars.measure[i] # normalisation by measure_total below
         end
     end

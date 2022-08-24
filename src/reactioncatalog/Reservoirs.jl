@@ -64,7 +64,7 @@ Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
     norm_value::Float64  = NaN
 end
 
-function do_reactionreservoirscalar(m::PB.AbstractReactionMethod, (vars, ), cr::PB.AbstractCellRange, deltat)
+function do_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (vars, ), cr::PB.AbstractCellRange, deltat)
     rj = m.reaction
 
     vars.R_norm[]  = PB.get_total(vars.R[])/rj.norm_value
@@ -86,8 +86,8 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
         return nothing
     end
 
-    if rj.pars.const.v
-        R            = PB.VarPropScalar(      "R", "mol", "scalar constant reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
+    if rj.pars.const[]
+        R            = PB.VarPropScalar(      "R", "mol", "scalar constant reservoir", attributes=(:field_data =>rj.pars.field_data[],))
         PB.add_method_setup_initialvalue_vars_default!(
             rj, [R], 
             filterfn = v->true, # force setup even though R is not a state Variable
@@ -96,16 +96,16 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
         )  
         # no _sms variable
     else        
-        R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data.v,))
+        R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
         PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
 
-        R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data.v,))
+        R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
         # sms variable not used by us, but must appear in a method to be linked and created
         PB.add_method_do_nothing!(rj, [R_sms])
     end
 
     do_vars = [PB.VarDep(R), PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
-    if rj.pars.field_data.v <: PB.AbstractIsotopeScalar
+    if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarPropScalar("R_delta", "per mil", "scalar reservoir isotope delta"))
     end
     PB.add_method_do!(
@@ -199,9 +199,9 @@ function PB.register_methods!(rj::ReactionReservoir)
 
     volume  = PB.VarDep("volume",   "m3",       "cell volume (or cell phase volume eg for a sediment with solid and liquid phases)")
 
-    if rj.pars.stateexplicit.v
+    if rj.pars.stateexplicit[]
         R   = PB.VarStateExplicit("R",        "mol",      "vector reservoir",
-            attributes=(:field_data=>rj.pars.field_data.v, :calc_total=>rj.pars.total.v,)
+            attributes=(:field_data=>rj.pars.field_data[], :calc_total=>rj.pars.total[],)
         )
         PB.add_method_setup_initialvalue_vars_default!(
             rj, [R],
@@ -212,13 +212,13 @@ function PB.register_methods!(rj::ReactionReservoir)
     else
         # eg a Total Variable defined elsewhere
         R = PB.VarDep("R",        "mol",      "vector reservoir",
-            attributes=(:field_data=>rj.pars.field_data.v, :calc_total=>rj.pars.total.v,)
+            attributes=(:field_data=>rj.pars.field_data[], :calc_total=>rj.pars.total[],)
         )
         # initial value setup handled elsewhere
     end
 
     R_sms = PB.VarDeriv("R_sms",    "mol yr-1", "vector reservoir source-sinks",
-        attributes=(:field_data=>rj.pars.field_data.v, ),
+        attributes=(:field_data=>rj.pars.field_data[], ),
     )
     # sms variable not used by us, but must appear in a method to be linked and created
     PB.add_method_do_nothing!(rj, [R_sms])
@@ -228,7 +228,7 @@ function PB.register_methods!(rj::ReactionReservoir)
         volume,
         PB.VarProp("R_conc",   "mol m-3",  "concentration",
             attributes=(
-                :field_data=>rj.pars.field_data.v, 
+                :field_data=>rj.pars.field_data[], 
                 :advect=>true,
                 :vertical_movement=>0.0,
                 :specific_light_extinction=>0.0,
@@ -238,16 +238,16 @@ function PB.register_methods!(rj::ReactionReservoir)
         )
     ]
 
-    if rj.pars.field_data.v <: PB.AbstractIsotopeScalar
+    if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
-        if rj.pars.limit_delta_conc.v > 0.0
-            @warn "$(PB.fullname(rj)) using experimental limit_delta_conc $(rj.pars.limit_delta_conc.v) mol m-3"
+        if rj.pars.limit_delta_conc[] > 0.0
+            @warn "$(PB.fullname(rj)) using experimental limit_delta_conc $(rj.pars.limit_delta_conc[]) mol m-3"
         end
     end
 
     PB.add_method_do!(rj, do_reactionreservoir, (PB.VarList_namedtuple(do_vars),))
 
-    if rj.pars.total.v
+    if rj.pars.total[]
         PB.add_method_do_totals_default!(rj, [R])
     end
 
@@ -257,14 +257,14 @@ function PB.register_methods!(rj::ReactionReservoir)
 end
 
 
-function do_reactionreservoir(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+function do_reactionreservoir(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
     @inbounds for i in cellrange.indices
         vars.R_conc[i]  = vars.R[i]/vars.volume[i]
     end
 
     if hasfield(typeof(vars), :R_delta)
-        limit_value = m.reaction.pars.limit_delta_conc.v
+        limit_value = pars.limit_delta_conc[]
         if limit_value > 0.0
             # norm_value = PB.get_attribute(rj.var_R, :norm_value)::Float64
             # limit_value = 1e-6  # mol m-3
@@ -329,13 +329,13 @@ end
 function PB.register_methods!(rj::ReactionReservoirConst)
 
     var_R_conc = PB.VarProp("R_conc",   "mol m-3",  "concentration",
-        attributes=(:field_data=>rj.pars.field_data.v, :specific_light_extinction=>0.0,)
+        attributes=(:field_data=>rj.pars.field_data[], :specific_light_extinction=>0.0,)
     )
 
     # specify filterfn to initialize var_R_conc even though it isn't a state variables
     PB.add_method_setup_initialvalue_vars_default!(rj, [var_R_conc], filterfn = v->true)
 
-    if rj.pars.field_data.v <: PB.AbstractIsotopeScalar
+    if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         setup_vars = [
             PB.VarDep(var_R_conc),
             PB.VarProp("R_delta", "per mil", "isotopic composition"),
@@ -393,7 +393,7 @@ end
 function PB.register_methods!(rj::ReactionReservoirForced)
 
     var_R_conc_initial = PB.VarProp("R_conc_initial",   "mol m-3",  "initial concentration",
-        attributes=(:field_data=>rj.pars.field_data.v, )
+        attributes=(:field_data=>rj.pars.field_data[], )
     )
     # specify filterfn to initialize var_R_conc_initial even though it isn't a state variable
     PB.add_method_setup_initialvalue_vars_default!(
@@ -404,11 +404,11 @@ function PB.register_methods!(rj::ReactionReservoirForced)
     do_vars = [
         var_R_conc_initial,
         PB.VarProp("R_conc",   "mol m-3",  "concentration = initial * forcing",
-            attributes=(:field_data=>rj.pars.field_data.v, :specific_light_extinction=>0.0,)),
+            attributes=(:field_data=>rj.pars.field_data[], :specific_light_extinction=>0.0,)),
         # PB.VarDep(        "volume",   "m3",       "cell volume"),
         PB.VarDepScalar(  "R_FORCE",  "",         "forcing factor"),
     ]
-    if rj.pars.field_data.v <: PB.AbstractIsotopeScalar
+    if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
     end
 
@@ -479,17 +479,17 @@ end
 function PB.register_methods!(rj::ReactionReservoirWellMixed)
 
     R = PB.VarStateExplicitScalar(  "R",        "mol",      "scalar reservoir",
-        attributes=(:field_data=>rj.pars.field_data.v,))
+        attributes=(:field_data=>rj.pars.field_data[],))
     volume_total = PB.VarDepScalar("volume_total", "m^3", "total volume")
     vars = [
         R,
         PB.VarPropScalar(           "R_norm",   "",         "scalar reservoir normalized"),
         PB.VarProp(                 "R_conc",   "mol m-3",  "concentration",           
-            attributes=(:field_data=>rj.pars.field_data.v, :specific_light_extinction=>0.0,)),
+            attributes=(:field_data=>rj.pars.field_data[], :specific_light_extinction=>0.0,)),
         volume_total,
     ]
 
-    if rj.pars.field_data.v <: PB.AbstractIsotopeScalar
+    if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
     end
 
@@ -502,12 +502,12 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
         return nothing
     end
 
-    if rj.pars.initialization_type.v == "total"
+    if rj.pars.initialization_type[] == "total"
         PB.add_method_setup_initialvalue_vars_default!(
             rj, [R],
             setup_callback=setup_callback
         )
-    elseif rj.pars.initialization_type.v == "conc"
+    elseif rj.pars.initialization_type[] == "conc"
         PB.add_method_setup_initialvalue_vars_default!(
             rj, [R],
             convertvars=[volume_total],
@@ -522,9 +522,9 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
     # add method to sum per-cell vec_sms to scalar sms
     vars_sms = [
         PB.VarDerivScalar(          "R_sms",    "mol yr-1", "scalar reservoir source-sinks",
-            attributes=(:field_data=>rj.pars.field_data.v, :atomic=>true,)),
+            attributes=(:field_data=>rj.pars.field_data[], :atomic=>true,)),
         PB.VarTarget(               "R_vec_sms","mol yr-1", "vector reservoir source-sinks",
-            attributes=(:field_data=>rj.pars.field_data.v,))
+            attributes=(:field_data=>rj.pars.field_data[],))
     ]
     PB.add_method_do!(rj, do_reservoir_well_mixed_sms, (PB.VarList_namedtuple(vars_sms),))
 
@@ -626,7 +626,7 @@ function PB.register_methods!(rj::ReactionConst)
 
     vars_const = []
 
-    for varnameisotope in rj.pars.constnames.v
+    for varnameisotope in rj.pars.constnames
         varname, IsotopeType = PB.split_nameisotope(varnameisotope, rj.external_parameters)
         if rj.scalar
             constvar = PB.VarPropScalarStateIndep(varname, "", "constant value", attributes=(:field_data=>IsotopeType, ))

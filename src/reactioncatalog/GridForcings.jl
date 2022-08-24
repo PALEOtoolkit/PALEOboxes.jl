@@ -88,14 +88,14 @@ function PB.register_methods!(rj::ReactionForceGrid)
         PB.VarDepScalar("global.tforce", "yr",  "historical time at which to apply forcings, present = 0 yr"),
         PB.VarProp("F", "", "interpolated forcing"),    
     ]
-    if rj.pars.scale_offset_var.v != 0.0
+    if rj.pars.scale_offset_var[] != 0.0
         @info "  adding scalar offset from Variable 'scalar_offset'"
         push!(vars, PB.VarDepScalar("scalar_offset", "",  "scalar offset"))
     end
     PB.setfrozen!(rj.pars.scale_offset_var)
 
     interp_vars = []
-    for (vname, vlog) in PB.IteratorUtils.zipstrict(rj.pars.interp_vars.v, rj.pars.interp_log.v; errmsg="length(interp_vars) != length(interp_log)")
+    for (vname, vlog) in PB.IteratorUtils.zipstrict(rj.pars.interp_vars, rj.pars.interp_log; errmsg="length(interp_vars) != length(interp_log)")
         @info "  adding interpolation Variable $vname log $vlog"
         push!(interp_vars, PB.VarDepScalar(vname, "",  "interpolation variable log $vlog"))
     end
@@ -119,19 +119,19 @@ function prepare_do_force_grid(
    
     @info "prepare_do_force_grid: $(PB.fullname(rj))"
 
-    if !isempty(rj.pars.netcdf_file.v) && isempty(rj.pars.matlab_file.v)
-        @info "    reading variable '$(rj.pars.data_var.v)' from netcdf file '$(rj.pars.netcdf_file.v)'"
+    if !isempty(rj.pars.netcdf_file[]) && isempty(rj.pars.matlab_file[])
+        @info "    reading variable '$(rj.pars.data_var[])' from netcdf file '$(rj.pars.netcdf_file[])'"
 
-        NCDatasets.Dataset(rj.pars.netcdf_file.v) do ds
+        NCDatasets.Dataset(rj.pars.netcdf_file[]) do ds
             _prepare_data(rj, ds)
         end
-    elseif !isempty(rj.pars.matlab_file.v) && isempty(rj.pars.netcdf_file.v)
-        @info "    reading variable '$(rj.pars.data_var.v)' from matlab file '$(rj.pars.matlab_file.v)'"
+    elseif !isempty(rj.pars.matlab_file[]) && isempty(rj.pars.netcdf_file[])
+        @info "    reading variable '$(rj.pars.data_var[])' from matlab file '$(rj.pars.matlab_file[])'"
 
-        ds = MAT.matread(rj.pars.matlab_file.v) # must return a Dict varname=>vardata
+        ds = MAT.matread(rj.pars.matlab_file[]) # must return a Dict varname=>vardata
         _prepare_data(rj, ds)
     else
-        error("    both netcdf_file $(rj.pars.netcdf_file.v) and matlab_file $(rj.pars.matlab_file.v) are specified")
+        error("    both netcdf_file $(rj.pars.netcdf_file[]) and matlab_file $(rj.pars.matlab_file[]) are specified")
     end
  
     PB.setfrozen!(rj.pars.netcdf_file, rj.pars.matlab_file, rj.pars.data_var, rj.pars.time_var, 
@@ -143,14 +143,14 @@ end
 """
     _prepare_data(rj::ReactionForceGrid, ds)
 
-Read data variable from `ds[rj.pars.data_var.v]` and optional time values from `ds[rj.pars.time_var.v]`.  
+Read data variable from `ds[rj.pars.data_var[]]` and optional time values from `ds[rj.pars.time_var[]]`.  
 Map data variable to PALEO internal array layout and store in `rj.data_var`, generate time interpolator in `rj.time_interp`.
 """
 function _prepare_data(rj::ReactionForceGrid, ds)
         
-    num_nc_time_recs = rj.pars.tidx_end.v - rj.pars.tidx_start.v + 1
+    num_nc_time_recs = rj.pars.tidx_end[] - rj.pars.tidx_start[] + 1
 
-    if rj.pars.use_timeav.v 
+    if rj.pars.use_timeav[] 
         num_time_recs = 1
     else
         num_time_recs = num_nc_time_recs
@@ -163,9 +163,9 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     ninternaldims = length(PB.internal_size(rj.domain.grid)) # PALEO array layout
     internalcolons = fill(Colon(), ninternaldims)
 
-    ninterpdims = length(rj.pars.interp_vars.v)
+    ninterpdims = length(rj.pars.interp_vars)
     interpcolons = fill(Colon(), ninterpdims)
-    interpdims = [length(ds[vn]) for vn in rj.pars.interp_vars.v]
+    interpdims = [length(ds[vn]) for vn in rj.pars.interp_vars]
 
     # map to grid internal storage (ie mapping ncartesiandims -> ninternaldims)
     #           grid             interp           time
@@ -175,10 +175,10 @@ function _prepare_data(rj::ReactionForceGrid, ds)
         
     # TODO - reorder indices (currently require  gridvars..., interpvars..., timevar)
     # read netcdf data, taking only the time records we need
-    tmp_var  = Array(ds[rj.pars.data_var.v][cartesiancolons..., interpcolons..., rj.pars.tidx_start.v:rj.pars.tidx_end.v])
+    tmp_var  = Array(ds[rj.pars.data_var[]][cartesiancolons..., interpcolons..., rj.pars.tidx_start[]:rj.pars.tidx_end[]])
 
     # copy into data_var,  mapping ngriddims -> 1 linear index and creating time average if necessary
-    if rj.pars.use_timeav.v
+    if rj.pars.use_timeav[]
         @views rj.data_var[internalcolons..., interpcolons..., 1] .= 0.0
         for i in 1:num_nc_time_recs
             if length(interpdims) == 0
@@ -215,15 +215,15 @@ function _prepare_data(rj::ReactionForceGrid, ds)
 
     # create time interpolator
     if num_time_recs > 1
-        if !isempty(rj.pars.time_var.v)
-            @info "  reading variable '$(rj.pars.time_var.v)' to generate time-dependent forcing from $num_time_recs time records"
-            rj.data_time = Array(ds[rj.pars.time_var.v][rj.pars.tidx_start.v:rj.pars.tidx_end.v])
+        if !isempty(rj.pars.time_var[])
+            @info "  reading variable '$(rj.pars.time_var[])' to generate time-dependent forcing from $num_time_recs time records"
+            rj.data_time = Array(ds[rj.pars.time_var[]][rj.pars.tidx_start[]:rj.pars.tidx_end[]])
         else
             @info "  generating evenly spaced intervals to apply time-dependent forcing from $num_time_recs time records"
             rj.data_time = collect(range(0.5/num_time_recs, step=1.0/num_time_recs, length=num_time_recs))
         end
         # create time interpolation
-        rj.time_interp = PB.LinInterp(rj.data_time, rj.pars.cycle_time.v)
+        rj.time_interp = PB.LinInterp(rj.data_time, rj.pars.cycle_time[])
     else
         @info "  generating constant time forcing from $num_nc_time_recs time record(s)"
         rj.time_interp = nothing
@@ -232,7 +232,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # create variable interpolator(s) (if any)
     rj.interp_interp = []
     rj.interp_fn = []
-    for (vidx, (vname, vlog)) in enumerate(PB.IteratorUtils.zipstrict(rj.pars.interp_vars.v, rj.pars.interp_log.v; errmsg="length(interp_vars) != length(interp_log)"))
+    for (vidx, (vname, vlog)) in enumerate(PB.IteratorUtils.zipstrict(rj.pars.interp_vars, rj.pars.interp_log; errmsg="length(interp_vars) != length(interp_log)"))
         if vlog
             interp_fn = log
         else
@@ -273,12 +273,12 @@ function do_force_grid(
     end
 
     # apply scaling
-    wt_lo *= rj.pars.scale.v
-    wt_hi *= rj.pars.scale.v
+    wt_lo *= rj.pars.scale[]
+    wt_hi *= rj.pars.scale[]
     # apply scalar offset
-    scalar_offset = rj.pars.constant_offset.v
-    if rj.pars.scale_offset_var.v != 0.0
-        scalar_offset += rj.pars.scale_offset_var.v * vars.scalar_offset[]
+    scalar_offset = rj.pars.constant_offset[]
+    if rj.pars.scale_offset_var[] != 0.0
+        scalar_offset += rj.pars.scale_offset_var[] * vars.scalar_offset[]
     end
 
     if length(interp_vars) == 0
@@ -431,28 +431,28 @@ end
 
 function PB.check_configuration(rj::ReactionForceInsolation, model::PB.Model)
     configok = true
-    if !isempty(rj.pars.latitude.v) && !isnothing(rj.domain.grid)
-        if rj.domain.grid.ncells != length(rj.pars.latitude.v)
-            @warn "check_configuration $(PB.fullname(rj))  length(latitude) parameter $(length(rj.pars.latitude.v)) != grid.ncells $(grid.ncells)"
+    if !isempty(rj.pars.latitude) && !isnothing(rj.domain.grid)
+        if rj.domain.grid.ncells != length(rj.pars.latitude)
+            @warn "check_configuration $(PB.fullname(rj))  length(latitude) parameter $(length(rj.pars.latitude)) != grid.ncells $(grid.ncells)"
             configok = false
         end
     end
     return configok
 end
 
-function do_force_insolation(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
-    rj = m.reaction
+function do_force_insolation(m::PB.ReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+    
     grid = m.p
     
     tforce = PB.value_ad(vars.tforce[])
 
     @inbounds for i in cellrange.indices
-        if isempty(rj.pars.latitude.v)
+        if isempty(pars.latitude)
             lat = PB.Grids.get_lat(grid, i)
         else
-            lat = rj.pars.latitude.v[i]
+            lat = pars.latitude[i]
         end
-        vars.insolation[i] = insolMITgcmDIC(tforce,lat, albedo=rj.pars.albedo.v, parfrac=rj.pars.parfrac.v)
+        vars.insolation[i] = insolMITgcmDIC(tforce, lat, albedo=pars.albedo[], parfrac=pars.parfrac[])
     end
 
     return nothing

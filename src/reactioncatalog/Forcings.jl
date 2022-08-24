@@ -52,22 +52,22 @@ function PB.register_methods!(rj::ReactionForceInterp)
     return nothing
 end
 
-function setup_forceinterp(m::PB.ReactionMethod, _, cellrange::PB.AbstractCellRange, attribute_name)
+function setup_forceinterp(m::PB.ReactionMethod, pars, _, cellrange::PB.AbstractCellRange, attribute_name)
     attribute_name == :setup || return
 
     @info "$(PB.fullname(m)):"
 
     rj = m.reaction
 
-    rj.interp_F = PB.LinInterp(rj.pars.force_times.v)
+    rj.interp_F = PB.LinInterp(pars.force_times.v)
 
     return nothing
 end
 
-function do_forceinterp(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+function do_forceinterp(m::PB.ReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
     rj = m.reaction
-  
-    vars.F[] = PB.interp(rj.interp_F, vars.tforce[], rj.pars.force_values.v)
+
+    vars.F[] = PB.interp(rj.interp_F, vars.tforce[], pars.force_values.v)
    
     return nothing
 end

@@ -487,7 +487,7 @@ function dispatch_setup(
 
     for (method, vardata) in modeldata.sorted_methodsdata_setup
         for cr in _dispatch_cellranges(method, cellranges)
-           method.methodfn(method, vardata[], cr, attribute_name)
+           call_method(method, vardata[], cr, attribute_name)
         end
     end
 
@@ -596,7 +596,7 @@ function emits unrolled code with a function call for each Tuple element.
     for j=1:fieldcount(M)
         push!(ex.args,
             quote
-                dl.methods[$j].methodfn(dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                call_method(dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
             end
             )
     end
