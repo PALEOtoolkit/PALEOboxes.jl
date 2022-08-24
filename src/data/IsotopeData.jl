@@ -145,16 +145,16 @@ isotope_totaldelta(::Type{IsotopeLinear}, total, delta) = IsotopeLinear(total, t
 isotope_totaldelta(::Type{IsotopeLinear{T, T}}, total::T, delta::T) where {T} = IsotopeLinear(total, total*delta)
 
 """
-    get_total(is::IsotopeLinear) -> T
+    get_total(is::IsotopeLinear)
 
-Get isotope delta (per mil)
+Get isotope total
 """
 function get_total(is::IsotopeLinear)
     return is.v
 end
 
 """
-    get_delta(is::IsotopeLinear) -> T
+    get_delta(is::IsotopeLinear)
 
 Get isotope delta (per mil)
 """
