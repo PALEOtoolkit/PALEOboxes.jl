@@ -201,7 +201,7 @@ function do_react_ratestoich(m::ReactionMethod, (rate, delta, sms_data),  cellra
         # @Infiltrator.infiltrate
 
         if isotype <: AbstractIsotopeScalar
-            eta = etapar.v
+            eta = etapar[]
             @inbounds for idx in cellrange.indices
                 sms_data[idx] += isotope_totaldelta(isotype, stoich*rate[idx], delta[idx] + eta)
             end

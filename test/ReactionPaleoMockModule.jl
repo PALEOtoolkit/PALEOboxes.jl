@@ -22,18 +22,17 @@ Base.@kwdef mutable struct ReactionPaleoMock{P} <: PB.AbstractReaction
 end
 
 
-function do_stateandeqb(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+function do_stateandeqb(m::PB.ReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
     vars.scalar_prop[] = vars.scalar_dep[]  # 25nS, 0 allocations
  
     return nothing
 end
 
-function do_react(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
-    rj = m.reaction
-    
+function do_react(m::PB.ReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+ 
     @inbounds  for i in cellrange.indices
-        vars.phy[i] = rj.pars.par1.v
+        vars.phy[i] = pars.par1[]
     end
 
     return nothing
@@ -43,9 +42,9 @@ end
 function PB.register_methods!(rj::ReactionPaleoMock)
     println("ReactionPaleoMock.register_methods! rj=", rj)
 
-    println("  parint=", rj.pars.parint.v)
-    println("  parbool=", rj.pars.parbool.v)
-    println("  parstring=", rj.pars.parstring.v)
+    println("  parint=", rj.pars.parint[])
+    println("  parbool=", rj.pars.parbool[])
+    println("  parstring=", rj.pars.parstring[])
   
     vars_stateandeqb = [
         PB.VarDepScalar("scalar_dep", "mol m-3", "a scalar dependency"),

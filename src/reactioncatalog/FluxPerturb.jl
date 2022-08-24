@@ -58,7 +58,7 @@ function PB.register_methods!(rj::ReactionFluxPerturb)
     
     @info "ReactionFluxPerturb.register_methods! $(PB.fullname(rj))"
 
-    IsotopeType = rj.pars.field_data.v
+    IsotopeType = rj.pars.field_data[]
     PB.setfrozen!(rj.pars.field_data)
 
     vars = [
@@ -87,7 +87,8 @@ function PB.register_methods!(rj::ReactionFluxPerturb)
 end
 
 function setup_flux_perturb(
-    m::PB.ReactionMethod, 
+    m::PB.ReactionMethod,
+    pars,
     _,
     cellrange::PB.AbstractCellRange,
     attribute_name,
@@ -100,15 +101,15 @@ function setup_flux_perturb(
     IsotopeType = m.p
 
     rj.interp_Ftotal = Interpolations.LinearInterpolation(
-        rj.pars.perturb_times.v, 
-        rj.pars.perturb_totals.v,
+        pars.perturb_times[:], 
+        pars.perturb_totals[:],
         extrapolation_bc = Interpolations.Throw()
     )
 
     if IsotopeType <: PB.AbstractIsotopeScalar
         rj.interp_Fdelta = Interpolations.LinearInterpolation(
-            rj.pars.perturb_times.v, 
-            rj.pars.perturb_deltas.v,
+            pars.perturb_times[:], 
+            pars.perturb_deltas[:],
             extrapolation_bc = Interpolations.Throw()
         )
     end
@@ -170,7 +171,7 @@ end
 function PB.register_methods!(rj::ReactionRestore)
   
     PB.setfrozen!(rj.pars.field_data)
-    IsotopeType = rj.pars.field_data.v   
+    IsotopeType = rj.pars.field_data[]
 
     vars = [
         PB.VarDepScalar(    "WatchLevel",                   "mol",      "level to observe and restore",
@@ -196,11 +197,11 @@ function do_restore(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRa
     rj = m.reaction    
     IsotopeType = m.p
 
-    requiredlevelisotope = @PB.isotope_totaldelta(IsotopeType, rj.pars.RequiredLevel.v, rj.pars.RequiredDelta.v)
+    requiredlevelisotope = @PB.isotope_totaldelta(IsotopeType, rj.pars.RequiredLevel[], rj.pars.RequiredDelta[])
 
-    restoreflux = -(vars.WatchLevel[] - requiredlevelisotope)/rj.pars.trestore.v
+    restoreflux = -(vars.WatchLevel[] - requiredlevelisotope)/rj.pars.trestore[]
    
-    if !rj.pars.source_only.v || PB.get_total(restoreflux) > 0
+    if !rj.pars.source_only[] || PB.get_total(restoreflux) > 0
         vars.RestoringApplied[] = restoreflux
         vars.RestoringFlux[]    += restoreflux
     else

@@ -19,11 +19,16 @@ $(FIELDS)
 # methodfn
 The `methodfn` callback is:
 
+    methodfn(m::ReactionMethod, pars, vardata::Tuple, cellrange::AbstractCellRange, modelctxt)
+
+or (if Parameters are not required):
+
     methodfn(m::ReactionMethod, vardata::Tuple, cellrange::AbstractCellRange, modelctxt)
 
 With arguments:
 - `m::ReactionMethod`: context is available as `m.reaction::AbstractReaction` (the Reaction that defined the `ReactionMethod`),
   and `m.p` (an arbitrary extra context field supplied when `ReactionMethod` created).
+- `pars`: a struct with Parameters as fields (current just the ParametersTuple defined as `reaction.pars`)
 - `vardata`: A Tuple of collections of views on Domain data arrays corresponding to [`VariableReaction`](@ref)s defined by `varlists`
 - `cellrange::AbstractCellRange`: range of cells to calculate.
 - `modelctxt`:
@@ -38,7 +43,7 @@ the data types of `vardata` or to cache expensive calculations:
 
 This is called after model arrays are allocated, and prior to setup.
 """
-mutable struct ReactionMethod{M, R, P, V} <: AbstractReactionMethod    
+mutable struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod    
     "methodfn(m::ReactionMethod, vardata::Tuple, cellrange::AbstractCellRange, modelctxt)
      callback from Model framework"
     methodfn::M
@@ -74,7 +79,10 @@ mutable struct ReactionMethod{M, R, P, V} <: AbstractReactionMethod
         preparefn = (m, vardata) -> vardata,
     ) where {M <: Function, R <: AbstractReaction, P, V <: Tuple{Vararg{AbstractVarList}}}        
         
-        newmethod = new{M, R, P, V}(
+        # number of arguments that methodfn takes
+        nargs = fieldcount(methods(methodfn)[1].sig) - 1
+
+        newmethod = new{M, R, P, V, nargs}(
             methodfn, 
             reaction,
             name,
@@ -93,6 +101,13 @@ mutable struct ReactionMethod{M, R, P, V} <: AbstractReactionMethod
         return newmethod
     end
 end
+
+# deprecated form
+call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where {M, R, P, V} = 
+    method.methodfn(method, vardata, cr, modelctxt)
+# updated form with pars
+call_method(method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt) where {M, R, P, V} = 
+    method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
 
 """
     get_variables_tuple(method::AbstractReactionMethod) -> (Vector{VariableReaction}, ...)

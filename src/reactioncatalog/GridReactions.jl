@@ -27,7 +27,7 @@ end
 function PB.set_model_geometry(rj::ReactionUnstructuredVectorGrid, model::PB.Model)
     @info "set_model_geometry $(PB.fullname(rj))"
 
-    grid = PB.Grids.UnstructuredVectorGrid(ncells=rj.pars.ncells.v)
+    grid = PB.Grids.UnstructuredVectorGrid(ncells=rj.pars.ncells[])
     rj.domain.grid = grid
     
     @info "  set $(rj.domain.name) Domain size=$(grid.ncells) grid=$grid"
@@ -116,14 +116,14 @@ end
 function PB.set_model_geometry(rj::ReactionGrid2DNetCDF, model::PB.Model)
     @info "set_model_geometry $(PB.fullname(rj))"
 
-    @info "  reading 2D grid from $(rj.pars.grid_file.v)"
+    @info "  reading 2D grid from $(rj.pars.grid_file[])"
     grid2D = PB.Grids.CartesianGrid(
-        rj.pars.grid_type.v,
-        rj.pars.grid_file.v, rj.pars.coordinate_names.v,
-        equalspacededges=rj.pars.equalspacededges.v
+        rj.pars.grid_type[],
+        rj.pars.grid_file[], rj.pars.coordinate_names.v,
+        equalspacededges=rj.pars.equalspacededges[]
     )
 
-    if rj.pars.grid_type.v == PB.Grids.CartesianLinearGrid
+    if rj.pars.grid_type[] == PB.Grids.CartesianLinearGrid
         # define a linear index including every cell, in column-major order (first indices are consecutive in memory)
         v_i = vec([i for i=1:grid2D.dims[1], j=1:grid2D.dims[2]])
         v_j = vec([j for i=1:grid2D.dims[1], j=1:grid2D.dims[2]])
@@ -156,6 +156,7 @@ end
 
 function setup_grid_2DNetCDF(
     m::PB.ReactionMethod,
+    pars,
     (grid_vars, ),
     cellrange::PB.AbstractCellRange,
     attribute_name
@@ -171,16 +172,16 @@ function setup_grid_2DNetCDF(
     length(cellrange.indices) == grid2D.ncells ||
         error("tiled cellrange not supported")
 
-    if !isempty(rj.pars.area_var.v)
-        NCDatasets.Dataset(rj.pars.grid_file.v) do ds
-            area2D = Array(ds[rj.pars.area_var.v][:, :, 1])
+    if !isempty(pars.area_var[])
+        NCDatasets.Dataset(pars.grid_file[]) do ds
+            area2D = Array(ds[pars.area_var[]][:, :, 1])
             grid_vars.Asurf .= cartesian_to_internal(rj.domain.grid, area2D)
         end
     else        
         for i in cellrange.indices
             lon_edges = PB.Grids.get_lon_edges(grid2D, i)
             lat_edges = PB.Grids.get_lat_edges(grid2D, i)
-            area = calc_spherical_area(rj.pars.planet_radius.v, lon_edges, lat_edges)
+            area = calc_spherical_area(pars.planet_radius[], lon_edges, lat_edges)
             grid_vars.Asurf[i] = area
         end
     end

@@ -6,7 +6,7 @@ import Preferences
 
 A reaction parameter of type `T`.
 Create using short names `ParDouble`, `ParInt`, `ParBool`, `ParString`.
-Read value as `<par>.v::T`, set with [`setvalue!`](@ref).
+Read value as `<par>[]`, set with [`setvalue!`](@ref).
 
 Parameters with `external=true` may be set from the Model-level Parameters list, if `name` is present in that list.
 
@@ -26,6 +26,11 @@ mutable struct Parameter{T, ParseFromString} <: AbstractParameter
     frozen::Bool
     external::Bool
 end
+
+# Parameter behaves as a minimal 0D array (NB: doesn't support full Array interface)
+Base.getindex(parameter::Parameter) = parameter.v
+Base.size(parameter::Parameter) = Tuple{}()
+Base.length(parameter::Parameter) = 1
 
 """
     ParDouble(name,  defaultvalue::Float64; units="", description="", external=false)
@@ -115,7 +120,7 @@ end
 
 A reaction parameter of type Vector{T}.
 Create using short names `ParDoubleVec`, `ParStringVec`.
-Values are `<par>.v::Vector{T}`.
+Values are `<par>[i]`.
 Set using standard yaml syntax for a vector eg [1, 2, 3]
 
 `ParseFromString` should usually be `false` (see [`Parameter`](@ref)).
@@ -130,6 +135,16 @@ mutable struct VecParameter{T, ParseFromString} <: AbstractParameter
     frozen::Bool
     external::Bool
 end
+
+# VecParameter behaves as a minimal 1D array (NB: doesn't support full Array interface)
+Base.getindex(p::VecParameter, index) = p.v[index]
+Base.firstindex(p::VecParameter) = firstindex(p.v)
+Base.lastindex(p::VecParameter) = lastindex(p.v)
+Base.size(p::VecParameter) = size(p.v)
+Base.length(p::VecParameter) = length(p.v)
+Base.iterate(p::VecParameter, state=1) = state > length(p) ? nothing : (p.v[state], state+1)
+Base.keys(p::VecParameter) = keys(p.v)
+Base.eltype(::Type{VecParameter{T, ParseFromString}}) where {T, ParseFromString} = T
 
 """
     ParDoubleVec(name, defaultvalue::Vector{Float64}; units="", description="", external=false)
