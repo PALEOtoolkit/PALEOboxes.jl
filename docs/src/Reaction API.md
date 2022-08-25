@@ -88,7 +88,7 @@ Reaction method functions should iterate over the cells in the Domain supplied b
 
 The simplest case is a method function that iterates over individual cells, with skeleton form:
 
-    function do_something_cellwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+    function do_something_cellwise(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
         @inbounds for i in cellrange.indices
             vars.A[i]  = something*vars.B[i]*vars.C[i]  # in general A is some function of B, C, etc
@@ -103,7 +103,7 @@ The simplest case is a method function that iterates over individual cells, with
 If necessary (eg to calculate vertical transport), provided the model grid and cellrange allow,
 it is possible to iterate over columns and then cells within columns (in order from top to bottom):
 
-    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+    function do_something_columnwise(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
         @inbounds for (icol, colindices) in cellrange.columns
             accum = zero(vars.A[first(colindices)]) # accumulator of appropriate type
@@ -121,7 +121,7 @@ it is possible to iterate over columns and then cells within columns (in order f
 
 Iteration from bottom to top within a column can be implemented using `Iterators.reverse`, eg
 
-    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+    function do_something_columnwise(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
         @inbounds for (icol, colindices) in cellrange.columns
             colreverse = Iterators.reverse(colindices)
             for i in colreverse  # order is bottom to top
@@ -140,7 +140,7 @@ Iteration from bottom to top within a column can be implemented using `Iterators
 
 In rare cases where it is necessary to operate on a Vector representing a quantity for the whole column (rather than just iterate through it), this can be implemented using `view`, eg
 
-    function do_something_columnwise(m::PB.AbstractReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+    function do_something_columnwise(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
         @inbounds for (icol, colindices) in cellrange.columns
             A_col = view(vars.A, colindices)  # A_col is an AbstractVector with contiguous indices 1:length(colindices)
             B_col = view(vars.B, colindices)  # B_col is an AbstractVector with contiguous indices 1:length(colindices)
