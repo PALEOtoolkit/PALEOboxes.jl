@@ -2,10 +2,21 @@
 import Preferences
 
 """
+    AbstractParameter
+
+Base Type for Parameters
+    
+See also: [`Parameter`](@ref), [`VecParameter`](@ref), [`VecVecParameter`](@ref)
+"""
+AbstractParameter
+
+"""
     Parameter{T, ParseFromString}
 
 A reaction parameter of type `T`.
+
 Create using short names `ParDouble`, `ParInt`, `ParBool`, `ParString`.
+
 Read value as `<par>[]`, set with [`setvalue!`](@ref).
 
 Parameters with `external=true` may be set from the Model-level Parameters list, if `name` is present in that list.
@@ -118,12 +129,19 @@ end
 """
     VecParameter{T, ParseFromString}
 
-A reaction parameter of type Vector{T}.
-Create using short names `ParDoubleVec`, `ParStringVec`.
-Values are `<par>[i]`.
-Set using standard yaml syntax for a vector eg [1, 2, 3]
+A reaction parameter of type `Vector{T}`.
 
-`ParseFromString` should usually be `false` (see [`Parameter`](@ref)).
+Create using short names `ParDoubleVec`, `ParStringVec`.
+
+Read values as `<par>[i]`, access raw `Vector{T}` as `<par>.v`.
+
+Set with [`setvalue!`](@ref), in config file use standard yaml syntax for a vector eg [1, 2, 3]
+
+See [`Parameter`](@ref) for additional documentation.
+
+# Implementation
+Implements part of the `AbstractVector` interface, sufficient to access elements as `<par>[i]`,
+and to support iteration eg `for v in <par>;  ...; end`.
 """
 mutable struct VecParameter{T, ParseFromString} <: AbstractParameter
     name::String
@@ -204,11 +222,14 @@ end
     VecVecParameter{T, ParseFromString}
 
 A reaction parameter of type Vector{Vector{T}}.
+
 Create using short names `ParDoubleVecVec`.
-Values are `<par>.v::Vector{Vector{T}}`.
+
+Read values as `<par>.v::Vector{Vector{T}}`.
+
 Set using standard yaml syntax for a vector of vectors eg [[1, 2, 3], [4, 5, 6]]
 
-`ParseFromString` should usually be `false` (see [`Parameter`](@ref)).
+See [`Parameter`](@ref) for additional documentation.
 """
 mutable struct VecVecParameter{T, ParseFromString} <: AbstractParameter
     name::String
