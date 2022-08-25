@@ -13,13 +13,10 @@ value_ad(::Type{Float64}, x::Float64)  = x     # avoid method ambiguity
 # TODO there doesn't seem to be an easy way of parameterising ModelData by an Array type ?
 const PaleoArrayType = Array
 
-"""
-    AbstractParameter
+################################
+# Parameters
+###############################
 
-Base Type for Parameters
-    
-See also: [`Parameter`](@ref), [`VecParameter`](@ref)
-"""
 abstract type AbstractParameter
 end
 
