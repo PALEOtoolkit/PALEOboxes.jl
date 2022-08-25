@@ -133,7 +133,7 @@ end
         "ReactionFluxTransfer", "ReactionReservoirScalar", "ReactionFluxPerturb", "ReactionReservoir",
         "ReactionReservoirForced", "ReactionSum", "ReactionFluxTarget", "ReactionForceInterp", "ReactionGrid2DNetCDF",
         "ReactionAreaVolumeValInRange", "ReactionReservoirWellMixed", "ReactionForceGrid", "ReactionConst", 
-        "ReactionRestore", "ReactionScalarConst", "ReactionForceInsolation", "ReactionVectorSum", "ReactionWeightedMean",
+        "ReactionRestore", "ReactionScalarConst", "ReactionVectorSum", "ReactionWeightedMean",
         "ReactionReservoirTotal", "ReactionUnstructuredVectorGrid", "ReactionCartesianGrid", "ReactionReservoirConst",
     ]
 
