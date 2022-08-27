@@ -22,26 +22,30 @@ end
 
 
 """
-    bench_method(dispatchlist, domainname="", reactionname="", methodname="";
-            deltat::Float64=0.0,
-            use_time=false,
-            use_btime=true, 
-            code_llvm=false,
-            code_native=true,
-            code_warntype=false)
+    bench_method(
+        dispatchlist, domainname="", reactionname="", methodname="";
+        deltat::Float64=0.0,
+        use_time=false,
+        use_btime=true, 
+        do_code_llvm=false,
+        do_code_native=true,
+        do_code_warntype=false
+    )
     
 Benchmark or dump llvm code etc for specified method(s).
     
 Iterates through `dispatchlist`, if names match then benchmark method else just call method normally.
 """
-function bench_method(dispatchlist, domainname="", reactionname="", methodname="";
+function bench_method(
+    dispatchlist, domainname="", reactionname="", methodname="";
     deltat::Float64=0.0,
     call_all=true,
     use_time=false,
     use_btime=true, 
     do_code_llvm=false,
     do_code_native=false,
-    do_code_warntype=false)
+    do_code_warntype=false,
+)
 
     # fns, methods, vardatas, crs = dispatchlist
     # iterate through dispatchlist, if names match then benchmark method else just call method
@@ -56,34 +60,39 @@ function bench_method(dispatchlist, domainname="", reactionname="", methodname="
             println(PB.fullname(method), ":")
             if use_time
                 println("    @time:")
-                @time method.methodfn(method, vardata[], cr, deltat)
-            elseif use_btime
+                @time PB.call_method(method, vardata[], cr, deltat)
+            end
+            if use_btime
                 println("    @btime:")
-                @btime $method.methodfn($method, $vardata[], $cr, $deltat)
-            elseif do_code_llvm
+                @btime PB.call_method($method, $vardata[], $cr, $deltat)
+            end
+            if do_code_llvm
                 println("    @code_llvm:")
-                @code_llvm method.methodfn(method, vardata[], cr, deltat)
-            elseif do_code_native
-                println("    @code_native:")
-                @code_native method.methodfn(method, vardata[], cr, deltat)
-            elseif do_code_warntype
+                b = IOBuffer()
+                PB.call_method_codefn(IOContext(b, :color=>true), code_llvm, method, vardata[], cr, deltat)
+                println(String(take!(b)))                
+            end
+            if do_code_native
+                println("    @code_native:")                
+                b = IOBuffer()
+                PB.call_method_codefn(IOContext(b, :color=>true), code_native, method, vardata[], cr, deltat)
+                println(String(take!(b)))
+            end
+            if do_code_warntype
                 println("    @code_warntype:")
-                # b = IOBuffer()
-                # code_warntype(IOContext(b, :color=>true), 
-                #    fn, (typeof(method), typeof(vardata[]), typeof(cr), typeof(deltat))
-                #    )
-                # println(String(take!(b)))
-                @code_warntype method.methodfn(method, vardata[], cr, deltat)
+                b = IOBuffer()
+                PB.call_method_codefn(IOContext(b, :color=>true), code_warntype, method, vardata[], cr, deltat)
+                println(String(take!(b)))
+                # @code_warntype PB.call_method(method, vardata[], cr, deltat)
             end
         elseif call_all
-            method.methodfn(method, vardata[], cr, deltat)
+            PB.call_method(method, vardata[], cr, deltat)
         end
         
     end
 
     return nothing
 end
-
 
 
 """
