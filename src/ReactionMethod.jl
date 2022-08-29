@@ -109,6 +109,14 @@ call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where
 call_method(method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt) where {M, R, P, V} = 
     method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
 
+# for benchmarking etc: apply codefn to the ReactionMethod methodfn (without this, will just apply to the call_method wrapper)
+# codefn=code_warntype, code_llvm, code_native
+call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt; kwargs...) where {M, R, P, V} = 
+    codefn(io, method.methodfn, (typeof(method), typeof(vardata), typeof(cr), typeof(modelctxt)); kwargs...)
+call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt; kwargs...) where {M, R, P, V} = 
+    codefn(io, method.methodfn, (typeof(method), typeof(method.reaction.pars), typeof(vardata), typeof(cr), typeof(modelctxt)); kwargs...)
+
+
 """
     get_variables_tuple(method::AbstractReactionMethod) -> (Vector{VariableReaction}, ...)
     
