@@ -1,7 +1,7 @@
 name = "PALEOboxes"
 uuid = "804b410e-d900-4b2a-9ecd-f5a06d4c1fd4"
 authors = ["Stuart Daines <stuart.daines@gmail.com>"]
-version = "0.20.4"
+version = "0.20.5"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
