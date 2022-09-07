@@ -185,7 +185,21 @@ function get_subdomain(grid::PB.AbstractMesh, subdomainname::AbstractString)
     
     return subdomain
 end
-    
+ 
+
+"""
+    internal_size(grid::PB.AbstractMesh [, subdomainname::AbstractString]) -> size::NTuple{Int}
+
+Get Domain or SubDomain size
+"""
+function  PB.internal_size(grid::Union{PB.AbstractMesh, Nothing}, subdomainname::AbstractString)
+    if isempty(subdomainname)
+        return PB.internal_size(grid)
+    else
+        subdomain = get_subdomain(grid, subdomainname)
+        return (length(subdomain.indices),)
+    end
+end
 
 ###################################
 # Fallbacks for Domain with no grid
@@ -193,6 +207,9 @@ end
 
 # allow Vector variables length 1 in a 0D Domain without a grid
 PB.internal_size(grid::Nothing) = (1, )
+# PB.internal_size(grid::Nothing, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+
+get_subdomain(grid::Nothing, subdomainname::AbstractString) = error("get_subdomain: no subdomain $subdomainname")
 
 """
     create_default_cellrange(domain, grid::Nothing [; operatorID=0]) -> CellRange
@@ -239,6 +256,7 @@ function Base.show(io::IO, grid::UnstructuredVectorGrid)
 end
 
 PB.internal_size(grid::UnstructuredVectorGrid) = (grid.ncells, )
+# PB.internal_size(grid::UnstructuredVectorGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
 
 """
     get_region(grid::UnstructuredVectorGrid, values; cell) -> 
@@ -306,7 +324,7 @@ function Base.show(io::IO, grid::UnstructuredColumnGrid)
 end
 
 PB.internal_size(grid::UnstructuredColumnGrid) = (grid.ncells, )
-
+# PB.internal_size(grid::UnstructuredColumnGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
 
 """
     get_region(grid::UnstructuredColumnGrid, values; column, [cell=nothing]) -> 
@@ -419,6 +437,8 @@ function Base.show(io::IO, grid::CartesianLinearGrid)
 end
 
 PB.internal_size(grid::CartesianLinearGrid) = (grid.ncells, )
+# PB.internal_size(grid::CartesianLinearGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+
 PB.cartesian_size(grid::CartesianLinearGrid) = Tuple(grid.dims)
 
 
@@ -465,6 +485,8 @@ function Base.show(io::IO, grid::CartesianArrayGrid)
 end
 
 PB.internal_size(grid::CartesianArrayGrid) = Tuple(grid.dims)
+# PB.internal_size(grid::CartesianArrayGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+
 PB.cartesian_size(grid::CartesianArrayGrid) = Tuple(grid.dims)
 
 

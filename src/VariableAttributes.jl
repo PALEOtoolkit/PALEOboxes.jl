@@ -5,12 +5,13 @@
 #####################################################
 
 """
-    set_attribute!(var::VariableBase, name::Symbol, value, allow_create=false)
+    set_attribute!(var::VariableBase, name::Symbol, value, allow_create=false) -> var
 
 Set Variable attribute.
 """
 function set_attribute!(var::VariableBase, name::Symbol, value; allow_create=false)
-    return _set_attribute!(var.attributes, name, value, allow_create)
+    _set_attribute!(var.attributes, name, value, allow_create)
+    return var
 end
 
 """

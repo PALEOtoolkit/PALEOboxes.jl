@@ -296,22 +296,28 @@ function reallocate_variables!(vars, modeldata, new_eltype)
     return reallocated_variables
 end
 
+"""
+    check_lengths(var::VariableDomain)
 
+Check that sizes of all linked Variables match
+"""
 function check_lengths(var::VariableDomain)
 
     var_space = get_attribute(var, :space)
     var_scalar = (var_space == ScalarSpace)
-    var_size = var_scalar ? (1, ) : internal_size(var.domain.grid)
+    
     for lv in get_all_links(var)
         if get_attribute(lv, :check_length, true)
+            var_size = var_scalar ? (1, ) : internal_size(var.domain.grid, lv.linkreq_subdomain)
+
             link_space = get_attribute(lv, :space)
             link_scalar = (link_space == ScalarSpace)
             link_size = link_scalar ? (1, ) : internal_size(lv.method.domain.grid)
 
             var_size == link_size || 
                 error("check_lengths: VariableDomain $(fullname(var)), :space=$var_space size=$var_size "*
-                    "!= $(fullname(lv)), :space=$link_space size=$link_size (check size of Domains $(var.domain.name), $(lv.method.domain.name) "*
-                    "and Variable :space")
+                    "!= $(fullname(lv)), :space=$link_space size=$link_size created by $(typename(lv.method.reaction)) (check size of Domains $(var.domain.name), $(lv.method.domain.name), "*
+                    "$(isempty(lv.linkreq_subdomain) ? "" : "subdomain "*lv.linkreq_subdomain*",") and Variables :space)")
         end
     end
 
