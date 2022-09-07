@@ -316,23 +316,23 @@ function PB.register_dynamic_methods!(rj::ReactionFluxTransfer, model::PB.Model)
                 input_var.name
             )
             input_attrb = Tuple(atnm=>PB.get_attribute(input_var, atnm) for atnm in (:field_data, :data_dims, :space))
-           
-            push!(var_inputs, 
-                PB.VarDep("input_"*fluxname => input_namestr, "mol yr-1", "flux input",           
-                    attributes=input_attrb,
-                )
+            v_input = PB.VarDep("input_"*fluxname => input_namestr, "mol yr-1", "flux input",           
+                attributes=input_attrb,
             )
+            if rj.pars.transfer_matrix[] != "Identity"
+                PB.set_attribute!(v_input, :check_length, false; allow_create=true)
+            end
+            push!(var_inputs, v_input)
 
             output_namestr = "("*PB.combine_link_name(
                 output_domain_name, 
                 output_subdomain_name, 
                 replace(output_var_patternname, "\$fluxname\$" => fluxname)
             )*")"
-            push!(var_outputs, 
-                PB.VarContrib("output_"*fluxname => output_namestr, "mol yr-1", "flux output",
-                    attributes=input_attrb,
-                )
+            v_output = PB.VarContrib("output_"*fluxname => output_namestr, "mol yr-1", "flux output",
+                attributes=input_attrb,
             )
+            push!(var_outputs, v_output)
         else
             @debug "  ignoring $(PB.fullname(input_var))"
         end

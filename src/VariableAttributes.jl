@@ -5,12 +5,13 @@
 #####################################################
 
 """
-    set_attribute!(var::VariableBase, name::Symbol, value, allow_create=false)
+    set_attribute!(var::VariableBase, name::Symbol, value, allow_create=false) -> var
 
 Set Variable attribute.
 """
 function set_attribute!(var::VariableBase, name::Symbol, value; allow_create=false)
-    return _set_attribute!(var.attributes, name, value, allow_create)
+    _set_attribute!(var.attributes, name, value, allow_create)
+    return var
 end
 
 """
@@ -129,9 +130,9 @@ const StandardAttributes = [
     Attribute{Type, AbstractData}(        :field_data,           UndefinedData,   true,       "",         "AbstractData type Variable contains")    
     Attribute{Tuple{Vararg{String}}, Tuple{Vararg{String}}}(
                                           :data_dims,            (),              true,       "",         "Variable data dimensions, or empty for a scalar")
-    Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",           "function space Variable is defined on")
-    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",  "Mesh on which Variable is defined (empty for Domain spatial scalar)")
-
+    Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",         "function space Variable is defined on")
+    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "Mesh on which Variable is defined (empty for Domain spatial scalar)")
+    Attribute{Bool, Nothing}(             :check_length,         true,            false,      "",         "true to check length matches length of linked VariableDomain")
 
     Attribute{VariableFunction, VariableFunction}(
                                           :vfunction,             VF_Undefined,   true,       "",         "host function")
