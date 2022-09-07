@@ -129,9 +129,9 @@ const StandardAttributes = [
     Attribute{Type, AbstractData}(        :field_data,           UndefinedData,   true,       "",         "AbstractData type Variable contains")    
     Attribute{Tuple{Vararg{String}}, Tuple{Vararg{String}}}(
                                           :data_dims,            (),              true,       "",         "Variable data dimensions, or empty for a scalar")
-    Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",           "function space Variable is defined on")
-    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",  "Mesh on which Variable is defined (empty for Domain spatial scalar)")
-
+    Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",         "function space Variable is defined on")
+    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "Mesh on which Variable is defined (empty for Domain spatial scalar)")
+    Attribute{Bool, Nothing}(             :check_length,         true,            false,      "",         "true to check length matches length of linked VariableDomain")
 
     Attribute{VariableFunction, VariableFunction}(
                                           :vfunction,             VF_Undefined,   true,       "",         "host function")

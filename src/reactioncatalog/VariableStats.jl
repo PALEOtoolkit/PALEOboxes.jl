@@ -68,11 +68,16 @@ function PB.register_methods!(rj::ReactionSum)
         (linkreq_domain, linkreq_subdomain, linkreq_name, link_optional) =
             PB.parse_variablereaction_namestr(varname)
         localname = PB.combine_link_name(linkreq_domain, "", linkreq_name, sep="_")
-         # mark all vars_to_add as optional to help diagnose config errors
-         # default :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
-        push!(vars_to_add, 
-            PB.VarDep(localname => "("*varname*")", "", "")
-        )
+
+        # mark all vars_to_add as optional to help diagnose config errors
+        # default :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
+        v =  PB.VarDep(localname => "("*varname*")", "", "")
+
+        # no length check if scalar sum
+        if !rj.pars.vectorsum[]
+            PB.set_attribute!(v, :check_length, false; allow_create=true)
+        end
+        push!(vars_to_add, v)
     end
 
     if rj.pars.vectorsum[]
