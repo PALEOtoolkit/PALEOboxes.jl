@@ -160,7 +160,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # to the n-D cartesian_size of the forcings read from the NetCDF file 
     ncartesiandims = length(PB.cartesian_size(rj.domain.grid))  # as read from NetCDF
     cartesiancolons = fill(Colon(), ncartesiandims)
-    ninternaldims = length(PB.internal_size(rj.domain.grid)) # PALEO array layout
+    ninternaldims = length(PB.internal_size(PB.CellSpace, rj.domain.grid)) # PALEO array layout
     internalcolons = fill(Colon(), ninternaldims)
 
     ninterpdims = length(rj.pars.interp_vars)
@@ -170,7 +170,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # map to grid internal storage (ie mapping ncartesiandims -> ninternaldims)
     #           grid             interp           time
     data_ndims = ninternaldims + length(interpdims) + 1
-    rj.data_var = Array{Float64, data_ndims}(undef, PB.internal_size(rj.domain.grid)..., interpdims..., num_time_recs)
+    rj.data_var = Array{Float64, data_ndims}(undef, PB.internal_size(PB.CellSpace, rj.domain.grid)..., interpdims..., num_time_recs)
     @info "  size(data_var) = $(size(rj.data_var))"
         
     # TODO - reorder indices (currently require  gridvars..., interpvars..., timevar)

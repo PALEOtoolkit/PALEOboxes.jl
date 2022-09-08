@@ -441,13 +441,13 @@ function do_transfer(
     function _transfer(acinput, acoutput, tm_tr, cr)
         if length(acoutput) == 1
             # Scalar Variables, (we have already checked size(tm_tr, 2) == 1)
-            @inbounds for idx in SparseArrays.nzrange(tm_tr, 1)
+            for idx in SparseArrays.nzrange(tm_tr, 1)
                 i = tm_tr.rowval[idx]
                 acoutput[1] += acinput[i]*tm_tr.nzval[idx]
             end
         else
             for j in cr.indices
-                @inbounds for idx in SparseArrays.nzrange(tm_tr, j)
+                for idx in SparseArrays.nzrange(tm_tr, j)
                     i = tm_tr.rowval[idx]
                     acoutput[j] += acinput[i]*tm_tr.nzval[idx]
                 end
