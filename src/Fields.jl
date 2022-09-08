@@ -21,9 +21,17 @@ end
 """
     CellSpace <: AbstractSpace
 
-A per-cell quantity. Use as Variable attribute :space to create a Variable with data array dimensions from Grid
+A per-cell quantity. Use as Variable attribute :space to create a Variable with data array dimensions from Grid cells.
 """
 struct CellSpace <: AbstractSpace
+end
+
+"""
+    ColumnSpace <: AbstractSpace
+
+A per-column quantity. Use as Variable attribute :space to create a Variable with data array dimensions from Grid columns.
+"""
+struct ColumnSpace <: AbstractSpace
 end
 
 
@@ -51,11 +59,14 @@ end
 #################################################################
 
 """
-    internal_size(mesh::AbstractMesh) -> NTuple{ndims, Int}
+    internal_size(::Type{<:AbstractSpace}, mesh::AbstractMesh; [subdomain=""] [space=:cell]) -> NTuple{ndims, Int}
 
-Array size to use for per-cell model Variables.
+Array size to use for model Variables.
 
 All `AbstractMesh` concrete subtypes (UnstructuredVectorGrid, CartesianLinearGrid, ...) should implement this method.
+
+# Optional Keyword Arguments
+- `subdomain::String=""`: a named subdomain  
 """
 function internal_size end
 
@@ -74,8 +85,7 @@ function cartesian_size end
 
 Array size for given Space and mesh.
 """
-spatial_size(::Type{ScalarSpace}, mesh) = (1, )
-spatial_size(::Type{CellSpace}, mesh) = internal_size(mesh)
+spatial_size(space::Type{<:AbstractSpace}, mesh) = internal_size(space, mesh)
 
 
 ################################################################

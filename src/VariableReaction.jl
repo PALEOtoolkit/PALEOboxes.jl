@@ -188,11 +188,15 @@ VarPropStateIndep(localname, units, description; attributes::Tuple=(), kwargs...
 
 VarDepScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarDep(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+VarDepColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
+    VarDep(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
 VarDep(localname, units, description; kwargs... ) = 
     CreateVariableReaction(VT_ReactDependency, localname, units, description; kwargs...)
     
 VarDepScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VarDepScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
+VarDepColumnStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
+    VarDepColumn(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
 VarDepStateIndep(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarDep(localname, units, description; attributes=(attributes..., :datatype=>Float64),  kwargs...)
 
@@ -221,6 +225,8 @@ VarTarget(localname, units, description; attributes::Tuple=(), kwargs... ) =
         
 VarContribScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarContrib(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+VarContribColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
+    VarContrib(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
 VarContrib(localname, units, description; kwargs... ) = 
     CreateVariableReaction(VT_ReactContributor, localname, units, description; kwargs...)
 

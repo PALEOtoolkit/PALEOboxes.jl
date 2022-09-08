@@ -187,27 +187,35 @@ function get_subdomain(grid::PB.AbstractMesh, subdomainname::AbstractString)
 end
  
 
-"""
-    internal_size(grid::PB.AbstractMesh [, subdomainname::AbstractString]) -> size::NTuple{Int}
-
-Get Domain or SubDomain size
-"""
-function  PB.internal_size(grid::Union{PB.AbstractMesh, Nothing}, subdomainname::AbstractString)
+# generic handler when subdomainname present
+function PB.internal_size(space::Type{<:PB.AbstractSpace}, grid::Union{PB.AbstractMesh, Nothing}, subdomainname::AbstractString)
     if isempty(subdomainname)
-        return PB.internal_size(grid)
+        if space === PB.ScalarSpace
+            return (1, )
+        else
+            return PB.internal_size(space, grid)
+        end
     else
-        subdomain = get_subdomain(grid, subdomainname)
-        return (length(subdomain.indices),)
+        if space === PB.CellSpace
+            subdomain = get_subdomain(grid, subdomainname)
+            return (length(subdomain.indices),)
+        else
+            error("internal_size: cannot specify subdomain with space=$space (subdomainname=$subdomainname)")
+        end
     end
 end
+
+# scalar space always supported
+PB.internal_size(space::Type{PB.ScalarSpace}, grid::Union{PB.AbstractMesh, Nothing}) = (1, )
+# ignore subdomain 
+PB.internal_size(space::Type{PB.ScalarSpace}, grid::Union{PB.AbstractMesh, Nothing}, subdomainname::AbstractString) = (1, )
 
 ###################################
 # Fallbacks for Domain with no grid
 #####################################
 
 # allow Vector variables length 1 in a 0D Domain without a grid
-PB.internal_size(grid::Nothing) = (1, )
-# PB.internal_size(grid::Nothing, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+PB.internal_size(space::Type{PB.CellSpace}, grid::Nothing) = (1, )
 
 get_subdomain(grid::Nothing, subdomainname::AbstractString) = error("get_subdomain: no subdomain $subdomainname")
 
@@ -255,8 +263,7 @@ function Base.show(io::IO, grid::UnstructuredVectorGrid)
     return nothing
 end
 
-PB.internal_size(grid::UnstructuredVectorGrid) = (grid.ncells, )
-# PB.internal_size(grid::UnstructuredVectorGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+PB.internal_size(space::Type{PB.CellSpace}, grid::UnstructuredVectorGrid) = (grid.ncells, )
 
 """
     get_region(grid::UnstructuredVectorGrid, values; cell) -> 
@@ -323,8 +330,8 @@ function Base.show(io::IO, grid::UnstructuredColumnGrid)
     return nothing
 end
 
-PB.internal_size(grid::UnstructuredColumnGrid) = (grid.ncells, )
-# PB.internal_size(grid::UnstructuredColumnGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+PB.internal_size(space::Type{PB.CellSpace}, grid::UnstructuredColumnGrid) = (grid.ncells, )
+PB.internal_size(space::Type{PB.ColumnSpace}, grid::UnstructuredColumnGrid) = (length(grid.Icolumns), )
 
 """
     get_region(grid::UnstructuredColumnGrid, values; column, [cell=nothing]) -> 
@@ -404,7 +411,8 @@ the PALEO internal representation (a Vector with a linear index) and a Cartesian
 Base.@kwdef mutable struct CartesianLinearGrid{N} <: PB.AbstractMesh
     
     ncells::Int64                           = -1 
- 
+    ncolumns::Int64                         = -1
+
     dimnames::Vector{String}                = Vector{String}(undef, N)  # netcdf dimension names
     dims::Vector{Int}                       = Vector{Int}(undef, N)
     coords::Vector{Vector{Float64}}         = Vector{Vector{Float64}}()
@@ -436,8 +444,8 @@ function Base.show(io::IO, grid::CartesianLinearGrid)
     return nothing
 end
 
-PB.internal_size(grid::CartesianLinearGrid) = (grid.ncells, )
-# PB.internal_size(grid::CartesianLinearGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+PB.internal_size(space::Type{PB.CellSpace}, grid::CartesianLinearGrid) = (grid.ncells, )
+PB.internal_size(space::Type{PB.ColumnSpace}, grid::CartesianLinearGrid{3}) = (grid.ncolumns, )
 
 PB.cartesian_size(grid::CartesianLinearGrid) = Tuple(grid.dims)
 
@@ -484,8 +492,7 @@ function Base.show(io::IO, grid::CartesianArrayGrid)
     return nothing
 end
 
-PB.internal_size(grid::CartesianArrayGrid) = Tuple(grid.dims)
-# PB.internal_size(grid::CartesianArrayGrid, subdomainname::AbstractString) = _internal_size(grid, subdomainname)
+PB.internal_size(space::Type{PB.CellSpace}, grid::CartesianArrayGrid) = Tuple(grid.dims)
 
 PB.cartesian_size(grid::CartesianArrayGrid) = Tuple(grid.dims)
 
@@ -677,6 +684,7 @@ Set 3D grid linear index (given by v_i, v_j, v_k Vectors defining Cartesian [i,j
 function set_linear_index(grid::CartesianLinearGrid{3}, v_i, v_j, v_k)
 
     grid.ncells = length(v_i)
+    grid.ncolumns = 0
 
     grid.linear_index = Array{Union{Missing,Int32}, 3}(undef, grid.dims...)
     grid.cartesian_index = Vector{CartesianIndex{3}}(undef, grid.ncells)
@@ -684,6 +692,9 @@ function set_linear_index(grid::CartesianLinearGrid{3}, v_i, v_j, v_k)
     for l in eachindex(v_i)
         grid.linear_index[v_i[l], v_j[l], v_k[l]] = l
         grid.cartesian_index[l] = CartesianIndex(v_i[l], v_j[l], v_k[l])
+        if v_k[l] == grid.zidxsurface
+            grid.ncolumns += 1
+        end
     end
 
     return nothing
