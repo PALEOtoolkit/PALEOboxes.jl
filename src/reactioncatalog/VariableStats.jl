@@ -36,6 +36,9 @@ Base.@kwdef mutable struct ReactionSum{P} <: PB.AbstractReaction
             description="true to accumulate sum into vector Variable, "*
                 "false to accumulate sum into scalar (adding vector cells if necessary)"),
     )
+
+    var_multipliers::Vector{Float64} = Float64[]
+    comprange::UnitRange{Int64} = 0:-1
 end
 
 abstract type ReactionVectorSum <: PB.AbstractReaction end
@@ -49,7 +52,7 @@ end
 function PB.register_methods!(rj::ReactionSum)
 
     vars_to_add = []
-    var_multipliers = Float64[]
+    empty!(rj.var_multipliers)
 
     for varmultname in rj.pars.vars_to_add
         # parse multiplier
@@ -62,7 +65,7 @@ function PB.register_methods!(rj::ReactionSum)
             error("reaction ", fullname(rj), "invalid field in vars_to_add ", varmultname)
         end
         @info "reaction $(PB.fullname(rj)) add $mult * $varname"
-        push!(var_multipliers, mult)
+        push!(rj.var_multipliers, mult)
 
         # generate new name with domain prefix to disambiguate eg O2 in atm and ocean
         (linkreq_domain, linkreq_subdomain, linkreq_name, link_optional) =
@@ -95,7 +98,6 @@ function PB.register_methods!(rj::ReactionSum)
             PB.VarList_single(var_sum, components=true),
             PB.VarList_tuple(vars_to_add, components=true)
         ),
-        p = (Tuple(var_multipliers), 0:-1) # comprange added later
     )
 
     return nothing
@@ -133,13 +135,11 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
     end
 
     if rj.pars.component_to_add[] == 0
-        comprange = 1:PB.num_components(PB.get_attribute(var_sum, :field_data))
+        rj.comprange = 1:PB.num_components(PB.get_attribute(var_sum, :field_data))
     else
-        comprange = rj.pars.component_to_add[]:rj.pars.component_to_add[]
+        rj.comprange = rj.pars.component_to_add[]:rj.pars.component_to_add[]
     end
 
-    # update method_sum
-    method_sum.p = (method_sum.p[1], comprange)
 end
 
 
@@ -149,9 +149,10 @@ function do_scalarsum(
     cellrange::PB.AbstractCellRange,
     deltat
 )
-    (multipliers, comprange) = m.p
+    rj = m.reaction
+    comprange = rj.comprange
 
-    function _add_var( multiplier, var_to_add)
+    function _add_var(var_to_add, multiplier)
         for j in comprange
             var_sum_data[j][] += multiplier * sum(var_to_add[j])
         end
@@ -162,7 +163,7 @@ function do_scalarsum(
         var_sum_data[j][] = 0.0
     end
 
-    PB.IteratorUtils.foreach_longtuple(_add_var, multipliers, vars_to_add_data)
+    PB.IteratorUtils.foreach_longtuple(_add_var, vars_to_add_data, rj.var_multipliers)
 
     return nothing
 end
@@ -174,9 +175,10 @@ function do_vectorsum(
     cellrange::PB.AbstractCellRange,
     deltat
 )
-    (multipliers, comprange) = m.p
+    rj = m.reaction
+    comprange =  rj.comprange
 
-    function _add_var(multiplier, var_to_add)
+    function _add_var(var_to_add, multiplier)
         @inbounds for j in comprange
             for i in cellrange.indices
                 var_sum_data[j][i] += multiplier * var_to_add[j][i]
@@ -191,7 +193,7 @@ function do_vectorsum(
         end
     end
 
-    PB.IteratorUtils.foreach_longtuple(_add_var, multipliers, vars_to_add_data)
+    PB.IteratorUtils.foreach_longtuple(_add_var, vars_to_add_data, rj.var_multipliers)
 
     return nothing
 end

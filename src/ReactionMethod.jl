@@ -43,7 +43,7 @@ the data types of `vardata` or to cache expensive calculations:
 
 This is called after model arrays are allocated, and prior to setup.
 """
-mutable struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod    
+struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod    
     "callback from Model framework"
     methodfn::M
 
@@ -103,10 +103,10 @@ mutable struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
 end
 
 # deprecated form without pars
-call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where {M, R, P, V} = 
+@inline call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where {M, R, P, V} = 
     method.methodfn(method, vardata, cr, modelctxt)
 # updated form with pars
-call_method(method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt) where {M, R, P, V} = 
+@inline call_method(method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt) where {M, R, P, V} = 
     method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
 
 # for benchmarking etc: apply codefn to the ReactionMethod methodfn (without this, will just apply to the call_method wrapper)
