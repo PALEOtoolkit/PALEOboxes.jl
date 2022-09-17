@@ -5,7 +5,7 @@
 # VariableAggregator
 #################################################################
 
-mutable struct VariableAggregator{T, F <: Tuple, C <: Tuple}
+struct VariableAggregator{T, F <: Tuple, C <: Tuple}
     # Variables 
     vars::Vector{VariableDomain}
 
