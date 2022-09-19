@@ -102,6 +102,8 @@ struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
     end
 end
 
+get_nargs(method::ReactionMethod{M, R, P, V, Nargs}) where {M, R, P, V, Nargs} = Nargs
+get_nargs(methodref::Ref{ReactionMethod{M, R, P, V, Nargs}}) where {M, R, P, V, Nargs} = Nargs
 # deprecated form without pars
 @inline call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where {M, R, P, V} = 
     method.methodfn(method, vardata, cr, modelctxt)

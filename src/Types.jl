@@ -180,6 +180,12 @@ struct ReactionMethodDispatchList{M <:Tuple, V <:Tuple, C <: Tuple}
     cellranges::C
 end
 
+struct ReactionMethodDispatchListNoGen
+    methods::Vector
+    vardatas::Vector
+    cellranges::Vector
+end
+
 # See https://discourse.julialang.org/t/pretty-print-of-type/19555
 # Customize typeof function, as full type name is too verbose (as Tuples are of length ~ number of ReactionMethods to call)
 Base.show(io::IO, ::Type{PALEOboxes.ReactionMethodDispatchList{M, V, C}}) where {M, V, C} = 

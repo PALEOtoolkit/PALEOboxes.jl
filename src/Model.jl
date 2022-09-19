@@ -251,7 +251,8 @@ function create_model_from_config(
     for (parname, value) in parameters
         @info "    Model parameter: $(rpad(parname,20)) = $value"
     end
-    model = Model(
+
+    @timeit "Model" model = Model(
         config_files=[abspath(fn) for fn in config_files],
         name=configmodel,
         parameters=parameters
@@ -260,6 +261,7 @@ function create_model_from_config(
     conf_domains = conf_model["domains"]
 
     # create domains
+    @timeit "create Domains" begin
     rdict = find_all_reactions()
     @info "generated Reaction catalog with $(length(rdict)) Reactions"
     for (name, conf_domain) in conf_domains
@@ -273,7 +275,7 @@ function create_model_from_config(
             create_domain_from_config(name, nextDomainID, conf_domain, model.parameters, rdict)
         )     
     end
-
+    end # timeit
     # request configuration of Domain sizes, Subdomains
     for dom in model.domains
         for react in dom.reactions
@@ -282,13 +284,13 @@ function create_model_from_config(
     end
 
     # register methods
-    _register_reaction_methods!(model)
+    @timeit "_register_reaction_methods" _register_reaction_methods!(model)
 
     # Link variables
-    _link_variables!(model)
+    @timeit "_link_variables" _link_variables!(model)
 
     # sort methods
-    _sort_method_dispatch!(model, sort_methods_algorithm=sort_methods_algorithm)
+    @timeit "_sort_method_dispatch" _sort_method_dispatch!(model, sort_methods_algorithm=sort_methods_algorithm)
 
     return model
 end
@@ -432,7 +434,8 @@ to set `modeldata.dispatchlists_all` to (optional) default  ReactionMethodDispat
 """
 function initialize_reactiondata!(
     model::Model, modeldata::AbstractModelData;
-    method_barrier=nothing
+    method_barrier=nothing,
+    create_dispatchlists_all=true,
 )
     @info lpad("", 80, "=")
     @info "initialize_reactiondata!"
@@ -440,27 +443,33 @@ function initialize_reactiondata!(
 
     check_modeldata(model, modeldata)
 
+    # using Ref here seems to trade off time to create ReactionMethodDispatchList
+    # and time for first call to do_deriv ??
+    # (Ref gives fast ReactionMethodDispatchList creation, but slow first do_deriv)
+
     modeldata.sorted_methodsdata_setup = 
         [
-            (m, Ref(m.preparefn(m, create_accessors(m, modeldata))))
+            Any[Ref(m), Ref(m.preparefn(m, create_accessors(m, modeldata)))]
             for m in get_methods(model.sorted_methods_setup)
         ]
 
     modeldata.sorted_methodsdata_initialize = 
         [
-            (m, Ref(m.preparefn(m, create_accessors(m, modeldata)))) 
+            Any[Ref(m), Ref(m.preparefn(m, create_accessors(m, modeldata)))]
             for m in get_methods(model.sorted_methods_initialize, method_barrier=method_barrier)
         ]
 
     modeldata.sorted_methodsdata_do = 
         [
-            (m, Ref(m.preparefn(m, create_accessors(m, modeldata))))
+            Any[Ref(m), Ref(m.preparefn(m, create_accessors(m, modeldata)))]
             for m in get_methods(model.sorted_methods_do, method_barrier=method_barrier)
         ]
 
-    # create default dispatchlists_all corresponding to cellranges_all
-    modeldata.dispatchlists_all =
-        create_dispatch_methodlists(model, modeldata, modeldata.cellranges_all)
+    if create_dispatchlists_all
+        # create default dispatchlists_all corresponding to cellranges_all
+        modeldata.dispatchlists_all =
+            create_dispatch_methodlists(model, modeldata, modeldata.cellranges_all)
+    end
 
     return nothing
 end
@@ -486,8 +495,8 @@ function dispatch_setup(
     check_modeldata(model, modeldata) 
 
     for (method, vardata) in modeldata.sorted_methodsdata_setup
-        for cr in _dispatch_cellranges(method, cellranges)
-           call_method(method, vardata[], cr, attribute_name)
+        for cr in _dispatch_cellranges(method[], cellranges)
+           call_method(method[], vardata[], cr, attribute_name)
         end
     end
 
@@ -504,49 +513,58 @@ Subset of methods and cellrange to operate on are generated from supplied `cellr
 """
 function create_dispatch_methodlists(
     model::Model, modeldata::AbstractModelData, cellranges;
-    verbose=false
+    verbose=false,
+    generated_dispatch=true,
 )
     check_modeldata(model, modeldata)
 
     verbose && @info "list_initialize:\n"
-    list_initialize = _create_dispatch_methodlist(
+    @timeit "list_initialize" list_initialize = _create_dispatch_methodlist(
         modeldata.sorted_methodsdata_initialize,
         cellranges,
-        verbose=verbose
+        generated_dispatch,
     )
     verbose && @info "list_do:\n"
-    list_do = _create_dispatch_methodlist(
+    @timeit "list_do" list_do = _create_dispatch_methodlist(
         modeldata.sorted_methodsdata_do,
         cellranges,
-        verbose=verbose
+        generated_dispatch,
     )
     
     return (;list_initialize, list_do)
 end
 
 
-function _create_dispatch_methodlist(methodsdata, cellranges; verbose=false)
+function _create_dispatch_methodlist(methodsdata, cellranges, generated_dispatch::Bool)
     methods, vardatas, crs = [], [], []
    
+    @timeit "create arrays" begin
     for (method, vardata) in methodsdata
-        for cr in _dispatch_cellranges(method, cellranges)
-            verbose && @info "   $method"
+        for cr in _dispatch_cellranges(method[], cellranges)
             push!(methods, method)
             push!(vardatas, vardata)
             push!(crs, cr)
         end
     end
+    end # timeit
 
-    return ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(crs))
+    if generated_dispatch
+        @timeit "ReactionMethodDispatchList" rmdl = ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(crs))
+    else
+        @timeit "ReactionMethodDispatchListNoGen" rmdl = ReactionMethodDispatchListNoGen(methods, vardatas, crs)
+    end
+    return rmdl
 end
 
-function _dispatch_cellranges(method::AbstractReactionMethod, cellranges)
+function _dispatch_cellranges(@nospecialize(method::AbstractReactionMethod), cellranges)
     if is_do_barrier(method)
         return (nothing, )
     else
+        domain = method.domain
+        operatorID = method.operatorID
         return Iterators.filter(
-            cr -> (cr.domain === method.domain) && 
-                (cr.operatorID == 0 || cr.operatorID in method.operatorID),
+            cr -> (cr.domain === domain) && 
+                (cr.operatorID == 0 || cr.operatorID in operatorID),
             cellranges
         )
     end
@@ -596,7 +614,9 @@ function emits unrolled code with a function call for each Tuple element.
     for j=1:fieldcount(M)
         push!(ex.args,
             quote
-                call_method(dl.methods[$j], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                # let
+                call_method(dl.methods[$j][], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                # end
             end
             )
     end
@@ -605,6 +625,17 @@ function emits unrolled code with a function call for each Tuple element.
     return ex
 end
 
+function dispatch_methodlist(
+    dl::ReactionMethodDispatchListNoGen, 
+    deltat::Float64=0.0
+)
+
+   for (m, v, c) in zip(dl.methods, dl.vardatas, dl.cellranges)
+        call_method(m[], v[], c, deltat)
+   end
+
+   return nothing
+end
 
 #################################
 # Pretty printing
@@ -806,7 +837,7 @@ end
 function _register_reaction_methods!(model::Model)
     
     for dom in model.domains
-        for r in dom.reactions            
+        for r in dom.reactions
             _register_methods!(r, model)
             # not all methods registered and ReactionVariables available, so no error if missing
             _configure_variables(r; allow_missing=true, dolog=false)

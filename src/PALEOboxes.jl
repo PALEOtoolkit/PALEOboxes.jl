@@ -27,6 +27,7 @@ using DocStringExtensions
 import OrderedCollections
 
 import SnoopPrecompile
+import TimerOutputs: @timeit
 
 include("utils/DocStrings.jl")
 
