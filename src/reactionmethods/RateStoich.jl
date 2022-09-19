@@ -42,8 +42,8 @@ mutable struct RateStoich
     deltavarname_eta
     isotope_data::Type
 
-    "NamedTuple, statevar_data.statevar_name = (stoich, IsotopeType)"
-    statevar_data::Union{Nothing, NamedTuple}
+    "Dict(statevar_name => (stoich, IsotopeType))"
+    statevar_data::Dict
 
     "construct a new RateStoich"
     function RateStoich(
@@ -62,7 +62,7 @@ mutable struct RateStoich
             sms_suffix,
             deltavarname_eta,
             UndefinedData,
-            nothing
+            Dict(),
         )
     end
 
@@ -106,7 +106,7 @@ end
 Create method (see [`RateStoich`](@ref)).
 """
 function create_ratestoich_method(
-    reaction::AbstractReaction, ratestoich::RateStoich;
+    @nospecialize(reaction::AbstractReaction), ratestoich::RateStoich;
     isotope_data=ScalarData,
     ignore_unlinked=true,
     operatorID=reaction.operatorID,
@@ -162,11 +162,11 @@ function create_ratestoich_method(
         push!(statevars_data, (stoich, disotope))
     end
 
-    ratestoich.statevar_data = NamedTuple{Tuple(Symbol.(statevarnames))}(statevars_data)
+    ratestoich.statevar_data = Dict(Symbol(svn)=>svd for (svn, svd) in zip(statevarnames, statevars_data))
 
     p = (
             etapar,
-            Tuple(Float64.([stoich for (stoich, _) in statevars_data])),
+            [Float64(stoich) for (stoich, _) in statevars_data],
             ratestoich
         )
 
@@ -194,42 +194,49 @@ Calculate rates for reaction products defined by a [`RateStoich`](@ref).
 [`create_accessors`](@ref).
 """
 function do_react_ratestoich(m::ReactionMethod, (rate, delta, sms_data),  cellrange, deltat)
-    (etapar, sms_stoich, ratestoich) = m.p
+    (etapar, sms_stoich, _) = m.p
 
-    function _do_sms(sms_data, stoich)
-        isotype = eltype(sms_data)
-        # @Infiltrator.infiltrate
-
-        if isotype <: AbstractIsotopeScalar
-            eta = etapar[]
-            @inbounds for idx in cellrange.indices
-                sms_data[idx] += isotope_totaldelta(isotype, stoich*rate[idx], delta[idx] + eta)
-            end
-        else
-            @inbounds for idx in cellrange.indices
-                sms_data[idx] += stoich*rate[idx]
-            end
-        end
-        return nothing
-    end
-     # ignore unlinked Variables
-    function _do_sms(sms_data::Nothing, stoich)
-        return nothing
-    end
-
-    IteratorUtils.foreach_tuple(_do_sms, sms_data, sms_stoich)
+    IteratorUtils.foreach_longtuple_p(_do_sms, sms_data, sms_stoich, (cellrange, etapar, rate, delta))
 
     return nothing
 end
 
+function _do_sms(sms_data, stoich, (cellrange, etapar, rate, delta))
+    isotype = eltype(sms_data)
+    # @Infiltrator.infiltrate
+
+    if isotype <: AbstractIsotopeScalar
+        eta = etapar[]
+        @inbounds for idx in cellrange.indices
+            sms_data[idx] += isotope_totaldelta(isotype, stoich*rate[idx], delta[idx] + eta)
+        end
+    else
+        @inbounds for idx in cellrange.indices
+            sms_data[idx] += stoich*rate[idx]
+        end
+    end
+    return nothing
+end
+ # ignore unlinked Variables
+function _do_sms(sms_data::Nothing, stoich, p)
+    return nothing
+end
+
+
 "Return reaction stoichiometry"
-function get_rate_stoichiometry(m::ReactionMethod{M, R, P, V}) where {M <: typeof(do_react_ratestoich), R, P, V}
+function get_rate_stoichiometry(m::ReactionMethod{typeof(do_react_ratestoich)})
+
+    return get_rate_stoichiometry(m, m)
+
+end
+
+function get_rate_stoichiometry(m::ReactionMethod{typeof(do_react_ratestoich)}, hostm::ReactionMethod)
 
     (etapar, sms_stoich, ratestoich) = m.p
 
     return [
         (
-            get_variable(m, ratestoich.ratevartemplate.localname).linkvar.name,
+            get_variable(hostm, ratestoich.ratevartemplate.localname).linkvar.name,
             ratestoich.processname,
             Dict(sn => n for (n, sn) in ratestoich.stoich_statevarname)
         ),

@@ -329,16 +329,16 @@ add_method_initialize!(@nospecialize(reaction::AbstractReaction), methodfn::Func
 Add or create and add a main loop method.
 `methodfn`, `vars`, `kwargs` are passed to [`ReactionMethod`](@ref).
 """
-function add_method_do!(@nospecialize(reaction::AbstractReaction), method::AbstractReactionMethod)
+function add_method_do!(@nospecialize(reaction::AbstractReaction), @nospecialize(method::AbstractReactionMethod))
     push!(reaction.base.methods_do, method)
     return nothing
 end
 
-add_method_do!(@nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}; kwargs...) = 
+add_method_do!(@nospecialize(reaction::AbstractReaction), @nospecialize(methodfn::Function), @nospecialize(vars::Tuple{Vararg{AbstractVarList}}); kwargs...) = 
     _add_method!(reaction, methodfn, vars, add_method_do!; kwargs...)
 
 function _add_method!(
-    @nospecialize(reaction::AbstractReaction), methodfn::Function, vars::Tuple{Vararg{AbstractVarList}}, add_method_fn;
+    @nospecialize(reaction::AbstractReaction), @nospecialize(methodfn::Function), @nospecialize(vars::Tuple{Vararg{AbstractVarList}}), add_method_fn;
     name=string(methodfn),
     p=nothing,
     preparefn=(m, vardata) -> vardata,
