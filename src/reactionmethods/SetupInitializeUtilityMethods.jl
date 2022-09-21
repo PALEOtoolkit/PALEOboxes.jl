@@ -207,7 +207,7 @@ end
 methodfn_do_nothing(m::ReactionMethod, (vars, ), cellrange::AbstractCellRange, deltat) = nothing
 
 is_do_nothing(m::ReactionMethod) = false
-is_do_nothing(m::ReactionMethod{M, R, P, V}) where {M <: typeof(methodfn_do_nothing), R, P, V} = true
+is_do_nothing(m::ReactionMethod{typeof(methodfn_do_nothing)}) = true
 
 ###############################################
 # Thread barrier method (PALEOboxes internal use only)
@@ -242,4 +242,4 @@ end
 
 
 is_do_barrier(m::ReactionMethod) = false
-is_do_barrier(m::ReactionMethod{M, R, P, V}) where {M <: typeof(do_method_barrier), R, P, V} = true
+is_do_barrier(m::ReactionMethod{typeof(do_method_barrier)}) = true
