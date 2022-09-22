@@ -97,10 +97,15 @@ function precompile_reaction(rdict, classname)
 end
 
 # create and take a timestep for a test configuration
-function run_model(configfile, configname)
+function run_model(configfile::AbstractString, configname::AbstractString)
     
     model =  create_model_from_config(configfile, configname)
 
+    run_model(model)
+    return nothing
+end
+
+function run_model(model::Model)
     modeldata =  create_modeldata(model)
     allocate_variables!(model, modeldata)
 
@@ -114,7 +119,7 @@ function run_model(configfile, configname)
     dispatch_setup(model, :norm_value, modeldata)   
     dispatch_setup(model, :initial_value, modeldata)
 
-    # take a time step
+    # take a time step - TODO, can be model dependent on missing setup
     # dispatchlists = modeldata.dispatchlists_all
     # do_deriv(dispatchlists)
 

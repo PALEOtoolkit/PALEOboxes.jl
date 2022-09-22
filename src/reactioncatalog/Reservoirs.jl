@@ -16,7 +16,7 @@ A single scalar biogeochemical reservoir with optional paired isotope reservoir,
 Creates State and associated Variables, depending on parameter settings:
 - `const=false`: usual case, create state variable `R` (units mol, with attribute `vfunction=VF_StateExplicit`)
   and `R_sms` (units mol yr-1, with attribute `vfunction=VF_Deriv`).
-- `const=true`: a constant value, create `R` (a Property)
+- `const=true`: a constant value, create `R` (a Property), and `R_sms` (a Target)
 
 In addition:
 - a Property `R_norm` (normalized value) is always created.
@@ -58,7 +58,7 @@ Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
             allowed_values=PB.IsotopeTypes,
             description="disable / enable isotopes and specify isotope type"),
         PB.ParBool("const", false,
-            description="true to provide constant value with no _sms Variable"),
+            description="true to provide a constant value: R is not a state variable, fluxes in R_sms Variable are ignored"),
     )
 
     norm_value::Float64  = NaN
@@ -94,15 +94,17 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
             force_initial_norm_value=true, # setup :norm_value, :initial_value to get norm_value callback, even though R is not a state Variable
             setup_callback=setup_callback
         )  
-        # no _sms variable
+        R_sms       = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
     else        
         R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
         PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
 
         R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
-        # sms variable not used by us, but must appear in a method to be linked and created
-        PB.add_method_do_nothing!(rj, [R_sms])
     end
+    PB.setfrozen!(rj.pars.const)
+
+    # sms variable not used by us, but must appear in a method to be linked and created
+    PB.add_method_do_nothing!(rj, [R_sms])
 
     do_vars = [PB.VarDep(R), PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
