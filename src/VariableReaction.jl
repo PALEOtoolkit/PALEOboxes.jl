@@ -49,6 +49,7 @@ function Base.copy(v::VariableReaction{T}) where T
         method = v.method,
         localname = v.localname,
         attributes = copy(v.attributes), # NB: no deepcopy
+        # attributes = Dict{Symbol, Any}(k=>copy(v) for (k, v) in v.attributes), # 
         linkreq_domain = v.linkreq_domain,
         linkreq_subdomain = v.linkreq_subdomain,
         linkreq_name = v.linkreq_name,

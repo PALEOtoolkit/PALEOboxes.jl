@@ -87,7 +87,6 @@ struct ReactionMethod{M, R, P, Nargs} <: AbstractReactionMethod
             methodfn, 
             reaction,
             name,
-            # deepcopy(varlists), # TODO this is slow !! (replace with a VarList or Variable-specific copy?)
             varlists,
             p,
             operatorID, 
