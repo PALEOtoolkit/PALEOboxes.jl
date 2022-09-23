@@ -44,6 +44,21 @@ const VarDepT         = VariableReaction{VT_ReactDependency}
 const VarTargetT      = VariableReaction{VT_ReactTarget}
 const VarContribT     = VariableReaction{VT_ReactContributor}
 
+function Base.copy(v::VariableReaction{T}) where T
+    vcopy = VariableReaction{T}(
+        method = v.method,
+        localname = v.localname,
+        attributes = copy(v.attributes), # NB: no deepcopy
+        # attributes = Dict{Symbol, Any}(k=>copy(v) for (k, v) in v.attributes), # 
+        linkreq_domain = v.linkreq_domain,
+        linkreq_subdomain = v.linkreq_subdomain,
+        linkreq_name = v.linkreq_name,
+        link_optional = v.link_optional,
+        linkvar = v.linkvar,
+    )
+    return vcopy
+end
+
 """
     get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing) -> value
 
@@ -206,7 +221,7 @@ VarDep(v::VarDepT) = v
 function VarDep(v::Union{VarPropT, VarTargetT})
     vdep = VarDepT(        
         localname = v.localname,  
-        attributes = deepcopy(v.attributes),
+        attributes = copy(v.attributes), # NB: no deepcopy
         linkreq_domain = v.linkreq_domain,
         linkreq_subdomain = v.linkreq_subdomain,
         linkreq_name = v.linkreq_name
@@ -233,7 +248,7 @@ VarContrib(localname, units, description; kwargs... ) =
 VarContrib(v::VarContribT) = v
 VarContrib(v::VarTargetT) = VarContribT(        
     localname = v.localname,  
-    attributes = deepcopy(v.attributes),
+    attributes = copy(v.attributes), # NB: no deepcopy
     linkreq_domain = v.linkreq_domain,
     linkreq_subdomain = v.linkreq_subdomain,
     linkreq_name = v.linkreq_name
@@ -268,7 +283,7 @@ VarState(localname, units, description; attributes::Tuple=(), kwargs... ) =
 # TODO: define a VarInit Type. Currently (ab)using VarDep   
 VarInit(v::Union{VarPropT, VarTargetT, VarContribT}) = VarDepT(        
     localname = v.localname,
-    attributes = deepcopy(v.attributes),
+    attributes = copy(v.attributes), # NB: no deepcopy
     linkreq_domain = v.linkreq_domain,
     linkreq_subdomain = v.linkreq_subdomain,
     linkreq_name = v.linkreq_name
@@ -337,7 +352,7 @@ Create a `VarList_single` describing a single `VariableReaction`,
 struct VarList_single <: AbstractVarList
     var::VariableReaction
     components::Bool
-    VarList_single(var; components=false) = new(var, components)
+    VarList_single(var; components=false) = new(copy(var), components)
 end
 
 get_variables(vl::VarList_single) = [vl.var]
@@ -356,7 +371,7 @@ struct VarList_components <:  AbstractVarList
     vars::Vector{VariableReaction}
     allow_unlinked::Bool
     VarList_components(varcollection; allow_unlinked=false) = 
-        new([v for v in varcollection], allow_unlinked)
+        new([copy(v) for v in varcollection], allow_unlinked)
 end
 
 get_variables(vl::VarList_components) = vl.vars
@@ -400,7 +415,7 @@ If `components = true`, each NamedTuple field will be a Vector of data array com
 """
 function VarList_namedtuple(varcollection; components=false)
     keys = Symbol.([v.localname for v in varcollection])
-    vars = [v for v in varcollection]
+    vars = [copy(v) for v in varcollection]
  
     return VarList_namedtuple(vars, keys, components)
 end
@@ -420,7 +435,7 @@ function VarList_namedtuple_fields(objectwithvars; components=false)
                         if getproperty(objectwithvars, f) isa VariableReaction]
 
     keys      = [f for (f,v) in fieldnamesvars]
-    vars      = [v for (f,v) in fieldnamesvars]
+    vars      = [copy(v) for (f,v) in fieldnamesvars]
     return VarList_namedtuple(vars, keys, components)
 end
 
@@ -441,7 +456,7 @@ If `components = true`, each Tuple field will be a Vector of data array componen
 struct VarList_tuple <: AbstractVarList
     vars::Vector{VariableReaction}
     components::Bool
-    VarList_tuple(varcollection; components=false) = new([v for v in varcollection], components)
+    VarList_tuple(varcollection; components=false) = new([copy(v) for v in varcollection], components)
 end
 
 get_variables(vl::VarList_tuple) = vl.vars
@@ -465,7 +480,7 @@ struct VarList_vector <: AbstractVarList
     components::Bool
     forceview::Bool
     VarList_vector(varcollection; components=false, forceview=false) =
-        new([v for v in varcollection], components, forceview)
+        new([copy(v) for v in varcollection], components, forceview)
 end
 
 get_variables(vl::VarList_vector) = vl.vars
@@ -485,7 +500,7 @@ If `components = true`, each Vector of Vectors element will be a Vector of data 
 struct VarList_vvector <: AbstractVarList
     vars::Vector{Vector{VariableReaction}}
     components::Bool
-    VarList_vvector(vars; components=false) = new(vars, components)
+    VarList_vvector(vars; components=false) = new([[copy(v) for v in vv] for vv in vars], components)
 end
 
 get_variables(vl::VarList_vvector) = vcat(vl.vars...)
@@ -526,7 +541,7 @@ Create a `VarList_fields` describing a collection of `VariableReaction`s,
 """
 struct VarList_fields <: AbstractVarList
     vars::Vector{VariableReaction}
-    VarList_fields(varcollection) = new([v for v in varcollection])
+    VarList_fields(varcollection) = new([copy(v) for v in varcollection])
 end
 
 get_variables(vl::VarList_fields) = vl.vars

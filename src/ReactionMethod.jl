@@ -43,7 +43,7 @@ the data types of `vardata` or to cache expensive calculations:
 
 This is called after model arrays are allocated, and prior to setup.
 """
-struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod    
+struct ReactionMethod{M, R, P, Nargs} <: AbstractReactionMethod    
     "callback from Model framework"
     methodfn::M
 
@@ -53,9 +53,10 @@ struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
     "a descriptive name, eg generated from the name of methodfn"
     name::String
 
-    "Tuple{Vararg{AbstractVarList}} of [`VariableReaction`](@ref)s.
-    Corresponding Variable accessors `vardata` (views on Arrays) will be provided to the `methodfn` callback."
-    varlists::V
+    "Tuple of VarLists, each representing a list of [`VariableReaction`](@ref)s.
+    Corresponding Variable accessors `vardata` (views on Arrays) will be provided to the `methodfn` callback.
+    NB: not concretely typed to reduce compile time, as not performance-critical"
+    varlists::Tuple{Vararg{AbstractVarList}}
 
     "optional context field (of arbitrary type) to store data needed by methodfn."
     p::P
@@ -71,22 +72,22 @@ struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
         methodfn::M,
         reaction::R,
         name,
-        varlists::V,
+        varlists::Tuple{Vararg{AbstractVarList}},
         p::P, 
         operatorID::Vector{Int64}, 
         domain; 
         preparefn = (m, vardata) -> vardata,
-    ) where {M <: Function, R <: AbstractReaction, P, V <: Tuple{Vararg{AbstractVarList}}}        
+    ) where {M <: Function, R <: AbstractReaction, P}        
         
         # Find number of arguments that methodfn takes
         # (in order to support two forms of 'methodfn', with and without Parameters)
         nargs = fieldcount(methods(methodfn).ms[1].sig) - 1
 
-        newmethod = new{M, R, P, V, nargs}(
+        newmethod = new{M, R, P, nargs}(
             methodfn, 
             reaction,
             name,
-            deepcopy(varlists),
+            varlists,
             p,
             operatorID, 
             domain, 
@@ -102,20 +103,23 @@ struct ReactionMethod{M, R, P, V, Nargs} <: AbstractReactionMethod
     end
 end
 
-get_nargs(method::ReactionMethod{M, R, P, V, Nargs}) where {M, R, P, V, Nargs} = Nargs
-get_nargs(methodref::Ref{ReactionMethod{M, R, P, V, Nargs}}) where {M, R, P, V, Nargs} = Nargs
+get_nargs(method::ReactionMethod{M, R, P, Nargs}) where {M, R, P, Nargs} = Nargs
+get_nargs(methodref::Ref{ReactionMethod{M, R, P, Nargs}}) where {M, R, P, Nargs} = Nargs
 # deprecated form without pars
-@inline call_method(method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt) where {M, R, P, V} = 
+@inline call_method(method::ReactionMethod{M, R, P, 4}, vardata, cr, modelctxt) where {M, R, P} = 
     method.methodfn(method, vardata, cr, modelctxt)
 # updated form with pars
-@inline call_method(method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt) where {M, R, P, V} = 
+@inline call_method(method::ReactionMethod{M, R, P, 5}, vardata, cr, modelctxt) where {M, R, P} = 
     method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
+
+@noinline call_method(methodref::Ref{<: ReactionMethod}, vardataref::Ref, cr, modelctxt) = 
+    call_method(methodref[], vardataref[], cr, modelctxt)
 
 # for benchmarking etc: apply codefn to the ReactionMethod methodfn (without this, will just apply to the call_method wrapper)
 # codefn=code_warntype, code_llvm, code_native
-call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, V, 4}, vardata, cr, modelctxt; kwargs...) where {M, R, P, V} = 
+call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, 4}, vardata, cr, modelctxt; kwargs...) where {M, R, P} = 
     codefn(io, method.methodfn, (typeof(method), typeof(vardata), typeof(cr), typeof(modelctxt)); kwargs...)
-call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, V, 5}, vardata, cr, modelctxt; kwargs...) where {M, R, P, V} = 
+call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, 5}, vardata, cr, modelctxt; kwargs...) where {M, R, P} = 
     codefn(io, method.methodfn, (typeof(method), typeof(method.reaction.pars), typeof(vardata), typeof(cr), typeof(modelctxt)); kwargs...)
 
 
@@ -124,7 +128,7 @@ call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, V, 5}, vardat
     
 Get all [`VariableReaction`](@ref)s from `method` as a Tuple of `Vector{VariableReaction}`
 """
-get_variables_tuple(method::AbstractReactionMethod) = Tuple(get_variables(vl) for vl in method.varlists)
+get_variables_tuple(@nospecialize(method::ReactionMethod)) = Tuple(get_variables(vl) for vl in method.varlists)
 
 """
     get_variables(method::AbstractReactionMethod; filterfn = v -> true) -> Vector{VariableReaction}
@@ -132,7 +136,7 @@ get_variables_tuple(method::AbstractReactionMethod) = Tuple(get_variables(vl) fo
 Get VariableReactions from `method.varlists` as a flat Vector, optionally restricting to those that match `filterfn`
 """
 function get_variables(
-    method::AbstractReactionMethod;
+    @nospecialize(method::ReactionMethod);
     filterfn = v -> true
 )
     vars = VariableReaction[]
@@ -153,7 +157,7 @@ Get a single VariableReaction `v` by `localname`.
 If `localname` not present, returns `nothing` if `allow_not_found==true` otherwise errors.
 """
 function get_variable(
-    method::AbstractReactionMethod, localname::AbstractString; 
+    @nospecialize(method::ReactionMethod), localname::AbstractString; 
     allow_not_found=false
 )
     matchvars = get_variables(method; filterfn = v -> v.localname==localname)
@@ -164,20 +168,20 @@ function get_variable(
     return isempty(matchvars) ? nothing : matchvars[1]
 end
 
-fullname(method::AbstractReactionMethod) = fullname(method.reaction)*"."*method.name
+fullname(@nospecialize(method::ReactionMethod)) = fullname(method.reaction)*"."*method.name
 
-is_method_setup(method::AbstractReactionMethod) = (method in method.reaction.methods_setup)
-is_method_initialize(method::AbstractReactionMethod) = (method in method.reaction.methods_initialize)
-is_method_do(method::AbstractReactionMethod) = (method in method.reaction.methods_do)
+is_method_setup(@nospecialize(method::ReactionMethod)) = (method in base(method.reaction).methods_setup)
+is_method_initialize(@nospecialize(method::ReactionMethod)) = (method in base(method.reaction).methods_initialize)
+is_method_do(@nospecialize(method::ReactionMethod)) = (method in base(method.reaction).methods_do)
 
-get_rate_stoichiometry(m::ReactionMethod) = []
+get_rate_stoichiometry(@nospecialize(m::ReactionMethod)) = []
 
 ###########################################
 # Pretty printing
 ############################################
 
 "compact form"
-function Base.show(io::IO, method::ReactionMethod)
+function Base.show(io::IO, @nospecialize(method::ReactionMethod))
     print(
         io, 
         "ReactionMethod(fullname='", fullname(method), 

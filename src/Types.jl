@@ -180,6 +180,9 @@ struct ReactionMethodDispatchList{M <:Tuple, V <:Tuple, C <: Tuple}
     cellranges::C
 end
 
+ReactionMethodDispatchList(methods::Vector, vardatas::Vector, cellranges::Vector) = 
+    ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(cellranges))
+
 struct ReactionMethodDispatchListNoGen
     methods::Vector
     vardatas::Vector

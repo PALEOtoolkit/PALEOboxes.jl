@@ -53,40 +53,40 @@ function bench_method(
                                         dispatchlist.methods,
                                         dispatchlist.vardatas, 
                                         dispatchlist.cellranges)
-        if (isempty(domainname) || method.domain.name == domainname) &&
-           (isempty(reactionname) || method.reaction.name == reactionname) &&
-           (isempty(methodname) || method.name == methodname)
+        if (isempty(domainname) || method[].domain.name == domainname) &&
+           (isempty(reactionname) || method[].reaction.name == reactionname) &&
+           (isempty(methodname) || method[].name == methodname)
 
-            println(PB.fullname(method), ":")
+            println(PB.fullname(method[]), ":")
             if use_time
                 println("    @time:")
-                @time PB.call_method(method, vardata[], cr, deltat)
+                @time PB.call_method(method[], vardata[], cr, deltat)
             end
             if use_btime
                 println("    @btime:")
-                @btime PB.call_method($method, $vardata[], $cr, $deltat)
+                @btime PB.call_method($method[], $vardata[], $cr, $deltat)
             end
             if do_code_llvm
                 println("    @code_llvm:")
                 b = IOBuffer()
-                PB.call_method_codefn(IOContext(b, :color=>true), code_llvm, method, vardata[], cr, deltat)
+                PB.call_method_codefn(IOContext(b, :color=>true), code_llvm, method[], vardata[], cr, deltat)
                 println(String(take!(b)))                
             end
             if do_code_native
                 println("    @code_native:")                
                 b = IOBuffer()
-                PB.call_method_codefn(IOContext(b, :color=>true), code_native, method, vardata[], cr, deltat)
+                PB.call_method_codefn(IOContext(b, :color=>true), code_native, method[], vardata[], cr, deltat)
                 println(String(take!(b)))
             end
             if do_code_warntype
                 println("    @code_warntype:")
                 b = IOBuffer()
-                PB.call_method_codefn(IOContext(b, :color=>true), code_warntype, method, vardata[], cr, deltat)
+                PB.call_method_codefn(IOContext(b, :color=>true), code_warntype, method[], vardata[], cr, deltat)
                 println(String(take!(b)))
                 # @code_warntype PB.call_method(method, vardata[], cr, deltat)
             end
         elseif call_all
-            PB.call_method(method, vardata[], cr, deltat)
+            PB.call_method(method[], vardata[], cr, deltat)
         end
         
     end
