@@ -87,7 +87,7 @@ struct ReactionMethod{M, R, P, Nargs} <: AbstractReactionMethod
             methodfn, 
             reaction,
             name,
-            deepcopy(varlists),
+            deepcopy(varlists), # TODO this is slow !! (replace with a VarList or Variable-specific copy?)
             p,
             operatorID, 
             domain, 
@@ -111,6 +111,9 @@ get_nargs(methodref::Ref{ReactionMethod{M, R, P, Nargs}}) where {M, R, P, Nargs}
 # updated form with pars
 @inline call_method(method::ReactionMethod{M, R, P, 5}, vardata, cr, modelctxt) where {M, R, P} = 
     method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
+
+@noinline call_method(methodref::Ref{<: ReactionMethod}, vardataref::Ref, cr, modelctxt) = 
+    call_method(methodref[], vardataref[], cr, modelctxt)
 
 # for benchmarking etc: apply codefn to the ReactionMethod methodfn (without this, will just apply to the call_method wrapper)
 # codefn=code_warntype, code_llvm, code_native

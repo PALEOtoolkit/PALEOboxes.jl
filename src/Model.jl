@@ -443,9 +443,10 @@ function initialize_reactiondata!(
 
     check_modeldata(model, modeldata)
 
-    # using Ref here seems to trade off time to create ReactionMethodDispatchList
+    # TODO using Ref here seems to trade off time to create ReactionMethodDispatchList
     # and time for first call to do_deriv ??
     # (Ref gives fast ReactionMethodDispatchList creation, but slow first do_deriv)
+    # NB: passing Ref to call_method seems to speed up first do_deriv 
 
     modeldata.sorted_methodsdata_setup = 
         [
@@ -549,7 +550,7 @@ function _create_dispatch_methodlist(methodsdata, cellranges, generated_dispatch
     end # timeit
 
     if generated_dispatch
-        @timeit "ReactionMethodDispatchList" rmdl = ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(crs))
+        @timeit "ReactionMethodDispatchList" rmdl = ReactionMethodDispatchList(methods, vardatas, crs)
     else
         @timeit "ReactionMethodDispatchListNoGen" rmdl = ReactionMethodDispatchListNoGen(methods, vardatas, crs)
     end
@@ -615,7 +616,9 @@ function emits unrolled code with a function call for each Tuple element.
         push!(ex.args,
             quote
                 # let
-                call_method(dl.methods[$j][], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                # call_method(dl.methods[$j][], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                # pass Ref to function to reduce compile time
+                call_method(dl.methods[$j], dl.vardatas[$j], dl.cellranges[$j], deltat)
                 # end
             end
             )
