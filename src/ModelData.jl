@@ -59,7 +59,7 @@ end
 
 "compact form"
 function Base.show(io::IO, md::ModelData)
-    print(io, "ModelData(model=", md.model, "eltype=", eltype(md), ")")
+    print(io, "ModelData(model=", md.model, ", eltype=", eltype(md), ")")
 end
 "multiline form"
 function Base.show(io::IO, ::MIME"text/plain", md::ModelData)
