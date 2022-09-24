@@ -25,9 +25,10 @@ import Graphs # formerly LightGraphs
 import DataFrames
 using DocStringExtensions
 import OrderedCollections
+import Logging
 
 import SnoopPrecompile
-import TimerOutputs: @timeit
+import TimerOutputs: @timeit, @timeit_debug
 
 include("utils/DocStrings.jl")
 
@@ -88,40 +89,62 @@ function get_statevar_norm end
 # Run code to precompile
 #######################################################
 
-function precompile_reaction(rdict, classname)
-    rj = create_reaction(rdict, classname, "test", Dict{String, Any}())
-    rj.base.domain = Domain(name="test", ID=1, parameters=Dict{String, Any}())
-    register_methods!(rj)
+function precompile_reaction(rdict, classname; logger=Logging.NullLogger())
+
+    try
+        Logging.with_logger(logger) do
+            rj = create_reaction(rdict, classname, "test", Dict{String, Any}())
+            rj.base.domain = Domain(name="test", ID=1, parameters=Dict{String, Any}())
+            register_methods!(rj)
+        end
+    catch ex
+        @info "precompile_reaction(rdict, $classname) failed with exception:" ex
+    end
 
     return nothing
 end
 
 # create and take a timestep for a test configuration
-function run_model(configfile::AbstractString, configname::AbstractString)
+function run_model(configfile::AbstractString, configname::AbstractString; logger=Logging.NullLogger())
     
-    model =  create_model_from_config(configfile, configname)
-
-    run_model(model)
+    try
+        Logging.with_logger(logger) do
+            model =  create_model_from_config(configfile, configname)
+            run_model(model; logger=logger)
+        end
+    catch ex
+        @info "run_model($configfile, $configname) failed with exception:" ex
+    end
+    
     return nothing
 end
 
-function run_model(model::Model)
-    modeldata =  create_modeldata(model)
-    allocate_variables!(model, modeldata)
+function run_model(model::Model; call_do_deriv=false, logger=Logging.NullLogger())
 
-    check_ready(model, modeldata)
+    try
+        Logging.with_logger(logger) do
+            modeldata =  create_modeldata(model)
+            allocate_variables!(model, modeldata)
 
-    initialize_reactiondata!(model, modeldata)
+            check_ready(model, modeldata)
 
-    check_configuration(model)
+            initialize_reactiondata!(model, modeldata)
 
-    dispatch_setup(model, :setup, modeldata)
-    dispatch_setup(model, :norm_value, modeldata)   
-    dispatch_setup(model, :initial_value, modeldata)
+            check_configuration(model)
 
-    # take a time step - TODO, can be model dependent on missing setup
-    # dispatchlists = modeldata.dispatchlists_all
-    # do_deriv(dispatchlists)
+            dispatch_setup(model, :setup, modeldata)
+            dispatch_setup(model, :norm_value, modeldata)   
+            dispatch_setup(model, :initial_value, modeldata)
+
+            # take a time step - TODO, can be model dependent on missing setup
+            if call_do_deriv
+                dispatchlists = modeldata.dispatchlists_all
+                do_deriv(dispatchlists)
+            end
+        end
+    catch ex
+        @info "run_model($model; call_do_deriv=$call_do_deriv) failed with exception:" ex
+    end
 
     return nothing
 end
