@@ -99,8 +99,10 @@ function get_variables(domain::Domain, filter)
 end
 
 "Get variable by name"
-function get_variable(domain::Domain, name::AbstractString)
-    return get(domain.variables, name, nothing)
+function get_variable(domain::Domain, name::AbstractString; allow_not_found=true)
+    var = get(domain.variables, name, nothing)
+    !isnothing(var) || allow_not_found || error("get_variable: Domain $(domain.name) Variable name $name not found")
+    return var
 end
 
 
@@ -160,13 +162,14 @@ function get_reactions(domain::Domain, filter)
 end
 
 """
-    get_reaction(domain, reactname) -> Reaction or nothing
+    get_reaction(domain, reactname; allow_not_found) -> Reaction or nothing
     
 Get a reaction by name.
 """
-function get_reaction(domain::Domain, reactname::AbstractString)
+function get_reaction(domain::Domain, reactname::AbstractString; allow_not_found=true)
     reactions = get_reactions(domain, r -> r.name == reactname)
     if isempty(reactions)
+        allow_not_found || error("get_reaction: Domain $(domain.name) reactname $reactname not found")
         return nothing
     else
         return first(reactions)        

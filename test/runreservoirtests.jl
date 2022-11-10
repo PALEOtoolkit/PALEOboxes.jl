@@ -29,6 +29,9 @@ end
     @test  PB.get_length(ocean_domain) == 1000
     ocean_length = PB.get_length(ocean_domain)
 
+    # test variable attribute access
+    @test PB.get_variable_attribute(model, "global.A", :norm_value) == 3.193e17
+
     # allocate internal variables
     modeldata =  PB.create_modeldata(model)
     PB.allocate_variables!(model, modeldata, hostdep=false)
