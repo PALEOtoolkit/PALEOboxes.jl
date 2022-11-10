@@ -29,6 +29,7 @@ ReactionMethodDispatchList
 High-level access to aggregated collections of Variables is provided by [`VariableAggregator`](@ref) and [`VariableAggregatorNamed`](@ref) (see [Accessing model objects](@ref) for low-level access).
 ```@docs
 VariableAggregator
+get_indices
 copyto!(dest::VariableAggregator, src::AbstractVector; sof::Int=1)
 copyto!(dest::AbstractVector, src::VariableAggregator; dof::Int=1)
 
