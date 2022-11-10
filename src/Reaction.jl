@@ -117,13 +117,12 @@ function get_parameter(@nospecialize(reaction::AbstractReaction), parname::Abstr
     return isempty(matchpars) ? nothing : matchpars[1]
 end
 
-"convenience function to set Parameter value"
-function set_parameter_value!(@nospecialize(reaction::AbstractReaction), parname::AbstractString, value)
+set_parameter_value!(@nospecialize(reaction::AbstractReaction), parname::AbstractString, value) = 
+    setvalue!(get_parameter(reaction, parname, allow_not_found=false), value)
 
-    setvalue!(get_parameter(reaction, parname, allow_not_found=false), value)  
-    
-    return nothing
-end
+get_parameter_value(@nospecialize(reaction::AbstractReaction), parname::AbstractString) = 
+    get_parameter(reaction, parname, allow_not_found=false).v
+
 
 "Get method by name"
 get_method_setup(@nospecialize(reaction::AbstractReaction), methodname::AbstractString; allow_not_found=false) =

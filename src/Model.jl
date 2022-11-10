@@ -24,17 +24,18 @@ function get_num_domains(model::Model)
 end
 
 """
-    get_domain(model::Model, name::AbstractString) -> Domain or nothing
+    get_domain(model::Model, name::AbstractString; allow_not_found=false) -> Domain or nothing
     get_domain(model::Model, domainid) -> Domain
 
 Get Domain by `name` (may be nothing if `name` not matched)
 or `domainid` (range 1:num_domains).
 """
-function get_domain(model::Model, name::AbstractString)
+function get_domain(model::Model, name::AbstractString; allow_not_found=false)
 
     domainidx = findfirst(d -> d.name==name, model.domains)
     
     if isnothing(domainidx)
+        allow_not_found || error("get_domain: no Domain $name")
         return nothing
     else
         return model.domains[domainidx]
@@ -42,50 +43,39 @@ function get_domain(model::Model, name::AbstractString)
 end
 
 function get_domain(model::Model, domainid)
-    if domainid > length(model.domains)
-        error("get_domain invalid domainid=", domainid)
-    end
+    domainid <= length(model.domains) || error("get_domain: invalid domainid=", domainid)
 
     return model.domains[domainid]    
 end
 
 function get_mesh(model::Model, domainname::AbstractString)
-    dom = get_domain(model, domainname)
-    !isnothing(dom) ||
-        throw(ArgumentError("no Domain $domainname"))
-    return dom.grid
+    return get_domain(model, domainname; allow_not_found=false).grid
 end
 
 """
-    get_reaction(model::Model, domainname, reactionname) -> Reaction or nothing
+    get_reaction(model::Model, domainname, reactionname; allow_not_found=false) -> Reaction or nothing
 
 Get Reaction by domainname and reaction name
 """
-function get_reaction(model::Model, domainname, reactionname)
-    domain = get_domain(model, domainname)
-    if !isnothing(domain)
-        return get_reaction(domain, reactionname)
-    end
-    return nothing
+function get_reaction(model::Model, domainname, reactionname; allow_not_found=false)
+    domain = get_domain(model, domainname; allow_not_found)
+    return isnothing(domain) ? nothing : get_reaction(domain, reactionname; allow_not_found)
 end
 
 """
-    get_variable(model::Model, varnamefull) -> VariableDomain or nothing
+    get_variable(model::Model, varnamefull; allow_not_found=false) -> VariableDomain or nothing
 
 Get Variable by name of form `<domainname>.<variablename>`
 """
-function get_variable(model::Model, varnamefull::AbstractString)
+function get_variable(model::Model, varnamefull::AbstractString; allow_not_found=false)
 
     varsplit = split(varnamefull, ".")
     length(varsplit) == 2 || 
         throw(ArgumentError("varnamefull $varnamefull is not of form <domainname>.<variablename>"))
     domainname, variablename = varsplit
 
-    domain = get_domain(model, domainname)
-    if !isnothing(domain)
-        return get_variable(domain, variablename)
-    end
-    return nothing
+    domain = get_domain(model, domainname; allow_not_found)
+    return isnothing(domain) ? nothing : get_variable(domain, variablename; allow_not_found)
 end
 
 """
@@ -94,9 +84,8 @@ end
 Get [`Field`](@ref) by Variable name
 """
 function get_field(model::Model, modeldata::AbstractModelData, varnamefull::AbstractString)
-    var = get_variable(model, varnamefull)
-    !isnothing(var) ||
-        throw(ArgumentError("Variable $varnamefull not found"))
+    var = get_variable(model, varnamefull; allow_not_found=false)
+  
     return get_field(var, modeldata)
 end
 
@@ -112,13 +101,9 @@ function set_variable_attribute!(
     attributename::Symbol,
     value
 )
-    domvar = get_variable(model, varnamefull)
-    !isnothing(domvar) || 
-        throw(ArgumentError("Variable $varnamefull not found"))
+    domvar = get_variable(model, varnamefull; allow_not_found=false)
 
-    set_attribute!(domvar, attributename, value)  
-    
-    return nothing
+    return set_attribute!(domvar, attributename, value)  
 end
 
 set_variable_attribute!(
@@ -129,13 +114,28 @@ set_variable_attribute!(
     value
 ) = set_variable_attribute!(model, domainname*"."*variablename, attributename, value)
 
+
+"""
+    get_variable_attribute(model::Model, varnamefull, attributename::Symbol, missing_value=missing) -> attributevalue
+
+Get `varnamefull` (of form <domain name>.<var name>) `attributename`.
+"""
+function get_variable_attribute(
+    model::Model, 
+    varnamefull::AbstractString,
+    attributename::Symbol,
+    missing_value=missing,
+)
+    domvar = get_variable(model, varnamefull; allow_not_found=false)
+
+    return get_attribute(domvar, attributename, missing_value)  
+end
+
 "convenience function to get VariableReaction with 'localname' from all ReactionMethods of 'reactionname'"
 function get_reaction_variables(
     model::Model, domainname::AbstractString, reactionname::AbstractString, localname::AbstractString
 )
-
-    react = get_reaction(model, domainname, reactionname)
-    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+    react = get_reaction(model, domainname, reactionname; allow_not_found=false)
 
     return get_variables(react, localname)
 end
@@ -145,9 +145,7 @@ function get_reaction_variables(
     model::Model, domainname::AbstractString, reactionname::AbstractString;
     filterfn = v -> true,
 )
-
-    react = get_reaction(model, domainname, reactionname)
-    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+    react = get_reaction(model, domainname, reactionname; allow_not_found=false)
 
     return get_variables(react, filterfn=filterfn)
 end
@@ -165,12 +163,25 @@ function set_parameter_value!(
     parname::AbstractString,
     value
 )
-    react = get_reaction(model, domainname, reactionname)
-    !isnothing(react) || error("Reaction $domainname.$reactionname not found")
+    react = get_reaction(model, domainname, reactionname; allow_not_found=false)
+ 
+    return set_parameter_value!(react, parname, value)  
+end
 
-    set_parameter_value!(react, parname, value)  
-    
-    return nothing
+"""
+    get_parameter_value(model::Model, domainname, reactionname, parname) -> value
+
+Convenience function to get Parameter value.
+"""
+function get_parameter_value(
+    model::Model, 
+    domainname::AbstractString,
+    reactionname::AbstractString,
+    parname::AbstractString,
+)
+    react = get_reaction(model, domainname, reactionname; allow_not_found=false)
+ 
+    return get_parameter_value(react, parname, value)  
 end
 
 ###################################

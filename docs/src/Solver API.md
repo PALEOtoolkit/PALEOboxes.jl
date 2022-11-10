@@ -82,6 +82,11 @@ show_parameters
 ```@docs
 get_domain
 get_reaction(model::Model, domainname, reactionname)
+set_parameter_value!
+get_parameter_value
+set_variable_attribute!
+get_variable_attribute
+
 ```
 
 ### [`Domain`](@ref)s
