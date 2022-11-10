@@ -6,6 +6,9 @@
 #################################################################
 
 struct VariableAggregator{T, F <: Tuple, C <: Tuple}
+    # modeldata used for data arrays (for diagnostic output only)
+    modeldata::AbstractModelData  # not typed
+
     # Variables 
     vars::Vector{VariableDomain}
 
@@ -56,7 +59,7 @@ function VariableAggregator(vars, cellranges, modeldata)
     cellranges=Tuple(cellranges)
 
     return VariableAggregator{eltype(modeldata), typeof(fields), typeof(cellranges)}(
-        vars, indices, fields, cellranges
+        modeldata, copy(vars), indices, fields, cellranges,
     )
 end
 
@@ -103,6 +106,23 @@ function Base.length(va::VariableAggregator)
     end
 end
 
+"""
+    get_indices(va::VariableAggregator, varnamefull::AbstractString; allow_not_found=false) -> indices::UnitRange{Int64} 
+
+Return indices in flattened Vector corresponding to Variable `varnamefull`
+"""
+function get_indices(va::VariableAggregator, varnamefull::AbstractString; allow_not_found=false)
+    indices = nothing
+    for (v, ind) in IteratorUtils.zipstrict(va.vars, va.indices)
+        if fullname(v) == varnamefull
+            indices = ind
+            break
+        end
+    end
+
+    !isnothing(indices) || allow_not_found || error("get_indices: Variable $varnamefull not found")
+    return indices
+end
 
 """
     copyto!(dest::VariableAggregator, src::AbstractVector; sof=1) -> num_copied::Int
@@ -191,6 +211,9 @@ num_vars(va::VariableAggregator) = length(va.vars)
 
 
 struct VariableAggregatorNamed{V <: NamedTuple, VV <: NamedTuple}
+    # modeldata used for data arrays (for diagnostic output only)
+    modeldata::AbstractModelData  # not typed
+
     # Variables as a NamedTuple 
     vars::V
 
@@ -241,6 +264,7 @@ end
 """
     VariableAggregatorNamed(modeldata) -> VariableAggregatorNamed
     VariableAggregatorNamed(vars, modeldata) -> VariableAggregatorNamed
+    VariableAggregatorNamed(va::VariableAggregator; ignore_cellranges=false) -> VariableAggregatorNamed
 
 Aggregate VariableDomains into nested NamedTuples, with Domain and Variable names as keys and
 data arrays (from `get_data`) as values.
@@ -263,6 +287,11 @@ function VariableAggregatorNamed(
     end
 
     return VariableAggregatorNamed(all_domvars, modeldata)
+end
+
+function VariableAggregatorNamed(va::VariableAggregator; ignore_cellranges=false)
+    all(va.cellranges .== nothing) || ignore_cellranges || error("VariableAggregatorNamed: VariableAggregator is using cellranges to select part of Domain")
+    return VariableAggregatorNamed(va.vars, va.modeldata)
 end
 
 function VariableAggregatorNamed(
@@ -297,36 +326,37 @@ function VariableAggregatorNamed(
     end
     vars_values_nt = NamedTuple{Tuple(keys(vars_values_dictnt))}(Tuple(values(vars_values_dictnt)))
 
-    return VariableAggregatorNamed(vars_nt, vars_values_nt)
+    return VariableAggregatorNamed(modeldata, vars_nt, vars_values_nt)
 end
 
 
 """
-    set_values!(van::VariableAggregatorNamed, domainname_sym::Symbol, varname_sym::Symbol, val; allow_missing=false)
-    set_values!(van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; allow_missing=false)
-    set_values!(van::VariableAggregatorNamed, ::Val{domainname_sym}, ::Val{varname_sym}, val; allow_missing=false)    
+    set_values!(van::VariableAggregatorNamed, domainname_sym::Symbol, varname_sym::Symbol, val; allow_not_found=false)
+    set_values!(van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; allow_not_found=false)
+    set_values!(van::VariableAggregatorNamed, ::Val{domainname_sym}, ::Val{varname_sym}, val; allow_not_found=false)    
 
 Set a data array in `var`: ie set `van.values.domainname.varname .= val`.
 
-If Variable `domainname.varname` not present, errors if `allow_missing==false`, or has no effect if `allow_missing==true`.
+If Variable `domainname.varname` not present, errors if `allow_not_found==false`, or has no effect if `allow_not_found==true`.
 
 As an optimisation where `domainname` and `varname` are known at compile time, they can be passed as Val(domainname_sym), Val(varname_sym) to maintain
 type stability and avoid allocations.
 """
 function set_values!(
     van::VariableAggregatorNamed, domainname::Symbol, varname::Symbol, val;
-    allow_missing::Bool=false
+    allow_missing::Bool=false, # deprecated
+    allow_not_found::Bool=allow_missing,    
 )
     # check Variable exists
     if hasfield(typeof(van.values), domainname)
         if hasfield(typeof(getfield(van.values, domainname)), varname)
             getfield(getfield(van.values, domainname), varname) .= val
         else
-            allow_missing ||
+            allow_not_found ||
                 error("VariableAggregatorNamed has no Variable $domainame.$varname")
         end
     else
-        allow_missing ||
+        allow_not_found ||
             error("VariableAggregatorNamed has no Variable $domainame.$varname")
     end
 
@@ -335,24 +365,26 @@ end
 
 set_values!(
     van::VariableAggregatorNamed, domainname::AbstractString, varname::AbstractString, val; 
-    allow_missing::Bool=false
-) = set_values!(van, Symbol(domainname), Symbol(varname), val; allow_missing=allow_missing)
+    allow_missing::Bool=false, # deprecated
+    allow_not_found::Bool=allow_missing,
+) = set_values!(van, Symbol(domainname), Symbol(varname), val; allow_not_found)
 
 # type stable version
 function set_values!(
     van::VariableAggregatorNamed, domainname::Val{DN}, varname::Val{VN}, val;
-    allow_missing::Bool=false
+    allow_missing::Bool=false, # deprecated
+    allow_not_found::Bool=allow_missing,
 ) where {DN, VN}
     # check Variable exists
     if hasfield(typeof(van.values), DN)
         if hasfield(typeof(getfield(van.values, DN)), VN)
             getfield(getfield(van.values, DN), VN) .= val
         else
-            allow_missing ||
+            allow_not_found ||
                 error("VariableAggregatorNamed has no Variable $DN.$VN")
         end
     else
-        allow_missing ||
+        allow_not_found ||
             error("VariableAggregatorNamed has no Variable $DN.$VN")
     end
 

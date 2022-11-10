@@ -52,10 +52,14 @@ end
     stateexplicit_vars, stateexplicit_sms_vars =
         PB.get_host_variables(global_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
     @test length(stateexplicit_vars) == 2  # A and O
-
+    # get global state variable aggregator
+    global_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata)
+    
     stateexplicit_vars, stateexplicit_sms_vars =
         PB.get_host_variables(ocean_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
     @test length(stateexplicit_vars) == 1
+    # get ocean state variable aggregator
+    ocean_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata)
 
     # get host-dependent variables
     global_hostdep_vars_vec =  PB.get_variables(global_domain, hostdep=true)
@@ -71,10 +75,18 @@ end
     PB.dispatch_setup(model, :norm_value, modeldata)
     PB.dispatch_setup(model, :initial_value, modeldata)
 
-    @info "global host-dependent variables:\n"
+    @info "global stateexplicit variables:\n"
     @test all_data.global.A.v[]  == 3.193e18   # A
     @test all_data.global.A.v_moldelta[]  == 2.0*3.193e18    # A_moldelta
-    
+    # test access via flattened vector (as used eg by an ODE solver)
+    global_A_indices = PB.get_indices(global_stateexplicit_va, "global.A")
+    @test global_A_indices == 2:3
+    stateexplicit_vector = PB.get_data(global_stateexplicit_va)
+    @test stateexplicit_vector[global_A_indices] == [all_data.global.A.v[], all_data.global.A.v_moldelta[]]
+    # test VariableAggregatorNamed created from VariableAggregator
+    global_stateexplicit_data = PB.VariableAggregatorNamed(global_stateexplicit_va).values
+    @test global_stateexplicit_data.global.A == all_data.global.A
+
     @info "global const variables:"
     @test all_data.global.ConstS[] == 1.0
 
