@@ -24,13 +24,13 @@ function get_num_domains(model::Model)
 end
 
 """
-    get_domain(model::Model, name::AbstractString; allow_not_found=false) -> Domain or nothing
+    get_domain(model::Model, name::AbstractString; allow_not_found=true) -> Domain or nothing
     get_domain(model::Model, domainid) -> Domain
 
 Get Domain by `name` (may be nothing if `name` not matched)
 or `domainid` (range 1:num_domains).
 """
-function get_domain(model::Model, name::AbstractString; allow_not_found=false)
+function get_domain(model::Model, name::AbstractString; allow_not_found=true)
 
     domainidx = findfirst(d -> d.name==name, model.domains)
     
@@ -745,9 +745,8 @@ function show_variables(model::Model; kwargs...)
 end
 
 function show_variables(model::Model, domainname::AbstractString; kwargs...)
-    dom = get_domain(model, domainname)
-    !isnothing(dom) ||
-        throw(ArgumentError("no Domain $domainname"))
+    dom = get_domain(model, domainname; allow_not_found=false)
+    
     return show_variables(dom; kwargs...)
 end
 
