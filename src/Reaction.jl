@@ -48,6 +48,8 @@ Base.@kwdef mutable struct ReactionBase
     external_parameters::Dict{String, Any}          = Dict{String, Any}()
     "Reaction parameters"
     parameters::Vector{AbstractParameter}           = Vector{AbstractParameter}()
+    "Modified parameters eg for sensitivity studies"
+    sensitivity_parameters                          = nothing
 
     methods_setup::Vector{AbstractReactionMethod}   = Vector{AbstractReactionMethod}()
     methods_initialize::Vector{AbstractReactionMethod}=Vector{AbstractReactionMethod}()
