@@ -328,12 +328,12 @@ abstract type AbstractVarList
 end
 
 """
-    create_accessors(varlist::AbstractVarList, modeldata::AbstractModelData) -> vardata
+    create_accessors(varlist::AbstractVarList, modeldata::AbstractModelData, arrays_idx::Int) -> vardata
 
 Return a collection `vardata` of views on Domain data arrays for VariableReactions in `varlist`.
 Collection and view are determined by `varlist` Type.
 """
-function create_accessors(va::AbstractVarList, modeldata::AbstractModelData) end
+function create_accessors(va::AbstractVarList, modeldata::AbstractModelData, arrays_idx::Int) end
 
 """
     get_variables(varlist::AbstractVarList) -> Vector{VariableReaction}
@@ -357,8 +357,8 @@ end
 
 get_variables(vl::VarList_single) = [vl.var]
 
-create_accessors(vl::VarList_single, modeldata::AbstractModelData) = 
-    create_accessor(vl.var, modeldata, vl.components)
+create_accessors(vl::VarList_single, modeldata::AbstractModelData, arrays_idx::Int) = 
+    create_accessor(vl.var, modeldata, arrays_idx, vl.components)
 
 
 """
@@ -376,10 +376,10 @@ end
 
 get_variables(vl::VarList_components) = vl.vars
 
-function create_accessors(vl::VarList_components, modeldata::AbstractModelData)
+function create_accessors(vl::VarList_components, modeldata::AbstractModelData, arrays_idx::Int)
     accessors_generic = []
     for v in vl.vars
-        a = create_accessor(v, modeldata, true)
+        a = create_accessor(v, modeldata, arrays_idx, true)
         if isnothing(a) || isempty(a)
             if vl.allow_unlinked
                 append!(accessors_generic, fill(nothing, num_components(v)))
@@ -442,8 +442,8 @@ end
 
 get_variables(vl::VarList_namedtuple) = vl.vars
 
-create_accessors(vl::VarList_namedtuple, modeldata::AbstractModelData) =
-    NamedTuple{Tuple(vl.keys)}(create_accessor(v, modeldata, vl.components) for v in vl.vars)
+create_accessors(vl::VarList_namedtuple, modeldata::AbstractModelData, arrays_idx::Int) =
+    NamedTuple{Tuple(vl.keys)}(create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
 
 """
     VarList_tuple(varcollection; components=false) -> VarList_tuple
@@ -461,8 +461,8 @@ end
 
 get_variables(vl::VarList_tuple) = vl.vars
 
-create_accessors(vl::VarList_tuple, modeldata::AbstractModelData) =
-    Tuple(create_accessor(v, modeldata, vl.components) for v in vl.vars)
+create_accessors(vl::VarList_tuple, modeldata::AbstractModelData, arrays_idx::Int) =
+    Tuple(create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
 
 """
     VarList_vector(varcollection; components=false, forceview=false) -> VarList_vector
@@ -485,8 +485,8 @@ end
 
 get_variables(vl::VarList_vector) = vl.vars
 
-create_accessors(vl::VarList_vector, modeldata::AbstractModelData) = 
-    [create_accessor(v, modeldata, vl.components, forceview=vl.forceview) for v in vl.vars]
+create_accessors(vl::VarList_vector, modeldata::AbstractModelData, arrays_idx::Int) = 
+    [create_accessor(v, modeldata, vl.components, arrays_idx, forceview=vl.forceview) for v in vl.vars]
 
 
 """
@@ -505,8 +505,8 @@ end
 
 get_variables(vl::VarList_vvector) = vcat(vl.vars...)
 
-create_accessors(vl::VarList_vvector, modeldata::AbstractModelData) = 
-    [[create_accessor(v, modeldata, vl.components) for v in vv] for vv in vl.vars]
+create_accessors(vl::VarList_vvector, modeldata::AbstractModelData, arrays_idx::Int) = 
+    [[create_accessor(v, modeldata, arrays_idx, vl.components) for v in vv] for vv in vl.vars]
 
 """
     VarList_nothing() -> VarList_nothing
@@ -518,7 +518,7 @@ struct VarList_nothing <: AbstractVarList
 end
 
 get_variables(vl::VarList_nothing) = VariableReaction[] 
-create_accessors(vl::VarList_nothing, modeldata::AbstractModelData) = nothing
+create_accessors(vl::VarList_nothing, modeldata::AbstractModelData, arrays_idx::Int) = nothing
 
 """
     VarList_tuple_nothing(nvar) -> VarList_tuple_nothing
@@ -531,7 +531,7 @@ struct VarList_tuple_nothing <: AbstractVarList
 end
 
 get_variables(vl::VarList_tuple_nothing) = VariableReaction[] 
-create_accessors(vl::VarList_tuple_nothing, modeldata::AbstractModelData) = ntuple(x->nothing, vl.nvar)
+create_accessors(vl::VarList_tuple_nothing, modeldata::AbstractModelData, arrays_idx::Int) = ntuple(x->nothing, vl.nvar)
 
 """
     VarList_fields(varcollection) -> VarList_fields
@@ -546,7 +546,7 @@ end
 
 get_variables(vl::VarList_fields) = vl.vars
 
-function create_accessors(vl::VarList_fields, modeldata::AbstractModelData)
+function create_accessors(vl::VarList_fields, modeldata::AbstractModelData, arrays_idx::Int)
     accessors = []
     for v in vl.vars
         isempty(v.linkreq_subdomain) || error("variable $v subdomains not supported")
@@ -554,18 +554,18 @@ function create_accessors(vl::VarList_fields, modeldata::AbstractModelData)
             v.link_optional || error("unlinked variable $v")
             push!(accessors, nothing)
         else
-            push!(accessors, get_field(v.linkvar, modeldata))    
+            push!(accessors, get_field(v.linkvar, modeldata, arrays_idx))    
         end
     end
     return Tuple(accessors)
 end
 
 # convert Tuple of VarLists to Tuple of data array views
-create_accessors(method::AbstractReactionMethod, modeldata::AbstractModelData) =
-    Tuple(create_accessors(vl, modeldata) for vl in method.varlists)
+create_accessors(method::AbstractReactionMethod, modeldata::AbstractModelData, arrays_idx::Int) =
+    Tuple(create_accessors(vl, modeldata, arrays_idx) for vl in method.varlists)
 
  """
-     create_accessor(var::VariableReaction, modeldata, components, [,forceview=false])
+     create_accessor(var::VariableReaction, modeldata, arrays_idx, components, [,forceview=false])
         -> accessor or (accessor, subdomain_indices)
 
 Creates a `view` on a (single) [`VariableDomain`](@ref) data array linked by `var::`[`VariableReaction`](@ref).
@@ -592,7 +592,7 @@ Mapping of multi-component (Isotope) Variables:
     - variable data as a `accessor::Vector{Array}`, length=number of components
 """
 function create_accessor(
-    var::VariableReaction, modeldata::AbstractModelData, components; 
+    var::VariableReaction, modeldata::AbstractModelData, arrays_idx::Int, components; 
     forceview=false
 )
     errstring = "create_accessor: VariableReaction $(fullname(var))  ->  $(isnothing(var.linkvar) ? nothing : fullname(var.linkvar))"
@@ -601,7 +601,7 @@ function create_accessor(
         var.link_optional || error("$errstring:  unlinked variable")
         return nothing
     else
-        linkvar_field = get_field(var.linkvar, modeldata)
+        linkvar_field = get_field(var.linkvar, modeldata, arrays_idx)
 
         # find subdomain (if requested)
         if !isempty(var.linkreq_subdomain)

@@ -20,32 +20,90 @@ end
 
 
 """
-    ModelData{T}
+    ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bool=false, allocatenans::Bool=true)
 
-Contains `model` data arrays of element type T.
+Contains `model` data arrays.
+
+May contain multiple copies of data arrays with different element types, in order to support automatic differentiation.
+
 
 # Fields
 - `cellranges_all::Vector{AbstractCellRange}`: default cellranges covering all domains
 - `dispatchlists_all`: default dispatchlists covering all domains
 - `solver_view_all`: optional untyped context field for use by external solvers.
 """
-Base.@kwdef mutable struct ModelData{T<:Real} <: AbstractModelData
+Base.@kwdef mutable struct ModelData <: AbstractModelData
     model::Model
+    domain_data::Vector{Tuple{DataType, String, Vector{DomainData}}} = Tuple{DataType, String, Vector{DomainData}}[]
     threadsafe::Bool
-    allocatenans::Bool                          = true # fill with NaN when allocating
-    domain_data::Vector{DomainData}             = Vector{DomainData}()
+    allocatenans::Bool # fill with NaN when allocating
 
-    sorted_methodsdata_setup                    = nothing    
-    sorted_methodsdata_initialize               = nothing
-    sorted_methodsdata_do                       = nothing
+    sorted_methodsdata_setup                    = nothing    # only for arrays_idx = 1
+    sorted_methodsdata_initialize               = [] # one per arrays_idx
+    sorted_methodsdata_do                       = [] # one per arrays_idx
     
     cellranges_all::Vector{AbstractCellRange}   = Vector{AbstractCellRange}()    
-    dispatchlists_all                           = nothing    
-    solver_view_all                             = nothing
+    dispatchlists_all                           = nothing    # only for arrays_idx = 1
+    solver_view_all                             = nothing    # only for arrays_idx = 1
 end
 
-"Determine the type of Array elements for ModelData"
-Base.eltype(::Type{ModelData{T}}) where{T} = T
+function ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bool=false, allocatenans::Bool=true)
+
+    modeldata = ModelData(;
+        model,
+        threadsafe,
+        allocatenans,        
+    )
+
+    push_arrays_data!(model, modeldata, arrays_eltype, "base")
+
+    return modeldata
+end
+
+function push_arrays_data!(model::Model, modeldata::ModelData, arrays_eltype::DataType, arrays_tagname::AbstractString)
+    isnothing(find_arrays_idx(modeldata, arrays_tagname::AbstractString)) || throw(ArgumentError("arrays_tagname $arrays_tagname already exists"))
+
+    push!(modeldata.domain_data, (arrays_eltype, arrays_tagname,  [DomainData(dom) for dom in model.domains]))
+
+    resize!(modeldata.sorted_methodsdata_initialize, num_arrays(modeldata))
+    resize!(modeldata.sorted_methodsdata_do, num_arrays(modeldata))
+
+    return nothing
+end
+
+function pop_arrays_data!(modeldata::ModelData)
+    length(modeldata.domain_data) > 1 || error("cannot remove base domain_data")
+    return pop!(modeldata.domain_data)
+end
+
+num_arrays(modeldata::ModelData) = length(modeldata.domain_data)
+find_arrays_idx(modeldata::ModelData, arrays_eltype::DataType) = findfirst(x -> x[1] == arrays_eltype, modeldata.domain_data)
+find_arrays_idx(modeldata::ModelData, arrays_tagname::AbstractString) = findfirst(x -> [2] == arrays_tagname, modeldata.domain_data)
+   
+"""
+    copy_base_values!(modeldata::ModelData, array_indices=2:num_arrays(modeldata))
+
+Copy array contents from base `arrays_idx=1` to other `array_indices`
+"""
+function copy_base_values!(modeldata::ModelData, array_indices=2:num_arrays(modeldata))
+    @warn "copy_base_values! TODO"
+end
+
+"""
+    eltype(modeldata::ModelData, arrays_idx::Int) -> DataType
+
+Determine the type of Array elements for ModelData
+"""
+function Base.eltype(modeldata::ModelData, arrays_idx::Int)
+    arrays_idx in 1:length(modeldata.domain_data) || throw(ArgumentError("arrays_idx $arrays_idx out of range"))
+    return modeldata.domain_data[arrays_idx][1]
+end
+
+function Base.eltype(modeldata::ModelData, arrays_tagname::AbstractString)
+    arrays_idx = find_arrays_idx(modeldata, arrays_tagname)
+    !isnothing(arrays_idx) || throw(ArgumentError("arrays_tagname $arrays_tagname not found"))
+    return eltype(modeldata, arrays_idx)
+end
 
 "Check ModelData consistent with Model"
 function check_modeldata(model::Model, modeldata::ModelData)
@@ -56,22 +114,22 @@ function check_modeldata(model::Model, modeldata::ModelData)
     end
 end
 
-
-"compact form"
+# compact form
 function Base.show(io::IO, md::ModelData)
-    print(io, "ModelData(model=", md.model, ", eltype=", eltype(md), ")")
+    print(io, "ModelData(model=", md.model, ", domain_data=", [(x[1], x[2]) for x in md.domain_data], ")")
 end
-"multiline form"
+# multiline form
 function Base.show(io::IO, ::MIME"text/plain", md::ModelData)
     println(io, "ModelData")
     println(io, "  model=", md.model)
-    println(io, "  eltype=", eltype(md))
+    println(io, "  domain_data=", [(x[1], x[2]) for x in md.domain_data])
     println(io, "  solver_view_all=", md.solver_view_all)
 end
 
 
-function get_domaindata(modeldata::ModelData, domain::AbstractDomain)
-    return modeldata.domain_data[domain.ID]
+function get_domaindata(modeldata::ModelData, domain::AbstractDomain, arrays_idx::Int)
+    arrays_idx in 1:length(modeldata.domain_data) || throw(ArgumentError("arrays_idx $arrays_idx out of range"))
+    return modeldata.domain_data[arrays_idx][3][domain.ID]
 end
 
 

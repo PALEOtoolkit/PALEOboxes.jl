@@ -34,13 +34,13 @@ end
 
     # allocate internal variables
     modeldata =  PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata, hostdep=false)
+    PB.allocate_variables!(model, modeldata, 1; hostdep=false)
 
-    @test length( PB.get_unallocated_variables(global_domain, modeldata)) == 4
+    @test length( PB.get_unallocated_variables(global_domain, modeldata, 1)) == 4
     @test  PB.check_ready(global_domain, modeldata, throw_on_error=false) == false    
 
     # allocate arrays for host dependencies and set data pointers
-    PB.allocate_variables!(model, modeldata, hostdep=true)
+    PB.allocate_variables!(model, modeldata, 1; hostdep=true)
     @test  PB.check_ready(global_domain, modeldata) == true
 
     # get all variable data arrays
@@ -53,13 +53,13 @@ end
         PB.get_host_variables(global_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
     @test length(stateexplicit_vars) == 2  # A and O
     # get global state variable aggregator
-    global_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata)
+    global_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata, 1)
     
     stateexplicit_vars, stateexplicit_sms_vars =
         PB.get_host_variables(ocean_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
     @test length(stateexplicit_vars) == 1
     # get ocean state variable aggregator
-    ocean_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata)
+    ocean_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata, 1)
 
     # get host-dependent variables
     global_hostdep_vars_vec =  PB.get_variables(global_domain, hostdep=true)
