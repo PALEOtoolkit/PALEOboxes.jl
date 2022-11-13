@@ -545,7 +545,7 @@ See [`allocate_variables!(model::Model, modeldata::AbstractModelData, arrays_idx
 [`initialize_reactiondata!`] for keyword arguments.
 """
 function add_arrays_eltype!(
-    model::Model, modeldata::ModelData, arrays_eltype::DataType, arrays_tagname::AbstractString;
+    model::Model, modeldata::AbstractModelData, arrays_eltype::DataType, arrays_tagname::AbstractString;
     method_barrier=nothing,
     generated_dispatch=true,
     kwargs...
