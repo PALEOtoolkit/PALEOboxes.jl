@@ -535,16 +535,18 @@ end
 
 
 """
-    add_arrays_eltype!(
+    add_arrays_data!(
         model, modeldata, arrays_eltype::DataType, arrays_tagname::AbstractString;
         [method_barrier=nothing] [, generated_dispatch=true] [, kwargs...])
     
-Add, allocate and initialize arrays and reactiondata for a new element type `arrays_eltype`.
+Add, allocate and initialize arrays and reactiondata for a data array set.
+
+Element type and tag name are set by `arrays_eltype`, `arrays_tagname`
 
 See [`allocate_variables!(model::Model, modeldata::AbstractModelData, arrays_idx::Int)`](@ref) and 
 [`initialize_reactiondata!`] for keyword arguments.
 """
-function add_arrays_eltype!(
+function add_arrays_data!(
     model::Model, modeldata::AbstractModelData, arrays_eltype::DataType, arrays_tagname::AbstractString;
     method_barrier=nothing,
     generated_dispatch=true,
