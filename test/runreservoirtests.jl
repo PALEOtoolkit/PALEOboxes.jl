@@ -68,7 +68,7 @@ end
     ocean_hostdep_vars_vec =  PB.get_variables(ocean_domain, hostdep=true)
     @test length(ocean_hostdep_vars_vec) == 2
  
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
     @info "dispatch_setup"
     PB.dispatch_setup(model, :setup, modeldata)

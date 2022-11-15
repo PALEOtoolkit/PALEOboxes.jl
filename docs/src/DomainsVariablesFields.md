@@ -145,6 +145,7 @@ CurrentModule = PALEOboxes
 AbstractSpace
 ScalarSpace
 CellSpace
+ColumnSpace
 ```
 
 ## Data types

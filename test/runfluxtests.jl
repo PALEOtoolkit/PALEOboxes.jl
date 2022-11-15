@@ -28,7 +28,7 @@ import PALEOboxes as PB
     @info "all_vars: $all_vars"
     all_data = all_vars.values
 
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
       
     @info "dispatch_setup"
     PB.dispatch_setup(model, :setup, modeldata)

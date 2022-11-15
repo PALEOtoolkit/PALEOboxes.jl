@@ -486,7 +486,7 @@ end
 get_variables(vl::VarList_vector) = vl.vars
 
 create_accessors(vl::VarList_vector, modeldata::AbstractModelData, arrays_idx::Int) = 
-    [create_accessor(v, modeldata, vl.components, arrays_idx, forceview=vl.forceview) for v in vl.vars]
+    [create_accessor(v, modeldata, arrays_idx, vl.components, forceview=vl.forceview) for v in vl.vars]
 
 
 """

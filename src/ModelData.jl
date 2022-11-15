@@ -22,10 +22,12 @@ end
 """
     ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bool=false, allocatenans::Bool=true)
 
-Contains `model` data arrays.
+Create a ModelData struct containing `model` data arrays.
 
-May contain multiple copies of data arrays with different element types, in order to support automatic differentiation.
+One set of data arrays is created with `eltype=arrays_eltype`, accessed with `arrays_idx=1`
 
+Additional sets of data arrays may be added by [`push_arrays_data!`](@ref), eg in order to support automatic differentiation
+which requires Dual numbers as the array element type.
 
 # Fields
 - `cellranges_all::Vector{AbstractCellRange}`: default cellranges covering all domains
@@ -55,15 +57,20 @@ function ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bo
         allocatenans,        
     )
 
-    push_arrays_data!(model, modeldata, arrays_eltype, "base")
+    push_arrays_data!(modeldata, arrays_eltype, "base")
 
     return modeldata
 end
 
-function push_arrays_data!(model::Model, modeldata::ModelData, arrays_eltype::DataType, arrays_tagname::AbstractString)
+"""
+    push_arrays_data!(modeldata, arrays_eltype::DataType, arrays_tagname::AbstractString)
+
+Add an (unallocated) additional array set with element type `arrays_eltype`.
+"""
+function push_arrays_data!(modeldata::ModelData, arrays_eltype::DataType, arrays_tagname::AbstractString)
     isnothing(find_arrays_idx(modeldata, arrays_tagname::AbstractString)) || throw(ArgumentError("arrays_tagname $arrays_tagname already exists"))
 
-    push!(modeldata.domain_data, (arrays_eltype, arrays_tagname,  [DomainData(dom) for dom in model.domains]))
+    push!(modeldata.domain_data, (arrays_eltype, arrays_tagname,  [DomainData(dom) for dom in modeldata.model.domains]))
 
     resize!(modeldata.sorted_methodsdata_initialize, num_arrays(modeldata))
     resize!(modeldata.sorted_methodsdata_do, num_arrays(modeldata))
@@ -71,6 +78,11 @@ function push_arrays_data!(model::Model, modeldata::ModelData, arrays_eltype::Da
     return nothing
 end
 
+"""
+    pop_arrays_data!(modeldata)
+
+Remove last array set (NB: base array set with `arrays_idx==1`) cannot be removed).
+"""
 function pop_arrays_data!(modeldata::ModelData)
     length(modeldata.domain_data) > 1 || error("cannot remove base domain_data")
     return pop!(modeldata.domain_data)
@@ -86,11 +98,31 @@ find_arrays_idx(modeldata::ModelData, arrays_tagname::AbstractString) = findfirs
 Copy array contents from base `arrays_idx=1` to other `array_indices`
 """
 function copy_base_values!(modeldata::ModelData, array_indices=2:num_arrays(modeldata))
-    @warn "copy_base_values! TODO"
+
+    base_domain_data = first(modeldata.domain_data)
+    _, _, base_data = base_domain_data
+
+    for ai in array_indices
+        domain_data = modeldata.domain_data[ai]
+        dd_eltype, dd_tagname, dd_data = domain_data
+        @info "copy_base_values! copying to modeldata arrays_index $ai ($dd_eltype, $dd_tagname)"
+        for (dbase, d) in IteratorUtils.zipstrict(base_data, dd_data)
+            for (vardata_base, vardata) in IteratorUtils.zipstrict(dbase.variable_data, d.variable_data)
+                if !isnothing(vardata) # non-base arrays may not be allocated
+                    if vardata !== vardata_base # non-base array may just be a "link" to the same array
+                        vardata.values .= vardata_base.values
+                    end
+                end
+            end
+        end
+    end
+
+    return nothing
 end
 
 """
     eltype(modeldata::ModelData, arrays_idx::Int) -> DataType
+    eltype(modeldata::ModelData, arrays_tagname::AbstractString)
 
 Determine the type of Array elements for ModelData
 """
@@ -104,6 +136,8 @@ function Base.eltype(modeldata::ModelData, arrays_tagname::AbstractString)
     !isnothing(arrays_idx) || throw(ArgumentError("arrays_tagname $arrays_tagname not found"))
     return eltype(modeldata, arrays_idx)
 end
+
+Base.eltype(modeldata::ModelData) = error("eltype(modeldata) not supported")
 
 "Check ModelData consistent with Model"
 function check_modeldata(model::Model, modeldata::ModelData)

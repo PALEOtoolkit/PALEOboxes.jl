@@ -222,10 +222,12 @@ Element type of allocated Arrays is determined by `eltype(modeldata, arrays_idx)
 which can be overridden by Variable `:datatype` attribute if present (allowing Variables to ignore AD types).
 `:datatype` may be either a Julia `DataType` (eg Float64), or a string to be looked up in `eltypemap`.
 
-If `allow_base_link==true` and either element type matches `modeldata` base eltype (arrays_idx=1), or variable name is in `use_base_vars`
-then a link is made to the base array, instead of allocating.
+If `allow_base_link==true`, and any of the following are true a link is made to the base array, instead of allocating:
+    - Variable element type matches `modeldata` base eltype (arrays_idx=1)
+    - `use_base_transfer_jacobian=true` and Variable `:transfer_jacobian` attribute is set
+    - Variable full name is in `use_base_vars`
 
-Field data type (<:[`AbstractFieldData`](@ref)) is determined by Variable `:field_data` attribute, optionally this can take a
+Field data type is determined by Variable `:field_data` attribute, optionally this can take a
 `default_host_dependent_field_data` default for Variables with `host_dependent(v)==true` (these are Variables with no Target or no Property linked,
 intended to be external dependencies supplied by the solver).
 """
@@ -234,6 +236,7 @@ function allocate_variables!(
     eltypemap=Dict{String, DataType}(),
     default_host_dependent_field_data=ScalarData,
     allow_base_link=true,
+    use_base_transfer_jacobian=true,
     use_base_vars=String[],
 )
     
@@ -245,11 +248,13 @@ function allocate_variables!(
             for dimname in get_attribute(v, :data_dims)
         )
     
-        # eltype usually is eltype(modeldata), but can be overridden by :datatype attribute 
+        # eltype usually is eltype(modeldata, arrays_idx), but can be overridden by :datatype attribute 
         # (can be used by a Reaction to define a fixed type eg Float64 for a constant Property)
         mdeltype = get_attribute(v, :datatype, eltype(modeldata, arrays_idx))
         if mdeltype isa AbstractString
-            mdeltype = get(eltypemap, mdeltype, Float64)
+            mdeltype_str = mdeltype
+            mdeltype = get(eltypemap, mdeltype_str, Float64)
+            @debug "Variable $(fullname(v)) mdeltype $mdeltype_str -> $mdeltype"
         end
         
         thread_safe = false
@@ -272,7 +277,12 @@ function allocate_variables!(
         end
 
         # allocate or link
-        if arrays_idx != 1 && allow_base_link && (mdeltype == eltype(modeldata, 1) || fullname(v) in use_base_vars)
+        if (arrays_idx != 1 && allow_base_link) && 
+                (
+                    mdeltype == eltype(modeldata, 1) ||
+                    (use_base_transfer_jacobian && get_attribute(v, :transfer_jacobian, false)) ||
+                    fullname(v) in use_base_vars
+                )
             # link to existing array
             v_field = get_field(v, modeldata, 1)
         else
@@ -291,12 +301,12 @@ function allocate_variables!(
 end
 
 """
-    reallocate_variables!(vars, modeldata, new_eltype) -> [(v, old_eltype), ...]
+    reallocate_variables!(vars, modeldata, arrays_idx, new_eltype) -> [(v, old_eltype), ...]
 
 Reallocate memory for [`VariableDomain`](@ref)s `vars` to `new_eltype`. Returns Vector of
 `(reallocated_variable, old_eltype)`.
 """
-function reallocate_variables!(vars, modeldata, new_eltype)
+function reallocate_variables!(vars, modeldata::AbstractModelData, arrays_idx::Int, new_eltype)
     
     reallocated_variables = []
     for v in vars
@@ -304,7 +314,7 @@ function reallocate_variables!(vars, modeldata, new_eltype)
         if v_data isa AbstractArray
             old_eltype = eltype(v_data)
             if old_eltype != new_eltype            
-                set_data!(v, modeldata, similar(v_data, new_eltype))
+                set_data!(v, modeldata, arrays_idx, similar(v_data, new_eltype))
                 push!(reallocated_variables, (v, old_eltype))
             end
         end

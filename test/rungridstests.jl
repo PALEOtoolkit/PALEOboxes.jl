@@ -34,7 +34,7 @@ include("ReactionPaleoMockModule.jl")
 
     @test PB.check_configuration(model, throw_on_error=false) == true
 
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
     cellrange = PB.Grids.create_default_cellrange(ocean_domain, ocean_domain.grid)
     cellranges = [cellrange]
@@ -78,7 +78,7 @@ end
 
     modelcreated_vars_dict = Dict([(var.name, var) for var in PB.get_variables(surface_domain, hostdep=false)])
 
-    PB.initialize_reactiondata!(model, modeldata)    
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)    
       
     PB.dispatch_setup(model, :setup, modeldata)
     PB.dispatch_setup(model, :norm_value, modeldata)
@@ -109,7 +109,7 @@ end
 
     modelcreated_vars_dict = Dict([(var.name, var) for var in PB.get_variables(surface_domain, hostdep=false)])
 
-    PB.initialize_reactiondata!(model, modeldata)    
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)    
       
     PB.dispatch_setup(model, :setup, modeldata)
     PB.dispatch_setup(model, :norm_value, modeldata)

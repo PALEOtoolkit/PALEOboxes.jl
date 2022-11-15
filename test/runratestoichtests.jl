@@ -19,7 +19,7 @@ include("ReactionRateStoichMock.jl")
     all_vars = PB.VariableAggregatorNamed(modeldata)
     all_data = all_vars.values
 
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
     PB.dispatch_setup(model, :setup, modeldata)
     PB.dispatch_setup(model, :norm_value, modeldata)

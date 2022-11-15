@@ -15,6 +15,8 @@ CurrentModule = PALEOboxes
 create_model_from_config(config_file::AbstractString, configmodel::AbstractString)
 create_modeldata(model::Model, vectype::DataType=Array{Float64,1})
 ModelData
+add_arrays_data!
+push_arrays_data!
 allocate_variables!
 
 check_ready(model::Model, modeldata::AbstractModelData; throw_on_error=true)
