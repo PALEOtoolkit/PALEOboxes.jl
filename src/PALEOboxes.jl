@@ -128,7 +128,7 @@ function run_model(model::Model; call_do_deriv=false, logger=Logging.NullLogger(
 
             check_ready(model, modeldata)
 
-            initialize_reactiondata!(model, modeldata)
+            initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
 
             check_configuration(model)
 

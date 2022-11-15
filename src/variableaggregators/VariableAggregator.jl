@@ -8,6 +8,7 @@
 struct VariableAggregator{T, F <: Tuple, C <: Tuple}
     # modeldata used for data arrays (for diagnostic output only)
     modeldata::AbstractModelData  # not typed
+    arrays_idx::Int
 
     # Variables 
     vars::Vector{VariableDomain}
@@ -21,12 +22,12 @@ struct VariableAggregator{T, F <: Tuple, C <: Tuple}
 end
 
 """
-    VariableAggregator(vars, cellranges, modeldata) -> VariableAggregator
+    VariableAggregator(vars, cellranges, modeldata, arrays_idx) -> VariableAggregator
 
 Aggregate multiple VariableDomains into a flattened list (a contiguous Vector).
 
 Creates a `VariableAggregator` for collection of Variables `vars`, with indices from corresponding `cellranges`,
-for data arrays in `modeldata`.
+for data arrays in `modeldata` with `arrays_idx`.
 
 `cellranges` may contain `nothing` entries to indicate whole Domain.
 
@@ -35,7 +36,7 @@ This is mostly useful for aggregating state Variables, derivatives, etc to imple
 Values may be copied to and from a Vector using [`copyto!`](@ref)
 
 """
-function VariableAggregator(vars, cellranges, modeldata)
+function VariableAggregator(vars, cellranges, modeldata::AbstractModelData, arrays_idx::Int)
 
     IteratorUtils.check_lengths_equal(vars, cellranges; errmsg="'vars' and 'cellranges' must be of same length")
 
@@ -43,7 +44,7 @@ function VariableAggregator(vars, cellranges, modeldata)
     indices = UnitRange{Int64}[]
     nextidx = 1
     for (v, cr) in IteratorUtils.zipstrict(vars, cellranges)
-        f = get_field(v, modeldata)
+        f = get_field(v, modeldata, arrays_idx)
 
         dof = dof_field(f, cr)
 
@@ -58,21 +59,21 @@ function VariableAggregator(vars, cellranges, modeldata)
     fields=Tuple(fields)
     cellranges=Tuple(cellranges)
 
-    return VariableAggregator{eltype(modeldata), typeof(fields), typeof(cellranges)}(
-        modeldata, copy(vars), indices, fields, cellranges,
+    return VariableAggregator{eltype(modeldata, arrays_idx), typeof(fields), typeof(cellranges)}(
+        modeldata, arrays_idx, copy(vars), indices, fields, cellranges,
     )
 end
 
 
 # compact form
 function Base.show(io::IO, va::VariableAggregator)
-    print(io, "VariableAggregator(length=$(length(va)), number of variables=$(length(va.vars)))")
+    print(io, "VariableAggregator(modeldata=$(va.modeldata), arrays_idx=$(va.arrays_idx), length=$(length(va)), number of variables=$(length(va.vars)))")
     return nothing
 end
 
 # multiline form
 function Base.show(io::IO, ::MIME"text/plain", va::VariableAggregator)
-    println(io, "VariableAggregator(length=$(length(va)), number of variables=$(length(va.vars))):")
+    println(io, "VariableAggregator(modeldata=$(va.modeldata), arrays_idx=$(va.arrays_idx), length=$(length(va)), number of variables=$(length(va.vars))):")
     if length(va) > 0
         println(
             io,
@@ -213,6 +214,7 @@ num_vars(va::VariableAggregator) = length(va.vars)
 struct VariableAggregatorNamed{V <: NamedTuple, VV <: NamedTuple}
     # modeldata used for data arrays (for diagnostic output only)
     modeldata::AbstractModelData  # not typed
+    arrays_idx::Int
 
     # Variables as a NamedTuple 
     vars::V
@@ -241,7 +243,7 @@ end
 
 # compact form
 function Base.show(io::IO, van::VariableAggregatorNamed)
-    print(io, "VariableAggregatorNamed(")
+    print(io, "VariableAggregatorNamed(modeldata=$(van.modeldata), arrays_idx=$(van.arrays_idx), ")
     for (domainname, dvarsnt) in zip(keys(van.vars), van.vars)
         print(io, "$domainname.*$([k for k in keys(dvarsnt)]), ")
     end
@@ -251,7 +253,7 @@ end
 
 # multiline form
 function Base.show(io::IO, ::MIME"text/plain", van::VariableAggregatorNamed)
-    println(io, "VariableAggregatorNamed:")
+    println(io, "VariableAggregatorNamed(modeldata=$(van.modeldata), arrays_idx=$(van.arrays_idx):")
     for (domainname, dvaluesnt) in zip(keys(van.vars), van.values)
         println(io, "  $domainname:")
         for (varname, varvalues) in zip(keys(dvaluesnt), dvaluesnt)
@@ -262,8 +264,8 @@ function Base.show(io::IO, ::MIME"text/plain", van::VariableAggregatorNamed)
 end
 
 """
-    VariableAggregatorNamed(modeldata) -> VariableAggregatorNamed
-    VariableAggregatorNamed(vars, modeldata) -> VariableAggregatorNamed
+    VariableAggregatorNamed(modeldata, arrays_idx=1) -> VariableAggregatorNamed
+    VariableAggregatorNamed(vars, modeldata, arrays_idx=1) -> VariableAggregatorNamed
     VariableAggregatorNamed(va::VariableAggregator; ignore_cellranges=false) -> VariableAggregatorNamed
 
 Aggregate VariableDomains into nested NamedTuples, with Domain and Variable names as keys and
@@ -278,7 +280,7 @@ This provides direct access to Variables by name, and is mostly useful for testi
 - `values`: nested NamedTuples (domainname, varname) of data arrays.
 """
 function VariableAggregatorNamed(
-    modeldata::AbstractModelData
+    modeldata::AbstractModelData, arrays_idx=1,
 )
     # get all domain Variables
     all_domvars = Vector{VariableDomain}()
@@ -286,16 +288,16 @@ function VariableAggregatorNamed(
         append!(all_domvars, get_variables(dom))
     end
 
-    return VariableAggregatorNamed(all_domvars, modeldata)
+    return VariableAggregatorNamed(all_domvars, modeldata, arrays_idx)
 end
 
-function VariableAggregatorNamed(va::VariableAggregator; ignore_cellranges=false)
+function VariableAggregatorNamed(va::VariableAggregator, ignore_cellranges=false)
     all(va.cellranges .== nothing) || ignore_cellranges || error("VariableAggregatorNamed: VariableAggregator is using cellranges to select part of Domain")
-    return VariableAggregatorNamed(va.vars, va.modeldata)
+    return VariableAggregatorNamed(va.vars, va.modeldata, va.arrays_idx)
 end
 
 function VariableAggregatorNamed(
-    vars, modeldata::AbstractModelData
+    vars, modeldata::AbstractModelData, arrays_idx=1,
 )
 
     # sort into Dicts of
@@ -310,7 +312,7 @@ function VariableAggregatorNamed(
         d_vars = get!(domains_vars, Symbol(v.domain.name), OrderedCollections.OrderedDict())
         d_vars[sym_vname] = v
         d_values = get!(domains_values, Symbol(v.domain.name), OrderedCollections.OrderedDict())
-        d_values[sym_vname] = get_data(v, modeldata)
+        d_values[sym_vname] = get_data(v, modeldata, arrays_idx)
     end
 
     # convert to nested NamedTuples, via a Dict of NamedTuples
@@ -326,7 +328,7 @@ function VariableAggregatorNamed(
     end
     vars_values_nt = NamedTuple{Tuple(keys(vars_values_dictnt))}(Tuple(values(vars_values_dictnt)))
 
-    return VariableAggregatorNamed(modeldata, vars_nt, vars_values_nt)
+    return VariableAggregatorNamed(modeldata, arrays_idx, vars_nt, vars_values_nt)
 end
 
 

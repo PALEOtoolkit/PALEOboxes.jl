@@ -13,13 +13,13 @@ include("ReactionRateStoichMock.jl")
     @test PB.get_length(domain) == 10
 
     modeldata = PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata)
+    PB.allocate_variables!(model, modeldata, 1)
     PB.check_ready(model, modeldata)
 
     all_vars = PB.VariableAggregatorNamed(modeldata)
     all_data = all_vars.values
 
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
     PB.dispatch_setup(model, :setup, modeldata)
     PB.dispatch_setup(model, :norm_value, modeldata)

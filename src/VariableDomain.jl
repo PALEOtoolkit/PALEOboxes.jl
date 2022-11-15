@@ -84,8 +84,8 @@ end
 is_scalar(var::VariableDomain) = (var.attributes[:space] === ScalarSpace)
 
 "true if data array assigned"
-function is_allocated(var::VariableDomain, modeldata::AbstractModelData)
-    return !isnothing(get_field(var, modeldata))    
+function is_allocated(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int)
+    return !isnothing(get_field(var, modeldata, arrays_idx))    
 end
 
 "fully qualified name"
@@ -107,13 +107,13 @@ end
 ##################################################
 
 """
-    set_field!(var::VariableDomain, modeldata, field::Field)
+    set_field!(var::VariableDomain, modeldata, arrays_idx::Int, field::Field)
  
 Set `VariableDomain` data to `field`
 """
-function set_field!(var::VariableDomain, modeldata::AbstractModelData, field::Field)
+function set_field!(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int, field::Field)
 
-    variable_data = get_domaindata(modeldata, var.domain).variable_data
+    variable_data = get_domaindata(modeldata, var.domain, arrays_idx).variable_data
 
     variable_data[var.ID] = field
 
@@ -121,15 +121,15 @@ function set_field!(var::VariableDomain, modeldata::AbstractModelData, field::Fi
 end
 
 """
-    set_data!(var::VariableDomain, modeldata, data)
+    set_data!(var::VariableDomain, modeldata, arrays_idx::Int, data)
  
 Set [`VariableDomain`](@ref) to a Field containing `data`.
 
 Calls [`wrap_field`](@ref) to create a new [`Field`](@ref).
 """
-function set_data!(var::VariableDomain, modeldata::AbstractModelData, data)
+function set_data!(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int, data)
 
-    variable_data = get_domaindata(modeldata, var.domain).variable_data
+    variable_data = get_domaindata(modeldata, var.domain, arrays_idx).variable_data
 
     variable_data[var.ID] =  wrap_field(
         data,
@@ -145,36 +145,38 @@ end
 
 
 """
-    get_field(var::VariableDomain, modeldata::AbstractModelData) -> field::Field
+    get_field(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int) -> field::Field
     get_field(var::VariableDomain, domaindata::AbstractDomainData) -> field::Field
 
 Get Variable `var` `field`
 """
-function get_field(var::VariableDomain, modeldata::AbstractModelData)
-    domaindata = get_domaindata(modeldata, var.domain)
+function get_field(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1)
+    domaindata = get_domaindata(modeldata, var.domain, arrays_idx)
     return get_field(var, domaindata)
 end
 
-function get_field(var::VariableDomain, domaindata::AbstractDomainData)    
+function get_field(var::VariableDomain, domaindata::AbstractDomainData)
     return domaindata.variable_data[var.ID]
 end
 
 """
-    get_data(var::VariableDomain, modeldata::AbstractModelData) -> field.values
-    get_data(var::VariableDomain, modeldata::AbstractDomainData) -> field.values
+    get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) -> field.values
+    get_data(var::VariableDomain, domaindata::AbstractDomainData) -> field.values
 
 Get Variable `var` data array from [`Field`](@ref).values
 """
-get_data(var::VariableDomain, domainmodeldata) = get_field(var, domainmodeldata).values
+get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) = get_field(var, modeldata, arrays_idx).values
+get_data(var::VariableDomain, domaindata::AbstractDomainData) = get_field(var, domaindata).values
 
 """
-    get_data(var::VariableDomain, modeldata::AbstractModelData) -> get_values_output(field.values)
-    get_data(var::VariableDomain, modeldata::AbstractDomainData) -> get_values_output(field.values)
+    get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int) -> get_values_output(field.values)
+    get_data(var::VariableDomain, domaindata::AbstractDomainData) -> get_values_output(field.values)
 
 Get a sanitized version of Variable `var` data array for storing as output
 from [`get_values_output`]@ref)`(`[`Field`](@ref).values`)`
 """
-get_data_output(var::VariableDomain, domainmodeldata) = get_values_output(get_field(var, domainmodeldata))
+get_data_output(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) = get_values_output(get_field(var, modeldata, arrays_idx))
+get_data_output(var::VariableDomain, domaindata::AbstractDomainData) = get_values_output(get_field(var, domaindata))
 
 ####################################################################
 # Create and add to Domain
@@ -208,24 +210,34 @@ end
 
 """
     allocate_variables!(
-        vars, modeldata; 
+        vars, modeldata, arrays_idx; 
         [, eltypemap::Dict{String, DataType}],
-        [, default_host_dependent_field_data=nothing])
+        [, default_host_dependent_field_data=nothing],
+        [, allow_base_link=true],
+        [, use_base_vars=String[]])
 
-Allocate memory for [`VariableDomain`](@ref)s `vars`.
+Allocate or link memory for [`VariableDomain`](@ref)s `vars` in `modeldata` arrays `arrays_idx`
 
-Element type of allocated Arrays is determined by `eltype(modeldata)` (the usual case, allowing use of AD types), 
+Element type of allocated Arrays is determined by `eltype(modeldata, arrays_idx)` (the usual case, allowing use of AD types), 
 which can be overridden by Variable `:datatype` attribute if present (allowing Variables to ignore AD types).
 `:datatype` may be either a Julia `DataType` (eg Float64), or a string to be looked up in `eltypemap`.
 
-Field data type (<:[`AbstractFieldData`](@ref)) is determined by Variable `:field_data` attribute, optionally this can take a
+If `allow_base_link==true`, and any of the following are true a link is made to the base array, instead of allocating:
+    - Variable element type matches `modeldata` base eltype (arrays_idx=1)
+    - `use_base_transfer_jacobian=true` and Variable `:transfer_jacobian` attribute is set
+    - Variable full name is in `use_base_vars`
+
+Field data type is determined by Variable `:field_data` attribute, optionally this can take a
 `default_host_dependent_field_data` default for Variables with `host_dependent(v)==true` (these are Variables with no Target or no Property linked,
 intended to be external dependencies supplied by the solver).
 """
 function allocate_variables!(
-    vars, modeldata::AbstractModelData; 
+    vars, modeldata::AbstractModelData, arrays_idx::Int; 
     eltypemap=Dict{String, DataType}(),
-    default_host_dependent_field_data=nothing,
+    default_host_dependent_field_data=ScalarData,
+    allow_base_link=true,
+    use_base_transfer_jacobian=true,
+    use_base_vars=String[],
 )
     
     for v in vars
@@ -236,11 +248,13 @@ function allocate_variables!(
             for dimname in get_attribute(v, :data_dims)
         )
     
-        # eltype usually is eltype(modeldata), but can be overridden by :datatype attribute 
+        # eltype usually is eltype(modeldata, arrays_idx), but can be overridden by :datatype attribute 
         # (can be used by a Reaction to define a fixed type eg Float64 for a constant Property)
-        mdeltype = get_attribute(v, :datatype, eltype(modeldata))
+        mdeltype = get_attribute(v, :datatype, eltype(modeldata, arrays_idx))
         if mdeltype isa AbstractString
-            mdeltype = get(eltypemap, mdeltype, Float64)
+            mdeltype_str = mdeltype
+            mdeltype = get(eltypemap, mdeltype_str, Float64)
+            @debug "Variable $(fullname(v)) mdeltype $mdeltype_str -> $mdeltype"
         end
         
         thread_safe = false
@@ -261,12 +275,25 @@ function allocate_variables!(
                 error("allocate_variables! :field_data=UndefinedData for Variable $(fullname(v)) $v")
             end
         end
-        v_field = allocate_field(
-            field_data, data_dims, mdeltype, space, v.domain.grid,
-            thread_safe=thread_safe, allocatenans=modeldata.allocatenans
-        )        
+
+        # allocate or link
+        if (arrays_idx != 1 && allow_base_link) && 
+                (
+                    mdeltype == eltype(modeldata, 1) ||
+                    (use_base_transfer_jacobian && get_attribute(v, :transfer_jacobian, false)) ||
+                    fullname(v) in use_base_vars
+                )
+            # link to existing array
+            v_field = get_field(v, modeldata, 1)
+        else
+            # allocate new field array
+            v_field = allocate_field(
+                field_data, data_dims, mdeltype, space, v.domain.grid,
+                thread_safe=thread_safe, allocatenans=modeldata.allocatenans
+            )
+        end
         
-        set_field!(v, modeldata, v_field)
+        set_field!(v, modeldata, arrays_idx, v_field)
       
     end
 
@@ -274,12 +301,12 @@ function allocate_variables!(
 end
 
 """
-    reallocate_variables!(vars, modeldata, new_eltype) -> [(v, old_eltype), ...]
+    reallocate_variables!(vars, modeldata, arrays_idx, new_eltype) -> [(v, old_eltype), ...]
 
 Reallocate memory for [`VariableDomain`](@ref)s `vars` to `new_eltype`. Returns Vector of
 `(reallocated_variable, old_eltype)`.
 """
-function reallocate_variables!(vars, modeldata, new_eltype)
+function reallocate_variables!(vars, modeldata::AbstractModelData, arrays_idx::Int, new_eltype)
     
     reallocated_variables = []
     for v in vars
@@ -287,7 +314,7 @@ function reallocate_variables!(vars, modeldata, new_eltype)
         if v_data isa AbstractArray
             old_eltype = eltype(v_data)
             if old_eltype != new_eltype            
-                set_data!(v, modeldata, similar(v_data, new_eltype))
+                set_data!(v, modeldata, arrays_idx, similar(v_data, new_eltype))
                 push!(reallocated_variables, (v, old_eltype))
             end
         end

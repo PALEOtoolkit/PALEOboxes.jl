@@ -56,18 +56,18 @@ include("ReactionPaleoMockModule.jl")
 
     modeldata = PB.create_modeldata(model)
 
-    @test length(PB.get_unallocated_variables(ocean_domain, modeldata)) == 5
-    PB.allocate_variables!(ocean_domain, modeldata, hostdep=false)
-    @test length(PB.get_unallocated_variables(ocean_domain, modeldata)) == 1
+    @test length(PB.get_unallocated_variables(ocean_domain, modeldata, 1)) == 5
+    PB.allocate_variables!(ocean_domain, modeldata, 1, hostdep=false)
+    @test length(PB.get_unallocated_variables(ocean_domain, modeldata, 1)) == 1
     @test PB.check_ready(ocean_domain, modeldata, throw_on_error=false) == false
 
     hostvardata = Float64[NaN]
-    PB.set_data!(hostvars[1], modeldata, hostvardata)
+    PB.set_data!(hostvars[1], modeldata, 1, hostvardata)
     @test PB.check_ready(ocean_domain, modeldata, throw_on_error=false) == true
 
     @test PB.check_configuration(model, throw_on_error=false) == true
 
-    PB.initialize_reactiondata!(model, modeldata)
+    PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
     cellrange = PB.Grids.create_default_cellrange(ocean_domain, ocean_domain.grid)
     cellranges = [cellrange]

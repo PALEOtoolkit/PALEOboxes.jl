@@ -177,21 +177,19 @@ function get_reaction(domain::Domain, reactname::AbstractString; allow_not_found
 end
 
 """
-    allocate_variables!(domain, modeldata; [hostdep=false] [, eltypemap::Dict{String, DataType}])
+    allocate_variables!(domain, modeldata, arrays_idx; [hostdep=false] [, kwargs...])
 
 Allocate memory for Domain Variables. 
 
 If `hostdep=false`, only internal Variables are allocated, allowing host-dependent Variables
 (usually state Variables and derivatives + any external dependencies) to be set to views on host-managed arrays.
 
-Element type of allocated Arrays is determined by `eltype(modeldata)` (the usual case, allowing use of AD types), 
-or Variable `:datatype` attribute if present (allowing Variables to ignore AD types).
-`:datatype` may be either a Julia `DataType` (eg Float64), or a string to be looked up in `eltypemap`.
+See [`allocate_variables!(vars, modeldata::AbstractModelData, arrays_idx::Int)`](@ref).
 """
 function allocate_variables!(
-    domain::Domain, modeldata::AbstractModelData; 
+    domain::Domain, modeldata::AbstractModelData, arrays_idx::Int; 
     hostdep::Union{Bool,Nothing}=nothing,
-    eltypemap=Dict{String, DataType}()
+    kwargs...
 )
     vars = get_variables(domain, hostdep=hostdep)
    
@@ -199,33 +197,32 @@ function allocate_variables!(
         "allocating $(rpad(length(vars),4)) variables (hostdep=$(hostdep))"  
  
     allocate_variables!(
-        vars, modeldata; 
-        eltypemap=eltypemap,
-        default_host_dependent_field_data=ScalarData,
+        vars, modeldata, arrays_idx; 
+        kwargs...
     )
     
     return nothing
 end
 
 """
-    get_unallocated_variables(domain, modeldata) -> Vector{VariableDomain}
+    get_unallocated_variables(domain, modeldata, arrays_idx::Int) -> Vector{VariableDomain}
 
 Return any unallocated variables (host-dependent variables which have no data pointer set)
 """
 function get_unallocated_variables(
-    domain::Domain, modeldata::AbstractModelData
+    domain::Domain, modeldata::AbstractModelData, arrays_idx::Int
 )
     allvars = get_variables(domain)
-    unallocated_variables = [v for v in allvars if !is_allocated(v, modeldata)]
+    unallocated_variables = [v for v in allvars if !is_allocated(v, modeldata, arrays_idx)]
     return unallocated_variables
 end
 
 "Check all variable pointers set"
 function check_ready(
-    domain::Domain, modeldata::AbstractModelData;
+    domain::Domain, modeldata::AbstractModelData, arrays_idx::Int=1;
     throw_on_error=true
 )
-    vars_unallocated = get_unallocated_variables(domain, modeldata)
+    vars_unallocated = get_unallocated_variables(domain, modeldata, arrays_idx)
     num_unallocated = length(vars_unallocated)
     if num_unallocated == 0
         return true
