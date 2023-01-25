@@ -502,7 +502,7 @@ function _link_variables!(domain::Domain, model::Model, oper, dolog)
         for var in get_variables(react)
 
             if isempty(var.linkreq_domain)
-                linkvar_domain = domain
+                linkvar_domain = var.method.domain
             else
                 linkvar_domain = get_domain(model, var.linkreq_domain)
                 !isnothing(linkvar_domain) || 
