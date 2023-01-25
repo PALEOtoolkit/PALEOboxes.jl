@@ -116,3 +116,11 @@ end
     @test length(model.domains) == 3
    
 end
+
+# test parsing concatenated yaml files
+@testset "PALEOboxes base concatenate" begin
+    model = PB.create_model_from_config(["configbase_pt1.yaml", "configbase_pt2.yaml"], "model1")
+
+    @test length(model.domains) == 3
+
+end

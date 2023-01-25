@@ -226,7 +226,7 @@ function create_model_from_config(
     yamltext = ""
     for fn in config_files
         isfile(fn) || error("config file $(abspath(fn)) not found")
-        yamltext *= read(fn, String)
+        yamltext *= read(fn, String) * "\n" # add newline so concatenation correct if one file doesn't have a blank line at end
     end
 
     data = nothing

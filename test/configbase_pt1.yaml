@@ -1,0 +1,13 @@
+model1:
+    parameters:
+        model_par1: 0.15
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                        par1:          external%model_par1           # double parameter
+                    variable_links:
+                        phy*:      mock_phy*
