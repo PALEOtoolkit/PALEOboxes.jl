@@ -467,29 +467,34 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
         cvl = sort(reaction.base._conf_variable_links, lt=sortstarfirst)
         dolog && @info "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction))"
         for (name, fullmapnameraw) in cvl
-            fullmapname = externalvalue(fullmapnameraw, reaction.base.external_parameters)
-            linkreq_domain, linkreq_subdomain, mapname = split_link_name(fullmapname)
-            
-            match_vars = _gen_var_names(get_variables(reaction), name, mapname)
-            uniquelocalnames = Set{String}()
+            try
+                fullmapname = externalvalue(fullmapnameraw, reaction.base.external_parameters)
+                linkreq_domain, linkreq_subdomain, mapname = split_link_name(fullmapname)
+                
+                match_vars = _gen_var_names(get_variables(reaction), name, mapname)
+                uniquelocalnames = Set{String}()
 
-            if isempty(match_vars)
-                allow_missing || 
-                    error("    $(nameof(typeof(reaction))) $(fullname(reaction)) set variable_links:  $name -> $fullmapname no variables match $name\n",
-                          "      available Variable local names: ", unique([v.localname for v in get_variables(reaction)]))
-            else
-                for (var, newname) = match_vars
-                    linkreq_fullname = combine_link_name(linkreq_domain, linkreq_subdomain, newname)
+                if isempty(match_vars)
+                    allow_missing || 
+                        error("    set variable_links:  $name -> $fullmapname no variables match $name\n",
+                            "      available Variable local names: ", unique([v.localname for v in get_variables(reaction)]))
+                else
+                    for (var, newname) = match_vars
+                        linkreq_fullname = combine_link_name(linkreq_domain, linkreq_subdomain, newname)
 
-                    # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
-                    dolog && !(var.localname in uniquelocalnames) && 
-                        @info "    set variable_links: $(rpad(var.localname,20)) -> $linkreq_fullname"
-                    push!(uniquelocalnames, var.localname)
+                        # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
+                        dolog && !(var.localname in uniquelocalnames) && 
+                            @info "    set variable_links: $(rpad(var.localname,20)) -> $linkreq_fullname"
+                        push!(uniquelocalnames, var.localname)
 
-                    var.linkreq_name = newname
-                    var.linkreq_domain = linkreq_domain
-                    var.linkreq_subdomain = linkreq_subdomain
+                        var.linkreq_name = newname
+                        var.linkreq_domain = linkreq_domain
+                        var.linkreq_subdomain = linkreq_subdomain
+                    end
                 end
+            catch
+                @warn "_configure_variables: error setting Variable link for $(nameof(typeof(reaction))) $(fullname(reaction)) $name"
+                rethrow()
             end
         end
     end
@@ -498,28 +503,33 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
     if !isnothing(reaction.base._conf_variable_attributes)
         cva = reaction.base._conf_variable_attributes 
         for (nameattrib, value) in cva
-            split_na = split(nameattrib, (':', '%'))
-            length(split_na) == 2 || error("   $(nameof(typeof(reaction))) $(fullname(reaction)) set variable_attributes: invalid attribute $nameattrib")
-            name, attrib = split_na
-            match_vars = _gen_var_names(get_variables(reaction), name, "not used") # no wild cards (trailing *) allowed
-            uniquelocalnames = Set{String}()
-            if isempty(match_vars)
-                allow_missing || error("    $(nameof(typeof(reaction))) $(fullname(reaction)) $nameattrib = $value no variables match $name")
-            else
-                for (var, dummy) = match_vars
-                    # if isnothing(var.linkvar)
-                    #    @warn "    unable to set $(Symbol(attrib)) attribute, VariableReaction $(fullname(var)) not linked"
-                    # else
-                    #    set_attribute!(var.linkvar, Symbol(attrib), value)
-                    # end
+            try
+                split_na = split(nameattrib, (':', '%'))
+                length(split_na) == 2 || error("   invalid variable:attribute or variable%attribute $nameattrib")
+                name, attrib = split_na
+                match_vars = _gen_var_names(get_variables(reaction), name, "not used") # no wild cards (trailing *) allowed
+                uniquelocalnames = Set{String}()
+                if isempty(match_vars)
+                    allow_missing || error("    $nameattrib = $value no variables match $name")
+                else
+                    for (var, dummy) = match_vars
+                        # if isnothing(var.linkvar)
+                        #    @warn "    unable to set $(Symbol(attrib)) attribute, VariableReaction $(fullname(var)) not linked"
+                        # else
+                        #    set_attribute!(var.linkvar, Symbol(attrib), value)
+                        # end
 
-                    # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
-                    dolog && !(var.localname in uniquelocalnames) && 
-                        @info "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(value, 20)) "
-                    push!(uniquelocalnames, var.localname)
+                        # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
+                        dolog && !(var.localname in uniquelocalnames) && 
+                            @info "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(value, 20)) "
+                        push!(uniquelocalnames, var.localname)
 
-                    set_attribute!(var, Symbol(attrib), value)                   
+                        set_attribute!(var, Symbol(attrib), value)                   
+                    end
                 end
+            catch
+                @warn "_configure_variables: error setting Variable attribute for $(nameof(typeof(reaction))) $(fullname(reaction)) $nameattrib"
+                rethrow()
             end
         end
     end

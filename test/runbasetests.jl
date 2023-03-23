@@ -117,6 +117,18 @@ end
    
 end
 
+@testset "PALEOboxes base empty variable link" begin
+    
+    @test_throws MethodError PB.create_model_from_config("configbase.yaml", "model_with_empty_variable_link")
+
+end
+
+@testset "PALEOboxes base invalid variable attribute" begin
+    
+    @test_throws ErrorException PB.create_model_from_config("configbase.yaml", "model_with_invalid_variable_attribute")
+
+end
+
 # test parsing concatenated yaml files
 @testset "PALEOboxes base concatenate" begin
     model = PB.create_model_from_config(["configbase_pt1.yaml", "configbase_pt2.yaml"], "model1")
