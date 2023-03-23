@@ -98,3 +98,39 @@ model_with_empty_parameters:
         oceanfloor:
             reactions:
 
+model_with_empty_variable_link:
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                    
+                    variable_links:
+                        phy:      # error - no link
+
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
+
+model_with_invalid_variable_attribute:
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                    
+                    variable_attributes:
+                        phy.something:   # error 
+
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
+
