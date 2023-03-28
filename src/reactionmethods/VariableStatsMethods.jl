@@ -1,10 +1,11 @@
 """
-    add_method_do_totals_default!(react::AbstractReaction, variables=PB.get_variables(react))
+    add_method_do_totals_default!(react::AbstractReaction; total_candidates=PB.get_variables(react)
+        [filterfn] [, methodname] [, total_localnames] [, operatorID]) 
 
-Create and add a default method to initialize Variables to zero at beginning of each timestep. Defaults to
-adding all Variables from `react` with `:initialize_to_zero` attribute `true`.
+Create and add a method to add total variables (Scalar Properties), for Variables in `total_candidates` that match `filterfn`
+(defaults to those that are Array Variables and have attribute ``:calc_total == true`).
 
-NB: TODO variables are converted to VarDep (no dependency checking or sorting needed, could define a VarInit or similar?)
+NB: total Variables will require initialization to zero using [`add_method_initialize_zero_vars_default!`](@ref)
 """
 function add_method_do_totals_default!(
     reaction::AbstractReaction, total_candidates=get_variables(reaction);
