@@ -110,6 +110,8 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarPropScalar("R_delta", "per mil", "scalar reservoir isotope delta"))
     end
+    PB.setfrozen!(rj.pars.field_data)
+
     PB.add_method_do!(
         rj,
         do_reactionreservoirscalar,
@@ -218,6 +220,7 @@ function PB.register_methods!(rj::ReactionReservoir)
         )
         # initial value setup handled elsewhere
     end
+    PB.setfrozen!(rj.pars.stateexplicit)
 
     R_sms = PB.VarDeriv("R_sms",    "mol yr-1", "vector reservoir source-sinks",
         attributes=(:field_data=>rj.pars.field_data[], ),
@@ -246,12 +249,14 @@ function PB.register_methods!(rj::ReactionReservoir)
             @warn "$(PB.fullname(rj)) using experimental limit_delta_conc $(rj.pars.limit_delta_conc[]) mol m-3"
         end
     end
+    PB.setfrozen!(rj.pars.field_data)
 
     PB.add_method_do!(rj, do_reactionreservoir, (PB.VarList_namedtuple(do_vars),))
 
     if rj.pars.total[]
         PB.add_method_do_totals_default!(rj, [R])
     end
+    PB.setfrozen!(rj.pars.total)
 
     PB.add_method_initialize_zero_vars_default!(rj)
 
@@ -345,6 +350,7 @@ function PB.register_methods!(rj::ReactionReservoirConst)
         # use do, not setup, so we handle the case where the value is modified after setup
         PB.add_method_do!(rj, do_reactionreservoirconst, (PB.VarList_namedtuple(setup_vars),) )
     end
+    PB.setfrozen!(rj.pars.field_data)
 
     return nothing
 end
@@ -413,6 +419,7 @@ function PB.register_methods!(rj::ReactionReservoirForced)
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
     end
+    PB.setfrozen!(rj.pars.field_data)
 
     PB.add_method_do!(
         rj,
@@ -494,6 +501,7 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
     end
+    PB.setfrozen!(rj.pars.field_data)
 
     # callback function to store Variable norm during setup
     function setup_callback(m, attribute_value, v, vdata)
@@ -518,6 +526,7 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
             setup_callback=setup_callback,
         )
     end
+    PB.setfrozen!(rj.pars.initialization_type)
 
     PB.add_method_do!(rj, do_reservoir_well_mixed, (PB.VarList_namedtuple(vars),))
 
