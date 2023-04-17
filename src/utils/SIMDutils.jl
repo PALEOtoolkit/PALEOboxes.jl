@@ -36,7 +36,7 @@ indices into a Vector). See Julia package [SIMD.jl](https://github.com/eschnett/
 If `baseiter` contained 1 or more but less then `N` elements, then `indices` is filled with
 repeats of the last available element.
 
-Returns Tuple `indices` (length `N`).
+Returns Tuple of indices (length `N`).
 
 # Examples
 
@@ -48,22 +48,22 @@ Returns Tuple `indices` (length `N`).
 
     # simplest version - Float64 x 4, ie type of v_a x 4
  
-    for indvec in SIMDIter(iter, Val(4))
-        x = v_a[indvec]  # x is a packed SIMD vector
-        v_b[indvec] = x
+    for i in SIMDIter(iter, Val(4))
+        x = v_a[i]  # x is a packed SIMD vector
+        v_b[i] = x
     end
 
 
     # with type conversion - Float32 x 8, ie explicitly change Type of SIMD vector
 
     ST = SIMD.Vec{8, Float32}}    
-    for indvec in SIMDIter(iter, ST)
-        #   v = vec[indvec]  <--> vgatherind(ST, vec, indvec)
-        #   vec[indvec] = v  <--> vscatterind!(v, vec, indvec)
-        #   vec[indvec] += v <--> vaddind!(v, vec, indvec) 
+    for i in SIMDIter(iter, ST)
+        #   v = vec[i]  <--> vgatherind(ST, vec, i)
+        #   vec[i] = v  <--> vscatterind!(v, vec, i)
+        #   vec[i] += v <--> vaddind!(v, vec, i) 
 
-        x = vgatherind(ST, v_a, indices)  # x is a packed SIMD vector with type conversion to Float32
-        vscatterind!(x, v_b, indices)
+        x = vgatherind(ST, v_a, i)  # x is a packed SIMD vector with type conversion to Float32
+        vscatterind!(x, v_b, i)
     end
 
 """
@@ -145,7 +145,14 @@ end
 # Fill SIMD type from scalar Vector
 #####################################
 
-"scalar fallback - just element in a vector"
+"""
+    vgatherind(vec, indices::Integer, mask) -> v # v[i], scalar fallback
+    vgatherind(vec, indices::SIMD.Vec{N, <:Integer}, mask) -> v::SIMD.Vec{N, eltype(vec)}
+
+Fill SIMD type from scalar Vector, without type conversion
+
+See [`SIMDIter`](@ref) for example usage.
+"""
 @Base.propagate_inbounds function vgatherind(vec, indices::Integer, mask)
     return vec[indices]
 end
@@ -154,22 +161,28 @@ end
     return SIMD.vgather(vec, indices, mask)
 end
 
-"scalar fallback - just element in a vector"
+"""
+    vgatherind(::Type{T}, vec, indices::Integer, mask) -> v::T # v[i], scalar fallback
+    vgatherind(::Type{SIMD.Vec{N, T}}, vec, indices::SIMD.Vec{N, <:Integer}) -> v::SIMD.Vec{N, T}
+
+Fill SIMD type from scalar Vector, with explicit type conversion to scalar type `T`
+
+NB: assumes all `indices` are valid
+
+See [`SIMDIter`](@ref) for example usage.
+"""
 @Base.propagate_inbounds function vgatherind(::Type{T}, vec, indices::Integer) where {T}
     return convert(T, vec[indices])
 end
 
-"gather with type conversion, assumes indices all valid"
 @Base.propagate_inbounds function vgatherind(::Type{SIMD.Vec{2, T}}, vec, indices::SIMD.Vec{2, <:Integer}) where T
     return SIMD.Vec{2, T}((vec[indices[1]], vec[indices[2]]))
 end
 
-"gather with type conversion, assumes indices all valid"
 @Base.propagate_inbounds function vgatherind(::Type{SIMD.Vec{4, T}}, vec, indices::SIMD.Vec{4, <:Integer}) where T
     return SIMD.Vec{4, T}((vec[indices[1]], vec[indices[2]], vec[indices[3]], vec[indices[4]]))
 end
 
-"gather with type conversion, assumes indices all valid"
 @Base.propagate_inbounds function vgatherind(::Type{SIMD.Vec{8, T}}, vec, indices::SIMD.Vec{8, <:Integer}) where T
     return SIMD.Vec{8, T}(
         ( 
@@ -183,13 +196,23 @@ end
 # Unpack SIMD type and write to scalar Vector
 #############################################
 
-"scalar fallback - just set element in a vector"
+"""
+    vscatterind!(v::T, vec::Array{T, N}, indices::Integer, mask) # scalar fallback, no type conversion
+    vscatterind!(v::T, vec::Array{T, N}, indices::Integer) # scalar fallback, no type conversion
+    vscatterind!(v::SIMD.Vec{N, T}, vec, indices::SIMD.Vec{N, <:Integer}, mask) # converts to eltype{vec}
+    vscatterind!(v::SIMD.Vec{N, T}, vec, indices::SIMD.Vec{N, <:Integer}) # converts to eltype{vec} 
+
+Unpack SIMD type and write to scalar Vector, with type conversion to `eltype(vec)`.
+
+Versions without `mask` assume all indices are valid (but may be repeated).
+
+See [`SIMDIter`](@ref) for example usage.
+"""
 @Base.propagate_inbounds function vscatterind!(v::T, vec::Array{T, N}, indices::Integer, mask) where {T,N}
     vec[indices] = v   
     return nothing
 end
 
-"scalar fallback - just set element in a vector"
 @Base.propagate_inbounds function vscatterind!(v::T, vec::Array{T,N}, indices::Integer) where {T,N}
     vec[indices] = v   
     return nothing
@@ -209,7 +232,16 @@ end
 # Unpack SIMD type and add to scalar Vector
 #############################################
 
-"scalar fallback - just add to element in a vector `vec`"
+"""
+    vaddind!(v::T,  vec::Array{T, N}, indices::Integer) # scalar fallback, no type conversion
+    vaddind!(v::SIMD.Vec{N, T}, vec, indices::SIMD.Vec{N, <:Integer})
+
+Unpack SIMD type and add to scalar Vector, with type conversion to `eltype(vec)`.
+
+Assumes all indices are valid (but may be repeated, which will still have the effect of one add).
+
+See [`SIMDIter`](@ref) for example usage.
+"""
 @Base.propagate_inbounds function vaddind!(v::T,  vec::Array{T, N}, indices::Integer) where {T, N}
     vec[indices] += v
     return nothing
