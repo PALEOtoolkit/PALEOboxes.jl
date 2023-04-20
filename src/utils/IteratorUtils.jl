@@ -49,8 +49,9 @@ Call `f(t1[n], t2[n])` for each element `n` of `t1::Tuple`, `t2::Tuple`.
 # Implementation
 Recursively generates inline code for speed and type stability.
 
-NB: as of Julia 1.6, slows down and allocates if `length(t1) > 32` due to Julia limitation.
-See [`foreach_longtuple`](@ref) for this.
+# Limitations
+As of Julia 1.6, slows down and allocates if `length(t1) > 32` due to Julia limitation.
+See [`foreach_longtuple`](@ref).
 
 See https://github.com/JuliaLang/julia/issues/31869
 https://github.com/JuliaLang/julia/blob/master/base/tuple.jl (map implementation)
@@ -76,6 +77,62 @@ foreach_tuple_unchecked(f, t1::Tuple, t2::Tuple) =
 
 Call `f(t1[n], t2[n], ... tm[n])` or `f(t1[n], t2[n], ... tm[n], p)` for each element
 `n` of `t1::Tuple`, `t2`, ... `tm`.
+
+# Examples
+    Here `input_concs_cell` and `input_concs` are `NamedTuple`s.
+
+    PB.IteratorUtils.foreach_longtuple(values(input_concs_cell), values(input_concs)) do ic_cell, ic
+       ic_cell[] = r_rhofac*ic[i]  # generates a closure with r_rhofac as a captured variable
+    end
+
+
+    # closure with r_rhofac as a captured variable
+    function f(ic_cell, ic)
+        ic_cell[] = r_rhofac*ic[i]  
+    end
+    PB.IteratorUtils.foreach_longtuple(f, values(input_concs_cell), values(input_concs))
+
+
+    PB.IteratorUtils.foreach_longtuple_p(values(input_concs_cell), values(input_concs), r_rhofac) do ic_cell, ic, _r_rhofac
+        ic_cell[] = _r_rhofac*ic[i]  # no closure with _r_rhofac as an argument
+    end
+
+
+    # no closure with _r_rhofac as an argument
+    function f(ic_cell, ic, _r_rhofac)
+        ic_cell[] = _r_rhofac*ic[i]  
+    end
+    PB.IteratorUtils.foreach_longtuple_p(f, values(input_concs_cell), values(input_concs), r_rhofac)
+
+
+# Limitations
+See Julia performance tips:
+    - There are potential problems with captured variables when using a closure as `f`, either explicitly or using do block syntax. 
+    It is usually safer to explicitly write out `f` with all arguments, and pass them in using `foreach_longtuple_p`, using `p::Tuple` for multiple arguments.
+    - Passing type parameters to `f` is prone to creating additional problems if `f` is not specialized, which happens:
+      - if `f` is either an explicit closure or is a closure created using do block syntax
+      - if a type parameter is passed as a member of `p::Tuple`
+      - if a type parameter is passed as `p`, but `f` is not explicitly specialized using `p::Type{MyType}` and `f` is not inlined (do block syntax does appear to work) 
+    It is safest to either explicitly specialize `f` on a type parameter using `p::Type{MyType}`, or avoid passing type parameters and eg use eltype to derive them.
+
+    # Allocates: generates a closure with BufType as a captured variable, with no specialization
+    PB.IteratorUtils.foreach_longtuple(values(input_concs_cell), values(input_concs)) do ic_cell, ic
+        ic_cell[] = convert(BufType, ic[i])  # allocates
+    end
+
+
+    # OK: no closure, with explicit specialization on BufType argument
+    function f(ic_cell, ic, ::Type{BufType}) where {BufType} # force specialization
+        ic_cell[] = convert(BufType, ic[i])  
+    end
+    PB.IteratorUtils.foreach_longtuple_p(f, values(input_concs_cell), values(input_concs), BufType)
+
+
+    # Allocates: no closure, but BufType is a Tuple member so is passed as a `DataType` hence no specialization
+    function f(ic_cell, ic, (BufType, r_rhofac))
+        ic_cell[] = r_rhofac*convert(BufType, ic[i])  
+    end
+    PB.IteratorUtils.foreach_longtuple_p(f, values(input_concs_cell), values(input_concs), (r_rhofac, BufType))
 
 # Implementation
 Uses `@generated` to generate unrolled code for speed and type stability without length restrictions on `tm`.
@@ -148,7 +205,7 @@ end
 end
 
 @inline foreach_longtuple_p(f::F, t1, t2, p; errmsg="iterables lengths differ") where{F} =
-    foreach_longtuple_unchecked_p(f, t1, t2, p)
+    (check_lengths_equal(t1, t2; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, p))
 @generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, p)
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
@@ -160,7 +217,7 @@ end
 end
 
 @inline foreach_longtuple_p(f::F, t1, t2, t3, p; errmsg="iterables lengths differ") where{F} =
-    foreach_longtuple_unchecked_p(f, t1, t2, t3, p)
+    (check_lengths_equal(t1, t2, t3; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, p))
 @generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, p)
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
@@ -172,7 +229,7 @@ end
 end
 
 @inline foreach_longtuple_p(f::F, t1, t2, t3, t4, p; errmsg="iterables lengths differ") where{F} =
-    foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, p)
+    (check_lengths_equal(t1, t2, t3, t4; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, p))
 @generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, t4, p)
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
@@ -184,7 +241,7 @@ end
 end
 
 @inline foreach_longtuple_p(f::F, t1, t2, t3, t4, t5, p; errmsg="iterables lengths differ") where{F} =
-    foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, t5, p)
+    (check_lengths_equal(t1, t2, t3, t4, t5; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, t5, p))
 @generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, t4, t5, p)
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
