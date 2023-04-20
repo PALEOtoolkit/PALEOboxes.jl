@@ -93,10 +93,10 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
             filterfn = v->true, # force setup even though R is not a state Variable
             force_initial_norm_value=true, # setup :norm_value, :initial_value to get norm_value callback, even though R is not a state Variable
             setup_callback=setup_callback
-        )  
-        R_sms       = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+        )
+        R_sms       = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))        
     else        
-        R        = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
+        R           = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
         PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
 
         R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
@@ -104,9 +104,7 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
     PB.setfrozen!(rj.pars.const)
 
     # sms variable not used by us, but must appear in a method to be linked and created
-    PB.add_method_do_nothing!(rj, [R_sms])
-
-    do_vars = [PB.VarDep(R), PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
+    do_vars = [R, R_sms, PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarPropScalar("R_delta", "per mil", "scalar reservoir isotope delta"))
     end
@@ -649,6 +647,9 @@ function PB.register_methods!(rj::ReactionConst)
         end
         push!(vars_const, constvar)
     end
+
+    # add a dummy method to block any other reaction from also creating (and modifying!) a Property Variable
+    PB.add_method_do_nothing!(rj, vars_const)  
 
     # specify filterfn to initialize vars_const even though they aren't state variables
     PB.add_method_setup_initialvalue_vars_default!(rj, vars_const, filterfn = v->true)
