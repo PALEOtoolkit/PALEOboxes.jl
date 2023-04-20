@@ -343,22 +343,25 @@ function PB.register_methods!(rj::ReactionReservoirConst)
     PB.add_method_setup_initialvalue_vars_default!(rj, [var_R_conc], filterfn = v->true)
 
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
-        setup_vars = [
-            PB.VarDep(var_R_conc),
+        vars = [
+            var_R_conc,
             PB.VarProp("R_delta", "per mil", "isotopic composition"),
         ]
         # use do, not setup, so we handle the case where the value is modified after setup
-        PB.add_method_do!(rj, do_reactionreservoirconst, (PB.VarList_namedtuple(setup_vars),) )
+        PB.add_method_do!(rj, do_reactionreservoirconst, (PB.VarList_namedtuple(vars),) )
+    else
+        # add a dummy method to block any other reaction from also setting a var_R_conc Property Variable
+        PB.add_method_do_nothing!(rj, [var_R_conc])  
     end
     PB.setfrozen!(rj.pars.field_data)
 
     return nothing
 end
 
-function do_reactionreservoirconst(m::PB.ReactionMethod, (setup_vars, ), cellrange::PB.AbstractCellRange, deltat)
+function do_reactionreservoirconst(m::PB.ReactionMethod, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
     @inbounds for i in cellrange.indices
-        setup_vars.R_delta[i]  = PB.get_delta(setup_vars.R_conc[i])
+        vars.R_delta[i]  = PB.get_delta(vars.R_conc[i])
     end
     
     return nothing
