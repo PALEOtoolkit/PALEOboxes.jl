@@ -27,7 +27,7 @@ using DocStringExtensions
 import OrderedCollections
 import Logging
 
-import SnoopPrecompile
+import PrecompileTools
 import TimerOutputs: @timeit, @timeit_debug
 
 include("utils/DocStrings.jl")
@@ -150,7 +150,7 @@ function run_model(model::Model; call_do_deriv=false, logger=Logging.NullLogger(
 end
 
 
-@SnoopPrecompile.precompile_setup begin
+@PrecompileTools.setup_workflow begin
     # create Reactions and register methods to precompile this code
 
     # Putting some things in `setup` can reduce the size of the
@@ -166,7 +166,7 @@ end
         "ReactionReservoirTotal", "ReactionUnstructuredVectorGrid", "ReactionCartesianGrid", "ReactionReservoirConst",
     ]
 
-    @SnoopPrecompile.precompile_all_calls begin
+    @PrecompileTools.precompile_workflow begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
         for r in reactionlist
