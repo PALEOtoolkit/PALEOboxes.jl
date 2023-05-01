@@ -805,6 +805,13 @@ function show_variables(model::Model, domainname::AbstractString; kwargs...)
     return show_variables(dom; kwargs...)
 end
 
+show_links(model::Model, varnamefull::AbstractString) = show_links(stdout, model, varnamefull) 
+
+function show_links(io::IO, model::Model, varnamefull::AbstractString)
+    vardom = get_variable(model, varnamefull; allow_not_found=false)
+    show_links(io, vardom)
+end
+
 """
     show_parameters(model) -> DataFrame
 

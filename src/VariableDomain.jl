@@ -473,14 +473,11 @@ Display all [`VariableReaction`](@ref)s linked to this [`VariableDomain`](@ref)
 
 Linked variables are shown as "<domain name>.<reaction name>.<method name>.<local name>"
 """
+function show_links end
+
 show_links(vardom::VariableDomain) = show_links(stdout, vardom)
 
-show_links(model::Model, varnamefull::AbstractString) = show_links(stdout, model, varnamefull) 
-
-function show_links(io::IO, model::Model, varnamefull::AbstractString)
-    vardom = get_variable(model, varnamefull; allow_not_found=false)
-    show_links(io, vardom)
-end
+# implementation of show_links(model::Model, varnamefull::AbstractString) is in Model.jl 
 
 function show_links(io::IO, vardom::VariableDomPropDep)
     println(io, "\t$(typeof(vardom)) \"$(fullname(vardom))\" links:")
