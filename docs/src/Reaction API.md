@@ -63,7 +63,7 @@ In addition it is possible to add [Predefined ReactionMethods](@ref) for some co
 
 ### Defining VariableReactions
 ```@docs
-CreateVariableReaction
+VariableReaction
 parse_variablereaction_namestr
 set_attribute!
 ```

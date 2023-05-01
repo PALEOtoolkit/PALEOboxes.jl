@@ -463,30 +463,39 @@ end
 
 """
     show_links(vardom::VariableDomain)
-    show_links(io::IO, vardom::VariableDomPropDep)
+    show_links(model::Model, varnamefull::AbstractString)
+    show_links(io::IO, vardom::VariableDomain)
+    show_links(io::IO, model::Model, varnamefull::AbstractString)
 
 Display all [`VariableReaction`](@ref)s linked to this [`VariableDomain`](@ref)
+
+`varnamefull` should be of form "<domain name>.<variable name>"
+
+Linked variables are shown as "<domain name>.<reaction name>.<method name>.<local name>"
 """
 show_links(vardom::VariableDomain) = show_links(stdout, vardom)
 
+show_links(model::Model, varnamefull::AbstractString) = show_links(stdout, model, varnamefull) 
+
+function show_links(io::IO, model::Model, varnamefull::AbstractString)
+    vardom = get_variable(model, varnamefull; allow_not_found=false)
+    show_links(io, vardom)
+end
+
 function show_links(io::IO, vardom::VariableDomPropDep)
-    println(io, "\t$(typeof(vardom)) $(fullname(vardom)) links:")
-    println(io, "\t\tproperty:\t", if isnothing(vardom.var_property) "nothing" else fullname(vardom.var_property) end)
-    println(io, "\t\tproperty_setup:\t", if isnothing(vardom.var_property_setup) "nothing" else fullname(vardom.var_property_setup) end)
-    for var in vardom.var_dependencies
-        println(io, "\t\tdependency:\t", fullname(var))
+    println(io, "\t$(typeof(vardom)) \"$(fullname(vardom))\" links:")
+    println(io, "\t\tproperty:\t", if isnothing(vardom.var_property) "nothing" else "\""*fullname(vardom.var_property)*"\"" end)
+    if !isnothing(vardom.var_property_setup)
+        println(io, "\t\tproperty_setup:\t", "\""*fullname(vardom.var_property_setup)*"\"")
     end
+    println(io, "\t\tdependencies:\t", String[fullname(var) for var in vardom.var_dependencies])
     return nothing
 end
 
 function show_links(io::IO, vardom::VariableDomContribTarget)
-    println(io, "\t$(typeof(vardom)) $(fullname(vardom)) links:")
-    println(io, "\t\ttarget:\t", if isnothing(vardom.var_target) "nothing" else fullname(vardom.var_target) end)
-    for var in vardom.var_contributors
-        println(io, "\t\tcontributor:\t", fullname(var))
-    end
-    for var in vardom.var_dependencies
-        println(io, "\t\tdependency:\t", fullname(var))
-    end
+    println(io, "\t$(typeof(vardom)) \"$(fullname(vardom))\" links:")
+    println(io, "\t\ttarget:\t\t", if isnothing(vardom.var_target) "nothing" else "\""*fullname(vardom.var_target)*"\"" end)
+    println(io, "\t\tcontributors:\t", String[fullname(var) for var in vardom.var_contributors])
+    println(io, "\t\tdependencies:\t", String[fullname(var) for var in vardom.var_dependencies])
     return nothing
 end
