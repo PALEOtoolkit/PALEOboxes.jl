@@ -575,6 +575,7 @@ function show_variables(
 
     df = DataFrames.DataFrame()
     df.name = [v.name for v in vars]
+    df.type = [typeof(v) for v in vars]
     for att in attributes
         DataFrames.insertcols!(df, att=>[get_attribute(v, att) for v in vars])
     end

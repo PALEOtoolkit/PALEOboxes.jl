@@ -98,7 +98,6 @@ VariableType
 VariableDomain
 VariableDomPropDep
 VariableDomContribTarget
-VariableReaction
 ```
 
 ### Variable Attributes

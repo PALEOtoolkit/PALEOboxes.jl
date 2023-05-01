@@ -1,16 +1,112 @@
-import Infiltrator
-# import StaticArrays
+# import Infiltrator
+
+#############################################
+# VariableReaction
+#############################################
+
+# define docstring, this is then attached to relevant functions (see further down in this file)
+const variable_reaction_docstr = 
 """
-    VariableReaction{T}
+    VariableReaction(VT, localname => link_namestr, units, description; attributes=Tuple()) -> VariableReaction{VT}
+    VariableReaction(VT, linklocal_namestr, units, description; attributes=Tuple()) -> VariableReaction{VT}    
+    
+    VarProp, VarPropScalar, VarPropStateIndep, VarPropScalarStateIndep -> VariableReaction{VT_ReactProperty}
+    VarDep, VarDepColumn, VarDepScalar, VarDepStateIndep, VarDepColumnStateIndep, VarDepScalarStateIndep -> VariableReaction{VT_ReactDependency}
+    VarTarget, VarTargetScalar -> VariableReaction{VT_ReactTarget}
+    VarContrib, VarContribColumn, VarContribScalar -> VariableReaction{VT_ReactContributor}
+    VarStateExplicit, VarStateExplicitScalar -> VariableReaction{VT_ReactDependency}
+    VarDeriv, VarDerivScalar -> VariableReaction{VT_ReactContributor}
+    VarState, VarStateScalar -> VariableReaction{VT_ReactDependency}
+    VarConstraint, VarConstraintScalar -> VariableReaction{VT_ReactDependency}
+
+    [deprecated] VariableReaction(VT, localname, units, description; link_namestr, attributes=Tuple()) -> VariableReaction{VT}
 
 Reaction view on a model variable.
 
-Reactions define [`AbstractVarList`](@ref)s of `VariableReaction`s when creating a [`ReactionMethod`](@ref). These
-are used to create to [`VariableDomain`](@ref) variables when the model is initialised, 
-linking together `VariableReaction`s with the same name. 
-`views` on Domain data Arrays are then passed to the [`ReactionMethod`](@ref) function at each timestep.
+Reactions define [`AbstractVarList`](@ref)s of `VariableReaction`s when creating a [`ReactionMethod`](@ref). 
+Within a `ReactionMethod`, a `VariableReaction` is referred to by `localname`. When the model is initialised, 
+[`VariableDomain`](@ref) variables are created that link together `VariableReaction`s with the same `link_namestr`, and
+data Arrays are allocated. `views` on the `VariableDomain` data Arrays are then passed to the [`ReactionMethod`](@ref)
+function at each timestep.
 
-The Type parameter `T` is one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`.
+# Subtypes
+
+The Type parameter `VT` is one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`, where 
+short names are defined for convenience:
+
+    const VarPropT        = VariableReaction{VT_ReactProperty}
+    const VarDepT         = VariableReaction{VT_ReactDependency}
+    const VarTargetT      = VariableReaction{VT_ReactTarget}
+    const VarContribT     = VariableReaction{VT_ReactContributor}
+
+There are two pairings of `VariableReaction`s with [`VariableDomain`](@ref)s:
+- Reaction Property and Dependency Variables, linked to a [`VariableDomPropDep`](@ref). These are used to represent
+    a quantity calculated in one Reaction that is then used by other Reactions.
+- Reaction Target and Contributor Variables, linked to a [`VariableDomContribTarget`](@ref). These are used to represent
+    a flux-like quantity, with one Reaction definining the Target and multiple Reactions adding contributions.
+
+# Variable Attributes and constructor convenience functions
+
+Variable attributes are used to define Variable `:space` [`AbstractSpace`](@ref) (scalar, per-cell, etc) and data content
+`:field_data` [`AbstractData`](@ref),  and to label state Variables for use by numerical solvers. 
+Additional attributes can be specified to provide model-specific
+information, with defaults defined in the .jl code that can then be overridden in the .yaml configuration file, see [`StandardAttributes`](@ref)
+
+`VariableReaction` is usually not called directly, instead convenience functions are defined that provide commonly-used combinations of `VT`
+and `attributes`:
+
+| short name            | VT                    |    attributes |               |               |                       |           | notes |
+|-----------------------|-----------------------|---------------|---------------|---------------|-----------------------|-----------|-------|
+|                       |                       | `:space`      | `:field_data` | `:vfunction`  | `:initialize_to_zero` |`:datatype`|       |
+|||||||||
+| `VarProp`             | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
+| `VarPropScalar`       | `VT_ReactProperty`    | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
+| `VarPropStateIndep`   | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+| `VarPropScalarStateIndep`|`VT_ReactProperty`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+|||||||||
+| `VarDep`              | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
+| `VarDepColumn`        | `VT_ReactDependency`  | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
+| `VarDepScalar`        | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
+| `VarDepStateIndep`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+| `VarDepColumnStateIndep`|`VT_ReactDependency` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+| `VarDepScalarStateIndep`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+|||||||||
+| `VarTarget`           | `VT_ReactTarget`      | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `true`                | -         |       |
+| `VarTargetScalar`     | `VT_ReactTarget`      | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `true`                | -         |       |
+|||||||||
+| `VarContrib`          | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
+| `VarContribColumn`    | `VT_ReactContributor` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
+| `VarContribScalar`    | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
+|||||||||
+| `VarStateExplicit`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_StateExplicit`| `false`           | -         |       |
+| `VarStateExplicitScalar`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_StateExplicit`| `false`           | -         |       |
+| `VarDeriv`            | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Deriv`    | `true`                | -         |       |
+| `VarDerivScalar`      | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Deriv`    | `true`                | -         |       |
+|||||||||
+| `VarState`            | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_State`    | `false`               | -         |       |
+| `VarStateScalar`      | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_State`    | `false`               | -         |       |
+| `VarConstraint`       | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Constraint`| `true`               | -         |       |
+| `VarConstraintScalar` | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Constraint`| `true`               | -         |       |
+
+This illustrates some general principles for the use of attributes:
+- All Variables must define:
+  - the `:space` Attribute (a subtype of [`AbstractSpace`](@ref)) to specify whether they are Domain scalars, per-cell quantities, etc.
+  - the `:field_data` Attribute (a subtype of [`AbstractData`](@ref)) to specify the quantity they represent. This defaults to 
+    `ScalarData` to represent a scalar value. To eg represent a single isotope the `:field_data` attribute should be set to `IsotopeLinear`.
+- The `:vfunction` attribute is used to label state Variables and corresponding time derivatives, for access by a numerical solver.
+  - An ODE-like combination of a state variable and time derivative are defined by a paired `VarStateExplicit` and `VarDeriv`. Note that
+    that these are just `VarDep` and `VarContrib` with the `:vfunction` attribute set, and that there is no `VarProp` and `VarTarget` defined
+    in the model (these are effectively provided by the numerical solver). The pairing is defined by the naming convention of `varname` and `varname_sms`.
+  - An algebraic constraint (for a DAE) is defined by a `VarState` and `VarConstraint`. Note that
+    that these are just `VarDep` and `VarContrib` with the `:vfunction` attribute set, and that there is no `VarProp` and `VarTarget` defined
+    in the model (these are effectively provided by the numerical solver). These variables are not paired.
+- The `:initialize_to_zero` attribute is set for Target variables, this is than used (by the ReactionMethod created by
+  [`add_method_initialize_zero_vars_default!`](@ref)) to identify variables that should be initialised to zero at the start of each timestep.
+  This attribute is also set for Contributor variables VarDeriv and VarConstraint (as there is no corresponding Target variable in the model).
+- The `:datatype` attribute is used to identify constant Property Variables (independent of time). TODO this is a poor choice of name. 
+
+
+# Specifying links
 
 `localname` identifies the `VariableReaction` within the `Reaction`, and can be used to set `variable_attributes:`
 and `variable_links:` in the .yaml configuration file.
@@ -18,9 +114,21 @@ and `variable_links:` in the .yaml configuration file.
 `linkreq_domain.linkreq_subdomain.linkreq_name` defines the Domain, Subdomain and name for run-time linking
 to [`VariableDomain`](@ref) variables. 
 
-Not created directly - see [`CreateVariableReaction`](@ref)
+# Arguments
+- `VT::VariableType`:  one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`
+- `localname::AbstractString`: Reaction-local Variable name
+- `link_namestr::AbstractString`: `<linkreq_domain>.[linkreq_subdomain.]linkreq_name`. Parsed by [`parse_variablereaction_namestr`](@ref)
+  to define the requested linking to `Domain` Variable.
+- `linklocal_namestr::AbstractString`:  `<linkreq_domain>.[linkreq_subdomain.]localname`. Convenience form to define both `localname`
+  and requested linking to Domain Variable, for the common case where `linkreq_name == localname`.
+- `units::AbstractString`: units ("" if not applicable)
+- `description::AbstractString`: text describing the variable
+# Keywords
+- `attributes::Tuple(:attrb1name=>attrb1value, :attrb2name=>attrb2value, ...)`: 
+  variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
 """
-Base.@kwdef mutable struct VariableReaction{T} <: VariableBase
+
+Base.@kwdef mutable struct VariableReaction{VT} <: VariableBase
     method::Union{Nothing, AbstractReactionMethod} = nothing
     localname::String
 
@@ -37,86 +145,26 @@ Base.@kwdef mutable struct VariableReaction{T} <: VariableBase
 end
 
 
-get_var_type(var::VariableReaction{T}) where T = T
+get_var_type(var::VariableReaction{VT}) where VT = VT
 
 const VarPropT        = VariableReaction{VT_ReactProperty}
 const VarDepT         = VariableReaction{VT_ReactDependency}
 const VarTargetT      = VariableReaction{VT_ReactTarget}
 const VarContribT     = VariableReaction{VT_ReactContributor}
 
-function Base.copy(v::VariableReaction{T}) where T
-    vcopy = VariableReaction{T}(
-        method = v.method,
-        localname = v.localname,
-        attributes = copy(v.attributes), # NB: no deepcopy
-        # attributes = Dict{Symbol, Any}(k=>copy(v) for (k, v) in v.attributes), # 
-        linkreq_domain = v.linkreq_domain,
-        linkreq_subdomain = v.linkreq_subdomain,
-        linkreq_name = v.linkreq_name,
-        link_optional = v.link_optional,
-        linkvar = v.linkvar,
-    )
-    return vcopy
-end
-
-"""
-    get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing) -> value
-
-Get the 'master' Variable attribute from the VariableDomain a VariableReaction is linked to.
-
-TODO: this is almost always what is wanted, as only the 'master' VariableReaction will be updated
-by the configuration file.
-"""
-function get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing)
-    domvar = var.linkvar
-    !isnothing(domvar) || error("get_domvar_attribute: VariableReaction $(fullname(var)) not linked")
-        
-    return get_attribute(domvar, name, missing_value)
-end
-
-
-###################################################
-# Constructors and creation methods
-##################################################
-
-"""
-    CreateVariableReaction(T, localname => link_namestr, units, description; attributes=Tuple()) -> VariableReaction{T}
-    CreateVariableReaction(T, linklocal_namestr, units, description; attributes=Tuple()) -> VariableReaction{T}    
-    [deprecated] CreateVariableReaction(T, localname, units, description; link_namestr, attributes=Tuple()) -> VariableReaction{T}
-
-Create a [`VariableReaction`](@ref).
-
-Not called directly: use short names `VarProp`, `VarDep`, `VarContrib`, `VarTarget`, 
-`VarPropScalar`, `VarDepScalar`, `VarContribScalar`, `VarTargetScalar`.
-
-# Arguments
-- `var_type::VariableType`:  one of `VT_ReactProperty`, `VT_ReactDependency`, `VT_ReactContributor`, `VT_ReactTarget`
-- `localname::AbstractString`: Reaction-local Variable name
-- `link_namestr::AbstractString`: `<linkreq_domain>.[linkreq_subdomain.]linkreq_name`. Parsed by [`parse_variablereaction_namestr`](@ref)
-  to define the requested linking to `Domain` Variable.
-- `linklocal_namestr::AbstractString`:  `<linkreq_domain>.[linkreq_subdomain.]localname`. Convenience form to define both `localname`
-  and requested linking to Domain Variable, for the common case where `linkreq_name == localname`.
-- `units::AbstractString`: units ("" if not applicable)
-- `description::AbstractString`: text describing the variable
-# Keywords
-- `attributes::Tuple(:attrb1name=>attrb1value, :attrb2name=>attrb2value, ...)`: 
-  variable attributes, see [`StandardAttributes`](@ref), [`set_attribute!`](@ref), [`get_attribute`](@ref)
-"""
-function CreateVariableReaction end
-
-CreateVariableReaction(
-    var_type::VariableType,
+VariableReaction(
+    VT::VariableType,
     localname_linkname::Pair{<:AbstractString, <:AbstractString},
     units::AbstractString,
     description::AbstractString;                                      
     attributes::Tuple{Vararg{Pair}}=(),  # (:atrb1=>value1, :atrb2=>value2)
-) = CreateVariableReaction(
-    var_type, first(localname_linkname), units, description;
+) = VariableReaction(
+    VT, first(localname_linkname), units, description;
     link_namestr=last(localname_linkname), attributes=attributes
 )
 
-function CreateVariableReaction(
-    var_type::VariableType,
+function VariableReaction(
+    VT::VariableType,
     linklocal_namestr::AbstractString,
     units::AbstractString,
     description::AbstractString;                                      
@@ -128,15 +176,15 @@ function CreateVariableReaction(
     localname = sub_variablereaction_linkreq_name(localname, "")  # strip %reaction%
     if linklocal_namestr != link_namestr
         linklocal_namestr == localname ||
-            error("CreateVariableReaction: invalid combination of explicit link_namestr=$link_namestr and localname=$linklocal_namestr")
+            error("VariableReaction: invalid combination of explicit link_namestr=$link_namestr and localname=$linklocal_namestr")
     end
 
     (linkreq_domain, linkreq_subdomain, linkreq_name, link_optional) = parse_variablereaction_namestr(link_namestr)
 
-    var_type in (VT_ReactProperty, VT_ReactDependency, VT_ReactContributor, VT_ReactTarget) || 
-        error("VariableReaction $name invalid var_type=$var_type")
+    VT in (VT_ReactProperty, VT_ReactDependency, VT_ReactContributor, VT_ReactTarget) || 
+        error("VariableReaction $name invalid VT=$VT")
 
-    newvar = VariableReaction{var_type}(
+    newvar = VariableReaction{VT}(
         localname=localname,                                 
         linkreq_domain=linkreq_domain,
         linkreq_subdomain=linkreq_subdomain,
@@ -173,6 +221,37 @@ function CreateVariableReaction(
     return newvar
 end
 
+function Base.copy(v::VariableReaction{T}) where T
+    vcopy = VariableReaction{T}(
+        method = v.method,
+        localname = v.localname,
+        attributes = copy(v.attributes), # NB: no deepcopy
+        # attributes = Dict{Symbol, Any}(k=>copy(v) for (k, v) in v.attributes), # 
+        linkreq_domain = v.linkreq_domain,
+        linkreq_subdomain = v.linkreq_subdomain,
+        linkreq_name = v.linkreq_name,
+        link_optional = v.link_optional,
+        linkvar = v.linkvar,
+    )
+    return vcopy
+end
+
+"""
+    get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing) -> value
+
+Get the 'master' Variable attribute from the VariableDomain a VariableReaction is linked to.
+
+TODO: this is almost always what is wanted, as only the 'master' VariableReaction will be updated
+by the configuration file.
+"""
+function get_domvar_attribute(var::VariableReaction, name::Symbol, missing_value=missing)
+    domvar = var.linkvar
+    !isnothing(domvar) || error("get_domvar_attribute: VariableReaction $(fullname(var)) not linked")
+        
+    return get_attribute(domvar, name, missing_value)
+end
+
+
 
 """
     reset_link_namestr!(var, link_namestr)
@@ -194,7 +273,7 @@ end
 VarPropScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarProp(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
 VarProp(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    CreateVariableReaction(VT_ReactProperty, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
+    VariableReaction(VT_ReactProperty, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
             
 VarPropScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VarPropScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
@@ -206,7 +285,7 @@ VarDepScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
 VarDepColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarDep(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
 VarDep(localname, units, description; kwargs... ) = 
-    CreateVariableReaction(VT_ReactDependency, localname, units, description; kwargs...)
+    VariableReaction(VT_ReactDependency, localname, units, description; kwargs...)
     
 VarDepScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VarDepScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
@@ -236,14 +315,14 @@ end
 VarTargetScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarTarget(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
 VarTarget(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    CreateVariableReaction(VT_ReactTarget, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
+    VariableReaction(VT_ReactTarget, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
         
 VarContribScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarContrib(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
 VarContribColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarContrib(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
 VarContrib(localname, units, description; kwargs... ) = 
-    CreateVariableReaction(VT_ReactContributor, localname, units, description; kwargs...)
+    VariableReaction(VT_ReactContributor, localname, units, description; kwargs...)
 
 VarContrib(v::VarContribT) = v
 VarContrib(v::VarTargetT) = VarContribT(        
@@ -292,6 +371,18 @@ VarInit(v::Union{VarPropT, VarTargetT, VarContribT}) = VarDepT(
 function VarInit(v::VarDepT)
     error("VarInit for VarDepT $(fullname(v))")
 end
+
+# attach docstring to relevant functions
+"$variable_reaction_docstr"
+VariableReaction, 
+VarProp, VarPropScalar, VarPropStateIndep, VarPropScalarStateIndep,
+VarDep, VarDepColumn, VarDepScalar, VarDepStateIndep, VarDepColumnStateIndep, VarDepScalarStateIndep,
+VarTarget, VarTargetScalar,
+VarContrib, VarContribColumn, VarContribScalar,
+VarStateExplicit, VarStateExplicitScalar,
+VarDeriv, VarDerivScalar,
+VarState, VarStateScalar,
+VarConstraint, VarConstraintScalar
 
 """
     VarVector(variable_ctorfn, variables_list) -> Vector{VariableReaction{T}}
