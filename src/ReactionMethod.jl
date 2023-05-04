@@ -45,7 +45,7 @@ This is called after model arrays are allocated, and prior to setup.
 """
 struct ReactionMethod{M, R, P, Nargs} <: AbstractReactionMethod    
     "callback from Model framework"
-    methodfn::M
+    methodfn::M   # NB: store function object, even though we have M (see https://discourse.julialang.org/t/is-there-a-way-to-get-f-from-typeof-f/18818/12)
 
     "the Reaction that created this ReactionMethod"
     reaction::R
