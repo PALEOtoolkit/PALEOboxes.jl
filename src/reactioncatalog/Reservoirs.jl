@@ -103,8 +103,12 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
     end
     PB.setfrozen!(rj.pars.const)
 
+    # don't include R_sms here, as if it is a VarTarget (constant case) that then creates a loop if some other reaction
+    # tries to read R and write R_sms
+    do_vars = [R, PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
     # sms variable not used by us, but must appear in a method to be linked and created
-    do_vars = [R, R_sms, PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
+    PB.add_method_do_nothing!(rj, [R_sms])
+
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarPropScalar("R_delta", "per mil", "scalar reservoir isotope delta"))
     end

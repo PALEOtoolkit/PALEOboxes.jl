@@ -6,6 +6,8 @@ import PALEOboxes as PB
 
 import Infiltrator
 
+include("ReactionReservoirFlux.jl")
+
 @testset "Reactions" begin
     @test PB.find_reaction("ReactionReservoirScalar") == PB.Reservoirs.ReactionReservoirScalar
 
@@ -124,5 +126,14 @@ end
 
     @info "test complete"
     # close(logfile)
+
+end
+
+
+@testset "ReservoirsFluxes" begin
+
+    # test is just that the model links correctly with flux and a constant ReactionReservoirScalar 
+
+    model =  PB.create_model_from_config("configreservoirsfluxes.yaml", "model1")
 
 end
