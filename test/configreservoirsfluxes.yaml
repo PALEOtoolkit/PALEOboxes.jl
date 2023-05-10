@@ -1,0 +1,42 @@
+
+# test that model links correctly with
+# - reservoir and flux depending on that reservoir
+# - constant reservoir and flux depending on that reservoir
+model1:
+
+    domains:
+        global:
+            
+            reactions:
+            
+                reservoir_O:
+                    class: ReactionReservoirScalar
+                   
+                    variable_links:
+                        R*: O*
+                    variable_attributes:
+                        R:norm_value:           3.7e18
+                        R:initial_value:        3.7e19
+
+                reservoir_ConstS:
+                    class: ReactionReservoirScalar
+                   
+                    parameters:
+                        const:                  true
+                    variable_links:
+                        R*: ConstS*
+                    variable_attributes:
+                        R:norm_value:           10.0
+                        R:initial_value:        1.0
+
+                flux_O:
+                    class: ReactionReservoirFlux
+                    variable_links:
+                        R*:    O*
+
+                flux_constS:
+                    class: ReactionReservoirFlux
+                    variable_links:
+                        R*:    ConstS*
+
+        
