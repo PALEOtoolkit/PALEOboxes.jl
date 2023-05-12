@@ -123,30 +123,39 @@ attributeType(::Attribute{T}) where{T} = T
     StandardAttributes
 
 List of standard Variable attributes.
+
+Some of these follow netCDF COARDS/CF conventions:
+
+COARDS: https://ferret.pmel.noaa.gov/Ferret/documentation/coards-netcdf-conventions
+- units   (where possible should follow the Unidata udunits package https://docs.unidata.ucar.edu/udunits/current/)
+- long_name
+
+CF conventions: https://cfconventions.org/cf-conventions/cf-conventions.html#_description_of_the_data
+- standard_name   http://cfconventions.org/Data/cf-standard-names/current/src/cf-standard-name-table.xml
 """
 const StandardAttributes = [
     #                                   name                    default_value    required    units       description    
 
-    Attribute{Type, AbstractData}(        :field_data,           UndefinedData,   true,       "",         "AbstractData type Variable contains")    
+    Attribute{Type, AbstractData}(        :field_data,           UndefinedData,   true,       "",         "AbstractData type Variable contains")
     Attribute{Tuple{Vararg{String}}, Tuple{Vararg{String}}}(
                                           :data_dims,            (),              true,       "",         "Variable data dimensions, or empty for a scalar")
     Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",         "function space Variable is defined on")
-    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "Mesh on which Variable is defined (empty for Domain spatial scalar)")
+    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "grid mesh on which Variable is defined (empty for Domain spatial scalar)")
     Attribute{Bool, Nothing}(             :check_length,         true,            false,      "",         "true to check length matches length of linked VariableDomain")
 
     Attribute{VariableFunction, VariableFunction}(
                                           :vfunction,             VF_Undefined,   true,       "",         "host function")
-    Attribute{Vector{Int}, Nothing}(      :operatorID,            Int[],          false,       "",        "Reaction operatorIDs that modify this Variable")
+    Attribute{Vector{Int}, Nothing}(      :operatorID,            Int[],          false,      "",         "Reaction operatorIDs that modify this Variable")
     Attribute{VariablePhase, VariablePhase}(
                                           :vphase,                VP_Undefined,   false,      "",         "phase for concentrations in multiphase cells")
     Attribute{String, Nothing}(           :totalname,             "",             false,      "",         "total Variable name for this species")
-    Attribute{String, Nothing}(           :safe_name,             "",             true,       "",         "")
-    Attribute{String, Nothing}(           :long_name,             "",             true,       "",         "")
-    Attribute{String, Nothing}(           :units,                 "",             true,       "",         "")
-    Attribute{String, Nothing}(           :description,           "",             true,       "",         "")
-    Attribute{Bool, Nothing}(             :standard_variable,     false,          true,       "",         "")
-    Attribute{Bool, Nothing}(             :advect,                false,          false,      "",         "")
-    Attribute{Float64, Nothing}(          :advect_zmin,           0.0,            false,      "m",         "minimum height for transport")
+    Attribute{String, Nothing}(           :safe_name,             "",             false,      "",         "optional short or escaped name for compatibility with other software")
+    Attribute{String, Nothing}(           :long_name,             "",             false,      "",         "netcdf long descriptive name")
+    Attribute{String, Nothing}(           :units,                 "",             true,       "",          "where possible should follow netcdf conventions")
+    Attribute{String, Nothing}(           :description,           "",             true,       "",          "")
+    Attribute{String, Nothing}(           :standard_name,         "",             false,      "",         "netcdf CF conventions standard name")
+    Attribute{Bool, Nothing}(             :advect,                false,          false,      "",         "true to apply advective transport to this tracer")
+    Attribute{Float64, Nothing}(          :advect_zmin,           0.0,            false,      "m",        "minimum height for transport")
     # Attribute{Bool, Nothing}(            :optional,             false,          true,       "",         "")
     Attribute{Bool, Nothing}(             :initialize_to_zero,    false,          true,       "",         "")
     Attribute{Float64, Nothing}(          :vertical_movement,     0.0,            false,      "m d-1",    "")
