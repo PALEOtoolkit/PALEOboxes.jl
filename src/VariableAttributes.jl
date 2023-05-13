@@ -141,7 +141,7 @@ const StandardAttributes = [
     Attribute{Tuple{Vararg{String}}, Tuple{Vararg{String}}}(
                                           :data_dims,            (),              true,       "",         "Tuple of variable data dimension names, or empty for a scalar")
     Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",         "function space Variable is defined on")
-    Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "grid mesh on which Variable is defined (empty for Domain spatial scalar)")
+    Attribute{String, Nothing}(           :mesh,                 "default",       false,       "",         "grid mesh on which Variable is defined (empty for Domain spatial scalar)")
     Attribute{Bool, Nothing}(             :check_length,         true,            false,      "",         "true to check length matches length of linked VariableDomain")
     Attribute{Bool, Nothing}(             :is_constant,          false,           true,      "",          "true if variable is not changed after initialisation")
     Attribute{VariableFunction, VariableFunction}(
@@ -158,7 +158,7 @@ const StandardAttributes = [
     Attribute{Bool, Nothing}(             :advect,                false,          false,      "",         "true to apply advective transport to this tracer")
     Attribute{Float64, Nothing}(          :advect_zmin,           0.0,            false,      "m",        "minimum height for transport")
     # Attribute{Bool, Nothing}(            :optional,             false,          true,       "",         "")
-    Attribute{Bool, Nothing}(             :initialize_to_zero,    false,          true,       "",         "request initialize to zero at start of each timestep.")
+    Attribute{Bool, Nothing}(             :initialize_to_zero,    false,          false,       "",        "request initialize to zero at start of each timestep.")
     Attribute{Float64, Nothing}(          :vertical_movement,     0.0,            false,      "m d-1",    "vertical advective transport (+ve upwards) in column")
     Attribute{String, Nothing}(           :diffusivity_speciesname, "",           false,      "",         "species name to define diffusivity")
     Attribute{Union{Float64,Vector{Float64}}, Nothing}(

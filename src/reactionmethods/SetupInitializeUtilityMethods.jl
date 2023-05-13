@@ -145,7 +145,7 @@ NB: TODO variables are converted to VarDep (no dependency checking or sorting ne
 """
 function add_method_initialize_zero_vars_default!(
     react::AbstractReaction, variables=get_variables(react); 
-    filterfn=v->get_attribute(v, :initialize_to_zero)
+    filterfn=v->get_attribute(v, :initialize_to_zero, false)
 )
 
     init_vars = []
