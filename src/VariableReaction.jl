@@ -276,9 +276,9 @@ VarProp(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VariableReaction(VT_ReactProperty, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
             
 VarPropScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarPropScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
+    VarPropScalar(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
 VarPropStateIndep(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarProp(localname, units, description; attributes=(attributes..., :datatype=>Float64),  kwargs...)
+    VarProp(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64),  kwargs...)
 
 VarDepScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarDep(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
@@ -288,11 +288,11 @@ VarDep(localname, units, description; kwargs... ) =
     VariableReaction(VT_ReactDependency, localname, units, description; kwargs...)
     
 VarDepScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarDepScalar(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
+    VarDepScalar(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
 VarDepColumnStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarDepColumn(localname, units, description; attributes=(attributes..., :datatype=>Float64), kwargs...)
+    VarDepColumn(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
 VarDepStateIndep(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarDep(localname, units, description; attributes=(attributes..., :datatype=>Float64),  kwargs...)
+    VarDep(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64),  kwargs...)
 
 
 # create a VarDep suitable for linking to a VarProp or VarTarget

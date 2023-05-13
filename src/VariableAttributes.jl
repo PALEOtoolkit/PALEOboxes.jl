@@ -143,7 +143,7 @@ const StandardAttributes = [
     Attribute{Type, AbstractSpace}(       :space,                CellSpace,       true,       "",         "function space Variable is defined on")
     Attribute{String, Nothing}(           :mesh,                 "default",       true,       "",         "grid mesh on which Variable is defined (empty for Domain spatial scalar)")
     Attribute{Bool, Nothing}(             :check_length,         true,            false,      "",         "true to check length matches length of linked VariableDomain")
-
+    Attribute{Bool, Nothing}(             :is_constant,          false,           true,      "",          "true if variable is not changed after initialisation")
     Attribute{VariableFunction, VariableFunction}(
                                           :vfunction,             VF_Undefined,   true,       "",         "host function (to label state variables etc)")
     Attribute{Vector{Int}, Nothing}(      :operatorID,            Int[],          false,      "",         "Reaction operatorIDs that modify this Variable")
