@@ -55,38 +55,38 @@ information, with defaults defined in the .jl code that can then be overridden i
 `VariableReaction` is usually not called directly, instead convenience functions are defined that provide commonly-used combinations of `VT`
 and `attributes`:
 
-| short name            | VT                    |    attributes |               |               |                       |           | notes |
-|-----------------------|-----------------------|---------------|---------------|---------------|-----------------------|-----------|-------|
-|                       |                       | `:space`      | `:field_data` | `:vfunction`  | `:initialize_to_zero` |`:datatype`|       |
+| short name            | VT                    |    attributes |               |               |                       |           |              |
+|-----------------------|-----------------------|---------------|---------------|---------------|-----------------------|-----------|--------------|
+|                       |                       | `:space`      | `:field_data` | `:vfunction`  | `:initialize_to_zero` |`:datatype`|`:is_constant`|
 |||||||||
-| `VarProp`             | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
-| `VarPropScalar`       | `VT_ReactProperty`    | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
-| `VarPropStateIndep`   | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
-| `VarPropScalarStateIndep`|`VT_ReactProperty`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+| `VarProp`             | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarPropScalar`       | `VT_ReactProperty`    | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarPropStateIndep`   | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
+| `VarPropScalarStateIndep`|`VT_ReactProperty`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
 |||||||||
-| `VarDep`              | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
-| `VarDepColumn`        | `VT_ReactDependency`  | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
-| `VarDepScalar`        | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -         |       |
-| `VarDepStateIndep`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
-| `VarDepColumnStateIndep`|`VT_ReactDependency` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
-| `VarDepScalarStateIndep`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | `Float64` |       |
+| `VarDep`              | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarDepColumn`        | `VT_ReactDependency`  | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarDepScalar`        | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarDepStateIndep`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
+| `VarDepColumnStateIndep`|`VT_ReactDependency` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
+| `VarDepScalarStateIndep`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
 |||||||||
-| `VarTarget`           | `VT_ReactTarget`      | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `true`                | -         |       |
-| `VarTargetScalar`     | `VT_ReactTarget`      | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `true`                | -         |       |
+| `VarTarget`           | `VT_ReactTarget`      | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `true`                | -         | false        |
+| `VarTargetScalar`     | `VT_ReactTarget`      | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `true`                | -         | false        |
 |||||||||
-| `VarContrib`          | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
-| `VarContribColumn`    | `VT_ReactContributor` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
-| `VarContribScalar`    | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `false`               | -             |       |
+| `VarContrib`          | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarContribColumn`    | `VT_ReactContributor` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarContribScalar`    | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
 |||||||||
-| `VarStateExplicit`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_StateExplicit`| `false`           | -         |       |
-| `VarStateExplicitScalar`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_StateExplicit`| `false`           | -         |       |
-| `VarDeriv`            | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Deriv`    | `true`                | -         |       |
-| `VarDerivScalar`      | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Deriv`    | `true`                | -         |       |
+| `VarStateExplicit`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_StateExplicit`| -                 | -         | false        |
+| `VarStateExplicitScalar`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_StateExplicit`| -                 | -         | false        |
+| `VarDeriv`            | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Deriv`    | `true`                | -         | false        |
+| `VarDerivScalar`      | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Deriv`    | `true`                | -         | false        |
 |||||||||
-| `VarState`            | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_State`    | `false`               | -         |       |
-| `VarStateScalar`      | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_State`    | `false`               | -         |       |
-| `VarConstraint`       | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Constraint`| `true`               | -         |       |
-| `VarConstraintScalar` | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Constraint`| `true`               | -         |       |
+| `VarState`            | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_State`    | -                     | -         | false        |
+| `VarStateScalar`      | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_State`    | -                     | -         | false        |
+| `VarConstraint`       | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Constraint`| `true`               | -         | false        |
+| `VarConstraintScalar` | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Constraint`| `true`               | -         | false        |
 
 This illustrates some general principles for the use of attributes:
 - All Variables must define:
@@ -103,7 +103,8 @@ This illustrates some general principles for the use of attributes:
 - The `:initialize_to_zero` attribute is set for Target variables, this is than used (by the ReactionMethod created by
   [`add_method_initialize_zero_vars_default!`](@ref)) to identify variables that should be initialised to zero at the start of each timestep.
   This attribute is also set for Contributor variables VarDeriv and VarConstraint (as there is no corresponding Target variable in the model).
-- The `:datatype` attribute is used to identify constant Property Variables (independent of time). TODO this is a poor choice of name. 
+- The `:datatype` attribute is used to provide a concrete datatype and exclude from automatic differentiation (TODO document this usage)
+- The `:is_constant` attribute is used to identify constant Property Variables (not modified after initialisation).
 
 
 # Specifying links
@@ -194,7 +195,7 @@ function VariableReaction(
 
     # default initialize_to_zero
     if (get_var_type(newvar) == VT_ReactTarget) 
-        set_attribute!(newvar, :initialize_to_zero, true)
+        set_attribute!(newvar, :initialize_to_zero, true; allow_create=true)
     end
     if (get_var_type(newvar) == VT_ReactContributor)
         # do this first before applying attributes to newvar with set_attribute!,
@@ -203,7 +204,7 @@ function VariableReaction(
             if namesymbol == :vfunction && value in (VF_Deriv, VF_Constraint, VF_Total)                
                 # :vfunction host-dependent, so there will be no VT_ReactTarget within the model to initialize_to_zero
                 # so set :initialize_to_zero on the VT_ReactContributor
-                set_attribute!(newvar, :initialize_to_zero, true)
+                set_attribute!(newvar, :initialize_to_zero, true; allow_create=true)
             end
         end
     end
@@ -216,7 +217,7 @@ function VariableReaction(
     set_attribute!(newvar, :description, description)
 
     for (namesymbol, value) in  attributes
-        set_attribute!(newvar, namesymbol, value, allow_create=true)
+        set_attribute!(newvar, namesymbol, value; allow_create=true)
     end
     return newvar
 end
