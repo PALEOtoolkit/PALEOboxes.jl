@@ -107,6 +107,21 @@ CurrentModule = PALEOboxes
 ```@docs
 Attribute
 StandardAttributes
+```
+
+```@example
+import PALEOboxes as PB # hide
+import DataFrames # hide
+show( # hide
+    DataFrames.sort!( # hide
+        DataFrames.DataFrame((s=>getproperty.(PB.StandardAttributes, s) for s in (:name, :default_value, :required, :units, :description))...), # hide
+        [DataFrames.order(:required, rev=true), :name] # hide
+    ); # hide
+    allcols=true, allrows=true, truncate=96, show_row_number=false #hide
+) # hide
+```
+
+```@docs
 get_attribute
 VariableFunction
 VariablePhase
