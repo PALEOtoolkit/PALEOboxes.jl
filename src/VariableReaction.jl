@@ -49,8 +49,6 @@ There are two pairings of `VariableReaction`s with [`VariableDomain`](@ref)s:
 
 Variable attributes are used to define Variable `:space` [`AbstractSpace`](@ref) (scalar, per-cell, etc) and data content
 `:field_data` [`AbstractData`](@ref),  and to label state Variables for use by numerical solvers. 
-Additional attributes can be specified to provide model-specific
-information, with defaults defined in the .jl code that can then be overridden in the .yaml configuration file, see [`StandardAttributes`](@ref)
 
 `VariableReaction` is usually not called directly, instead convenience functions are defined that provide commonly-used combinations of `VT`
 and `attributes`:
@@ -64,19 +62,19 @@ and `attributes`:
 | `VarPropStateIndep`   | `VT_ReactProperty`    | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
 | `VarPropScalarStateIndep`|`VT_ReactProperty`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
 |||||||||
-| `VarDep`              | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
-| `VarDepColumn`        | `VT_ReactDependency`  | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
-| `VarDepScalar`        | `VT_ReactDependency`  | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
-| `VarDepStateIndep`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
-| `VarDepColumnStateIndep`|`VT_ReactDependency` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
-| `VarDepScalarStateIndep`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | `Float64` | true         |
+| `VarDep`              | `VT_ReactDependency`  | `CellSpace`   | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
+| `VarDepColumn`        | `VT_ReactDependency`  | `ColumnSpace` | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
+| `VarDepScalar`        | `VT_ReactDependency`  | `ScalarSpace` | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
+| `VarDepStateIndep`    | `VT_ReactDependency`  | `CellSpace`   | `UndefinedData`|`VF_Undefined`| -                     | `Float64` | true         |
+| `VarDepColumnStateIndep`|`VT_ReactDependency` | `ColumnSpace` | `UndefinedData`|`VF_Undefined`| -                     | `Float64` | true         |
+| `VarDepScalarStateIndep`| `VT_ReactDependency`| `ScalarSpace` | `UndefinedData`|`VF_Undefined`| -                     | `Float64` | true         |
 |||||||||
 | `VarTarget`           | `VT_ReactTarget`      | `CellSpace`   | `ScalarData`  | `VF_Undefined`| `true`                | -         | false        |
 | `VarTargetScalar`     | `VT_ReactTarget`      | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| `true`                | -         | false        |
 |||||||||
-| `VarContrib`          | `VT_ReactContributor` | `CellSpace`   | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
-| `VarContribColumn`    | `VT_ReactContributor` | `ColumnSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
-| `VarContribScalar`    | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Undefined`| -                     | -         | false        |
+| `VarContrib`          | `VT_ReactContributor` | `CellSpace`   | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
+| `VarContribColumn`    | `VT_ReactContributor` | `ColumnSpace` | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
+| `VarContribScalar`    | `VT_ReactContributor` | `ScalarSpace` | `UndefinedData`|`VF_Undefined`| -                     | -         | false        |
 |||||||||
 | `VarStateExplicit`    | `VT_ReactDependency`  | `CellSpace`   | `ScalarData`  | `VF_StateExplicit`| -                 | -         | false        |
 | `VarStateExplicitScalar`| `VT_ReactDependency`| `ScalarSpace` | `ScalarData`  | `VF_StateExplicit`| -                 | -         | false        |
@@ -89,10 +87,13 @@ and `attributes`:
 | `VarConstraintScalar` | `VT_ReactContributor` | `ScalarSpace` | `ScalarData`  | `VF_Constraint`| `true`               | -         | false        |
 
 This illustrates some general principles for the use of attributes:
-- All Variables must define:
-  - the `:space` Attribute (a subtype of [`AbstractSpace`](@ref)) to specify whether they are Domain scalars, per-cell quantities, etc.
-  - the `:field_data` Attribute (a subtype of [`AbstractData`](@ref)) to specify the quantity they represent. This defaults to 
-    `ScalarData` to represent a scalar value. To eg represent a single isotope the `:field_data` attribute should be set to `IsotopeLinear`.
+- All Variables must define the `:space` VariableAttribute (a subtype of [`AbstractSpace`](@ref)) to specify whether they are Domain scalars, per-cell quantities, etc.
+  This is used to define array dimensions, and to check that dimensions match when variables are linked.
+- The `:field_data` attribute (a subtype of [`AbstractData`](@ref)) specifies the quantity that Property and Target Variables represent. This defaults to 
+  `ScalarData` to represent a scalar value. To eg represent a single isotope the `:field_data` attribute should be set to `IsotopeLinear`. Dependency and
+  Contributor Variables with `:field_data = UndefinedData` then acquire this value when they are linked, or may specify `:field_data` to constrain allowed links.
+- The `:initialize_to_zero` attribute is set for Target variables, this is than used (by the ReactionMethod created by
+  [`add_method_initialize_zero_vars_default!`](@ref)) to identify variables that should be initialised to zero at the start of each timestep.
 - The `:vfunction` attribute is used to label state Variables and corresponding time derivatives, for access by a numerical solver.
   - An ODE-like combination of a state variable and time derivative are defined by a paired `VarStateExplicit` and `VarDeriv`. Note that
     that these are just `VarDep` and `VarContrib` with the `:vfunction` attribute set, and that there is no `VarProp` and `VarTarget` defined
@@ -100,12 +101,23 @@ This illustrates some general principles for the use of attributes:
   - An algebraic constraint (for a DAE) is defined by a `VarState` and `VarConstraint`. Note that
     that these are just `VarDep` and `VarContrib` with the `:vfunction` attribute set, and that there is no `VarProp` and `VarTarget` defined
     in the model (these are effectively provided by the numerical solver). These variables are not paired.
-- The `:initialize_to_zero` attribute is set for Target variables, this is than used (by the ReactionMethod created by
-  [`add_method_initialize_zero_vars_default!`](@ref)) to identify variables that should be initialised to zero at the start of each timestep.
-  This attribute is also set for Contributor variables VarDeriv and VarConstraint (as there is no corresponding Target variable in the model).
-- The `:datatype` attribute is used to provide a concrete datatype and exclude from automatic differentiation (TODO document this usage)
-- The `:is_constant` attribute is used to identify constant Property Variables (not modified after initialisation).
+  - The :initialize_to_zero attribute is also set for Contributor variables VarDeriv and VarConstraint (as there is no corresponding Target variable in the model).
+  - The :field_data attribute should be set on labelled state etc Variables (as there are no corresponding Property or Target variables in the model to define this).
+- The `:is_constant` attribute is used to identify constant Property Variables (not modified after initialisation). A Dependency Variable with :is_constant = true
+  can only link to a constant Property Variable.
+- The `:datatype` attribute is used both to provide a concrete datatype for constant Variables, and to exclude a non-constant Variable
+  from automatic differentiation (TODO document that usage).
 
+Additional attributes can be specified to provide model-specific information, with defaults defined in the Reaction .jl code that can often then be
+overridden in the .yaml configuration file, see [`StandardAttributes`](@ref).
+Examples include:
+- `:initial_value`, `:norm_value`, `:initial_delta` for state variables or constant variables. NB: the Reaction creating these variables is responsible
+  for implementing a setup method to read the attributes and set the variable data array appropriately at model initialisation.
+- An `:advect` attribute is used to label tracer variables to indicate that they should have advective transport applied by
+  a transport Reaction included in the model.
+
+NB: after Variables are linked to Domain Variables, the attributes used are those from the `master` Variable (either a Property or Target variable, or
+a labelled state variable Dependency or Contributor with no corresponding Property or Target). Additional attributes must therefore be set on this master Variable.
 
 # Specifying links
 
@@ -193,22 +205,6 @@ function VariableReaction(
         link_optional=link_optional,
     )
 
-    # default initialize_to_zero
-    if (get_var_type(newvar) == VT_ReactTarget) 
-        set_attribute!(newvar, :initialize_to_zero, true; allow_create=true)
-    end
-    if (get_var_type(newvar) == VT_ReactContributor)
-        # do this first before applying attributes to newvar with set_attribute!,
-        # so that :initialize_to_zero can be overridden by an entry in attributes
-        for (namesymbol, value) in  attributes
-            if namesymbol == :vfunction && value in (VF_Deriv, VF_Constraint, VF_Total)                
-                # :vfunction host-dependent, so there will be no VT_ReactTarget within the model to initialize_to_zero
-                # so set :initialize_to_zero on the VT_ReactContributor
-                set_attribute!(newvar, :initialize_to_zero, true; allow_create=true)
-            end
-        end
-    end
-    
     if ((get_var_type(newvar) == VT_ReactProperty) || (get_var_type(newvar) == VT_ReactTarget)) && link_optional
         error("VariableReaction $name invalid link_optional=$link_optional")
     end
@@ -270,30 +266,35 @@ function reset_link_namestr!(var, link_namestr)
     return nothing
 end
 
+# convenience functions to create commonly-used VariableReaction subtypes, with appropriate attributes set
+# NB: order matters within the combined attributes list: later entries can overwrite earlier entries, so the order should be:
+# - default value for attributes eg :field_data that can be changed
+# - the supplied attributes argument
+# - attributes eg :vfunction that cannot be overridden by the supplied attributes argument
 
 VarPropScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarProp(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+    VarProp(localname, units, description; attributes=(attributes..., :space=>ScalarSpace), kwargs...)
 VarProp(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VariableReaction(VT_ReactProperty, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
             
 VarPropScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarPropScalar(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
+    VarPropScalar(localname, units, description; attributes=(:datatype=>Float64, attributes..., :is_constant=>true), kwargs...)
 VarPropStateIndep(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarProp(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64),  kwargs...)
+    VarProp(localname, units, description; attributes=(:datatype=>Float64, attributes..., :is_constant=>true),  kwargs...)
 
 VarDepScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarDep(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+    VarDep(localname, units, description; attributes=(attributes..., :space=>ScalarSpace), kwargs...)
 VarDepColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarDep(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
+    VarDep(localname, units, description; attributes=(attributes..., :space=>ColumnSpace), kwargs...)
 VarDep(localname, units, description; kwargs... ) = 
     VariableReaction(VT_ReactDependency, localname, units, description; kwargs...)
     
 VarDepScalarStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarDepScalar(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
+    VarDepScalar(localname, units, description; attributes=(:datatype=>Float64, attributes..., :is_constant=>true), kwargs...)
 VarDepColumnStateIndep(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarDepColumn(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64), kwargs...)
+    VarDepColumn(localname, units, description; attributes=(:datatype=>Float64, attributes..., :is_constant=>true), kwargs...)
 VarDepStateIndep(localname, units, description; attributes::Tuple=(), kwargs...) =
-    VarDep(localname, units, description; attributes=(attributes..., :is_constant=>true, :datatype=>Float64),  kwargs...)
+    VarDep(localname, units, description; attributes=(:datatype=>Float64, attributes..., :is_constant=>true),  kwargs...)
 
 
 # create a VarDep suitable for linking to a VarProp or VarTarget
@@ -314,46 +315,57 @@ function VarDep(v::Union{VarPropT, VarTargetT})
 end
 
 VarTargetScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarTarget(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+    VarTarget(localname, units, description; attributes=(attributes..., :space=>ScalarSpace), kwargs...)
+# set :initialize_to_zero on VarTarget
 VarTarget(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VariableReaction(VT_ReactTarget, localname, units, description; attributes=(:field_data=>ScalarData, attributes...), kwargs...)
+    VariableReaction(VT_ReactTarget, localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes...), kwargs...)
         
 VarContribScalar(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarContrib(localname, units, description; attributes=(:space=>ScalarSpace, attributes...), kwargs...)
+    VarContrib(localname, units, description; attributes=(attributes..., :space=>ScalarSpace), kwargs...)
 VarContribColumn(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarContrib(localname, units, description; attributes=(:space=>ColumnSpace, attributes...), kwargs...)
+    VarContrib(localname, units, description; attributes=(attributes..., :space=>ColumnSpace), kwargs...)
 VarContrib(localname, units, description; kwargs... ) = 
     VariableReaction(VT_ReactContributor, localname, units, description; kwargs...)
 
 VarContrib(v::VarContribT) = v
-VarContrib(v::VarTargetT) = VarContribT(        
-    localname = v.localname,  
-    attributes = copy(v.attributes), # NB: no deepcopy
-    linkreq_domain = v.linkreq_domain,
-    linkreq_subdomain = v.linkreq_subdomain,
-    linkreq_name = v.linkreq_name
-)
+function VarContrib(v::VarTargetT)
+    vcontrib = VarContribT(        
+        localname=v.localname,  
+        attributes=copy(v.attributes), # NB: no deepcopy
+        linkreq_domain=v.linkreq_domain,
+        linkreq_subdomain=v.linkreq_subdomain,
+        linkreq_name=v.linkreq_name,
+    )
+    # remove as v will handle this
+    has_attribute(vcontrib, :initialize_to_zero) && set_attribute!(vcontrib, :initialize_to_zero, false) 
+    has_attribute(vcontrib, :calc_total) && set_attribute!(vcontrib, :calc_total, false)
+    return vcontrib
+end
+
 
 VarStateExplicitScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarDepScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateExplicit), kwargs...)
 VarStateExplicit(localname, units, description; attributes::Tuple=(), kwargs... ) = 
     VarDep(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateExplicit), kwargs...)
     
+# set :initialize_to_zero as :vfunction VF_Total is host-dependent so there will be no VT_ReactTarget within the model to handle :initialize_to_zero
 VarTotalScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarContribScalar(localname, units, description;
-        components, attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
+        components, attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
 VarTotal(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-        VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
-         
+        VarContrib(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
+
+# set :initialize_to_zero as :vfunction VF_Deriv is host-dependent so there will be no VT_ReactTarget within the model to handle :initialize_to_zero
 VarDerivScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarContribScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv), kwargs...)
+    VarContribScalar(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv), kwargs...)
 VarDeriv(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-    VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv),  kwargs...)
-         
+    VarContrib(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv),  kwargs...)
+
+# set :initialize_to_zero as :vfunction VF_Constraint is host-dependent so there will be no VT_ReactTarget within the model to handle :initialize_to_zero
 VarConstraintScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarContribScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
+    VarContribScalar(localname, units, description; attributes=(:initialize_to_zero=>true, field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
 VarConstraint(localname, units, description; attributes::Tuple=(), kwargs... ) = 
-        VarContrib(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
+        VarContrib(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
          
 VarStateScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
     VarDepScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_State), kwargs...)
@@ -384,6 +396,7 @@ VarStateExplicit, VarStateExplicitScalar,
 VarDeriv, VarDerivScalar,
 VarState, VarStateScalar,
 VarConstraint, VarConstraintScalar
+
 
 """
     VarVector(variable_ctorfn, variables_list) -> Vector{VariableReaction{T}}
