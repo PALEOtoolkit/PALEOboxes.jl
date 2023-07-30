@@ -356,7 +356,7 @@ end
 function _link_create(domain::Domain, @nospecialize(reaction::AbstractReaction),
                       variable::VariableReaction{VT_ReactProperty},
                       linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
-    dolog && @debug "Creating Property $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
+    dolog && @debug "Creating Property $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.localname) "*
         "--> $(linkvar_domain.name).$(linkvar_name)"
 
     if haskey(linkvar_domain.variables, linkvar_name)
@@ -386,7 +386,7 @@ end
 function _link_create(domain::Domain, @nospecialize(reaction::AbstractReaction),
                       variable::VariableReaction{VT_ReactTarget},
                       linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
-    dolog && @debug "Creating Target $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
+    dolog && @debug "Creating Target $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.localname) "*
         "--> $(linkvar_domain.name).$(linkvar_name)"
 
     if haskey(linkvar_domain.variables, linkvar_name)
@@ -415,7 +415,7 @@ function _link_create_contrib(domain::Domain, @nospecialize(reaction::AbstractRe
     if (!haskey(linkvar_domain.variables, linkvar_name)
         && !variable.link_optional)
 
-        dolog && @debug "Creating host Target for Contributor $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
+        dolog && @debug "Creating host Target for Contributor $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.localname) "*
             "--> $(linkvar_domain.name).$(linkvar_name)"
 
         linkvar =  create_VariableDomContribTarget(linkvar_domain, linkvar_name, variable)
@@ -437,7 +437,7 @@ function _link_create_dep(domain::Domain, @nospecialize(reaction::AbstractReacti
     if (!haskey(linkvar_domain.variables, linkvar_name)
         && !variable.link_optional)
 
-        dolog && @debug "Creating host Property for Dependency $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.name) "*
+        dolog && @debug "Creating host Property for Dependency $(reaction.base.domain.name).reactions.$(reaction.name).$(variable.localname) "*
             "--> $(linkvar_domain.name).$(linkvar_name)"
 
         linkvar =  create_VariableDomPropDep(linkvar_domain,linkvar_name, variable)
