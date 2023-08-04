@@ -264,7 +264,7 @@ function check_parameter_sum(parameter::VecParameter, ncells; tol=1e-3)
     sumok = true
     
     isnothing(ncells) || length(parameter.v) == ncells || 
-        (sumok = false; @error "config error: length($(parameter.name)) != ncells")
+        (sumok = false; @error "config error: length($(parameter.name)) != $ncells")
     sumpar = sum(parameter.v)
     abs(sumpar - 1.0) < tol || 
         (sumok = false; @error "config error: sum($(parameter.name)) = $sumpar != 1 +/- $(tol)")
