@@ -571,9 +571,14 @@ function add_arrays_data!(
     return nothing
 end
 
+struct DispatchMethodLists
+    list_initialize # not typed to avoid specializing large Tuples
+    list_do # not typed to avoid specializing large Tuples
+end
+
 """
     create_dispatch_methodlists(model::Model, modeldata::AbstractModelData, arrays_idx::Int, cellranges; kwargs) 
-        -> (;list_initialize, list_do)
+        -> DispatchMethodLists(list_initialize, list_do)
  
 Compile lists of `initialize` and `do` methods + corresponding `cellrange` for main loop [`do_deriv`](@ref).
 
@@ -605,8 +610,8 @@ function create_dispatch_methodlists(
         cellranges,
         generated_dispatch,
     )
-    
-    return (;list_initialize, list_do)
+
+    DispatchMethodLists(list_initialize, list_do)
 end
 
 
