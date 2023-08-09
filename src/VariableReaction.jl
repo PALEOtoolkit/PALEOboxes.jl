@@ -363,7 +363,7 @@ VarDeriv(localname, units, description; attributes::Tuple=(), kwargs... ) =
 
 # set :initialize_to_zero as :vfunction VF_Constraint is host-dependent so there will be no VT_ReactTarget within the model to handle :initialize_to_zero
 VarConstraintScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
-    VarContribScalar(localname, units, description; attributes=(:initialize_to_zero=>true, field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
+    VarContribScalar(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
 VarConstraint(localname, units, description; attributes::Tuple=(), kwargs... ) = 
         VarContrib(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Constraint), kwargs...)
          
