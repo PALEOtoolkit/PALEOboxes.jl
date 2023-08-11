@@ -1,26 +1,22 @@
 import Infiltrator
 """
-    RateStoich(
-        ratevartemplate, stoich_statevarname;
-        deltavarname_eta=nothing, prcessname="", sms_prefix="", sms_suffix="_sms"
-    ) -> RateStoich
+    RateStoich(ratevartemplate, stoich_statevarname; deltavarname_eta=nothing,
+               sms_prefix="", sms_suffix="_sms") -> RateStoich
 
 Calculate fluxes for a biogeochemical reaction given rate, stoichiometry, and optionally isotope eta.
 
 Add to a Reaction using [`create_ratestoich_method`](@ref) and [`add_method_do!`](@ref).  
 
 A Property Variable should be set to provide the reaction rate (often this is implemented by another method of the same Reaction).
+
 This method will then link to that (using the local and link names supplied by `ratevartemplate`)
 and calculate the appropriate product rates, omitting products that are not present (`VariableReaction` not linked)
-in the `Model` configuration. Metadata for use when analysing model output should be added to the rate variable using [`add_rate_stoichiometry`](@ref),
-in the usual case where this Variable is supplied as `ratevartemplate` this will happen automatically.
+in the `Model` configuration.
 
 # Arguments:
 - `ratevartemplate::Union{VarPropT, VarDepT}`: used to define the rate variable local and link names.
 - `stoich_statevarname`: collection of Tuple(stoichiometry, name) eg ((-2.0, "O2"), (-1.0,"H2S::Isotope"), (1.0, "SO4::Isotope"))
 - `deltavarname_eta`: optional tuple of variable delta + eta ("SO4\\_delta", -30.0) or ("SO4\\_delta", rj.pars.delta). If a Parameter is supplied, this is read in `do_react_ratestoich` to allow modification.
-- `processname::String`: optional tag to identify the type of reaction in model output
-- `add_rate_stoichiometry=true`: `true` to add call [`add_rate_stoichiometry`](@ref) to add metadata to `ratevartemplate`.
 
 # Examples:
 Create a `RateStoich` representing the reaction   2 O2 + H2S -> H2SO4
@@ -36,7 +32,7 @@ julia> rs.stoich_statevarname
 mutable struct RateStoich
     "template to define rate variable name, units, etc"
     ratevartemplate::Union{VarPropT, VarDepT}
-    "label for output analysis (ratevar :rate_processname attribute)"
+    "label for get_rate_stoichiometry"
     processname::String
     "Tuple of (stoich, statevarname) eg ((-2.0, \"O2\"), (-1.0, \"H2S\"), (1.0, \"SO4\"))"
     stoich_statevarname::Tuple
@@ -52,10 +48,10 @@ mutable struct RateStoich
         processname="",
         sms_prefix="",
         sms_suffix="_sms",
-        deltavarname_eta=nothing,
-        add_rate_stoichiometry=true,
+        deltavarname_eta=nothing
     )
-        rs = new(
+
+        return new(
             ratevartemplate,
             processname,
             stoich_statevarname,
@@ -64,12 +60,6 @@ mutable struct RateStoich
             deltavarname_eta,
             UndefinedData,
         )
-
-        if add_rate_stoichiometry
-            add_rate_stoichiometry!(ratevartemplate, rs)
-        end
-
-        return rs
     end
 
 end
@@ -184,35 +174,6 @@ function create_ratestoich_method(
     )
 end
 
-"""
-    add_rate_stoichiometry!(ratevar::VarPropT, ratestoich::RateStoich)
-
-Add metadata to rate variable `ratevar` for use when analysing model output.
-
-Only needs to be called explicitly if `RateStoich` was supplied with a VarDep that links to the rate variable,
-not the rate variable itself.
-    
-Adds Variable attributes:
-- `rate_processname::String = ratestoich.processname`
-- `rate_species::Vector{String}` reactants + products from `ratestoich.stoich_statevarname`
-- `rate_stoichiometry::Vector{Float64}` reaction stoichiometry from `ratestoich.stoich_statevarname` 
-"""
-function add_rate_stoichiometry!(
-    ratevar, ratestoich::RateStoich,
-)
-    isa(ratevar, VarPropT) || @warn "add_rate_stoichiometry! ratevar $(fullname(ratevar)) is not a Property Variable, metadata will be ignored"
-
-    set_attribute!(ratevar, :rate_processname, ratestoich.processname; allow_create=true)
-
-    rate_species = String[species for (stoich, species) in ratestoich.stoich_statevarname]
-    set_attribute!(ratevar, :rate_species, rate_species; allow_create=true)
-
-    rate_stoichiometry = Float64[stoich for (stoich, species) in ratestoich.stoich_statevarname]
-    set_attribute!(ratevar, :rate_stoichiometry, rate_stoichiometry; allow_create=true)
-
-    return nothing
-end
-
 
 """
     do_react_ratestoich(m::ReactionMethod, vardata, cellrange, deltat)
@@ -248,4 +209,25 @@ end
  # ignore unlinked Variables
 function _do_sms(sms_data::Nothing, stoich, p)
     return nothing
+end
+
+
+"Return reaction stoichiometry"
+function get_rate_stoichiometry(m::ReactionMethod{typeof(do_react_ratestoich)})
+
+    return get_rate_stoichiometry(m, m)
+
+end
+
+function get_rate_stoichiometry(m::ReactionMethod{typeof(do_react_ratestoich)}, hostm::ReactionMethod)
+
+    (etapar, sms_stoich, ratestoich) = m.p
+
+    return [
+        (
+            get_variable(hostm, ratestoich.ratevartemplate.localname).linkvar.name,
+            ratestoich.processname,
+            Dict(sn => n for (n, sn) in ratestoich.stoich_statevarname)
+        ),
+    ]
 end

@@ -11,6 +11,7 @@ include("ReactionRateStoichMock.jl")
     domain = PB.get_domain(model, "ocean")   
     domain.grid = PB.Grids.UnstructuredVectorGrid(ncells=10)  
     @test PB.get_length(domain) == 10
+
     modeldata = PB.create_modeldata(model)
     PB.allocate_variables!(model, modeldata, 1)
     PB.check_ready(model, modeldata)
@@ -49,12 +50,14 @@ include("ReactionRateStoichMock.jl")
     @test maximum(deltaabserr) < 1e-13
 
     @info "stoichiometry"
-    ratevars = PB.get_variables(domain, v->PB.has_attribute(v, :rate_processname))
-    @test length(ratevars) == 1
-    
-    rv = ratevars[1]
-    @test rv.name == "myrate"
-    @test PB.get_attribute(rv, :rate_processname) == "redox"
-    speciesstoich = Dict(zip(PB.get_attribute(rv, :rate_species), PB.get_attribute(rv, :rate_stoichiometry)))
-    @test speciesstoich == Dict("SO4::Isotope" => 1.0, "H2S::Isotope" => -1.0, "O2" => -2.0)      
+    nstoichs = 0
+    for rj in domain.reactions
+        rvs = PB.get_rate_stoichiometry(rj)
+        if !isempty(rvs)
+            @test length(rvs) == 1
+            @test rvs[1] == ("myrate", "redox", Dict("SO4::Isotope" => 1.0, "H2S::Isotope" => -1.0, "O2" => -2.0))
+            nstoichs += 1
+        end
+    end
+    @test nstoichs == 1
 end

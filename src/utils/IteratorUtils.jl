@@ -18,8 +18,7 @@ Error if iterables it1 ... itn do not have the same length (length(t1) == length
     throw(ArgumentError(errmsg))
 @inline check_lengths_equal(it1, it2, it3, it4, it5; errmsg="lengths differ") = length(it1) == length(it2) == length(it3) == length(it4) == length(it5) || 
     throw(ArgumentError(errmsg))
-@inline check_lengths_equal(it1, it2, it3, it4, it5, it6; errmsg="lengths differ") = length(it1) == length(it2) == length(it3) == length(it4) == length(it5) == length(it6) || 
-    throw(ArgumentError(errmsg))
+
 
 """
     zipstrict(iters...; errmsg="iterables lengths differ")
