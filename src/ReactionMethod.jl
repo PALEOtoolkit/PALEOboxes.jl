@@ -174,6 +174,17 @@ is_method_setup(@nospecialize(method::ReactionMethod)) = (method in base(method.
 is_method_initialize(@nospecialize(method::ReactionMethod)) = (method in base(method.reaction).methods_initialize)
 is_method_do(@nospecialize(method::ReactionMethod)) = (method in base(method.reaction).methods_do)
 
+"""
+    get_rate_stoichiometry(m::PB.ReactionMethod) -> Vector[(ratevarname, process, Dict(speciesname=>stoich, ...)), ...]
+
+DEPRECATED: Optionally provide rate Variable name(s), a process name ("photolysis", "reaction", ...) and stoichiometry of reactants and products, for postprocessing of results.
+
+Use attributes on rate variable instead:
+- `rate_processname::String`: a process name (eg "photolysis", "reaction", ...)
+- `rate_species::Vector{String}` names of reactant and product species
+- `rate_stoichiometry::Vector{Float64}` stoichiometry of reactant and product species
+
+"""
 get_rate_stoichiometry(@nospecialize(m::ReactionMethod)) = []
 
 ###########################################

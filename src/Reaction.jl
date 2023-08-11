@@ -193,18 +193,6 @@ function get_variable(
     return isempty(matchvars) ? nothing : matchvars[1]
 end
 
-"""
-    get_rate_stoichiometry(rj::PB.AbstractReaction) -> Vector[(ratevarname, process, Dict(speciesname=>stoich, ...)), ...]
-
-Optionally provide rate Variable name(s), a process name ("photolysis", "reaction", ...) and stoichiometry of reactants and products, for postprocessing of results.
-"""
-function get_rate_stoichiometry(rj::AbstractReaction)
-    rs = []
-    for m in rj.methods_do
-        append!(rs, get_rate_stoichiometry(m))
-    end
-    return rs
-end
 
 ##################################################
 # Initialization callbacks
