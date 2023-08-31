@@ -194,15 +194,23 @@ end
 Base.show(io::IO, ::Type{PALEOboxes.ReactionMethodDispatchList{M, V, C}}) where {M, V, C} = 
     print(io, "PALEOboxes.ReactionMethodDispatchList{M::Tuple, V::Tuple, C::Tuple each of length=$(fieldcount(M))}")
 
-"compact form"
 function Base.show(io::IO, dispatchlist::ReactionMethodDispatchList)
     print(io, typeof(dispatchlist))
 end
 
-"multiline form"
 function Base.show(io::IO, ::MIME"text/plain", dl::ReactionMethodDispatchList)
     println(io, typeof(dl))
     for i in eachindex(dl.methodfns)
         println(io, "  ", dl.methods[i], ", ", dl.cellranges[i])
     end 
+end
+
+"""
+    infoerror(io::IOBuffer, message::AbstractString)
+
+Output accumulated log messages in io, then raise `ErrorException` with message
+"""
+function infoerror(io::IOBuffer, message::AbstractString)
+    @info String(take!(io))
+    error(message)
 end

@@ -369,25 +369,26 @@ end
 "remove unlinked Variables and create transfer_matrix"
 function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardata))
 
-    @info "prepare_do_transfer: ReactionMethod $(PB.fullname(m))"
+    io = IOBuffer()
+    println(io, "prepare_do_transfer: ReactionMethod $(PB.fullname(m))")
 
     # write diagnostic output
-    @info "  active fluxes:"
+    println(io, "  active fluxes:")
     var_inputs, var_outputs = PB.get_variables_tuple(m)
     flux_names = m.p
     nactive = 0
     for (var_input, var_output, fluxname) in PB.IteratorUtils.zipstrict(var_inputs, var_outputs, flux_names)
         if isnothing(var_output.linkvar)
-            @info "    $(rpad(fluxname, 20))   $(rpad(PB.fullname(var_input.linkvar),40)) output not linked"
+            println(io, "    $(rpad(fluxname, 20))   $(rpad(PB.fullname(var_input.linkvar),40)) output not linked")
         else
-            @info "    $(rpad(fluxname, 20))   $(rpad(PB.fullname(var_input.linkvar),40)) -> $(PB.fullname(var_output.linkvar))"
+            println(io, "    $(rpad(fluxname, 20))   $(rpad(PB.fullname(var_input.linkvar),40)) -> $(PB.fullname(var_output.linkvar))")
             nactive += 1
         end
     end
 
     # check we have the same number of components
     length(input_vardata) == length(output_vardata) ||
-        error("prepare_do_transfer: ReactionMethod $(PB.fullname(m)) number of input components != number of output components - check :field_data (ScalarData, IsotopeLinear etc) match")
+        PB.infoerror(io, "prepare_do_transfer: ReactionMethod $(PB.fullname(m)) number of input components != number of output components - check :field_data (ScalarData, IsotopeLinear etc) match")
 
     # remove unlinked Variables
     input_vardata_active = []
@@ -409,36 +410,39 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
                 input_length = prod(size(ainput))::Int
             end                
             input_length == prod(size(ainput)) || 
-                error("$(PB.fullname(m)) input Variables are not all the same size")
+                PB.infoerror(io, "$(PB.fullname(m)) input Variables are not all the same size")
                                                             
             if iszero(output_length)
                 output_length = prod(size(aoutput))::Int
             end
                 
             output_length == prod(size(aoutput)) || 
-                error("$(PB.fullname(m)) output Variables are not all the same size")           
+                PB.infoerror(io, "$(PB.fullname(m)) output Variables are not all the same size")
         end
               
         # define transpose of transfer matrix (for sparse CSR efficiency, so output = input * transfer_matrix_tr)
         rj = m.reaction
         if rj.pars.transfer_matrix[] == "Custom"
             # will be supplied (not yet implemented)
-            @error "$(PB.fullname(m)) not implemented  Custom transfer matrix * $(rj.pars.transfer_multiplier[])"
+            PB.infoerror(io, "$(PB.fullname(m)) not implemented  Custom transfer matrix * $(rj.pars.transfer_multiplier[])")
         elseif rj.pars.transfer_matrix[] == "Identity"
             input_length == output_length || 
-                error("$(PB.fullname(m)) Identity transfer_matrix but Variable lengths don't match (input, output) $(input_length) != $(output_length)")
+                PB.infoerror(io, "$(PB.fullname(m)) Identity transfer_matrix but Variable lengths don't match (input, output) $(input_length) != $(output_length)")
             rj.transfer_matrix_tr = SparseArrays.sparse(LinearAlgebra.I, input_length, output_length).*rj.pars.transfer_multiplier[]
-            @info "    using Identity transfer matrix * $(rj.pars.transfer_multiplier[])"
+            println(io, "    using Identity transfer matrix * $(rj.pars.transfer_multiplier[])")
         elseif rj.pars.transfer_matrix[] == "Distribute"
             rj.transfer_matrix_tr = SparseArrays.sparse(ones(input_length, output_length)./output_length.*rj.pars.transfer_multiplier[])
-            @info "    using Distribute transfer matrix size (input, output) $(size(rj.transfer_matrix_tr)) * $(rj.pars.transfer_multiplier[])"
+            println(io, "    using Distribute transfer matrix size (input, output) $(size(rj.transfer_matrix_tr)) * $(rj.pars.transfer_multiplier[])")
         else
-            error("$(PB.fullname(m)) unknown transfer_matrix='$(rj.pars.transfer_matrix[])'")
+            PB.infoerror(io, "$(PB.fullname(m)) unknown transfer_matrix='$(rj.pars.transfer_matrix[])'")
         end
+        @info String(take!(io))
     else
+        @info String(take!(io))
         @warn "ReactionMethod $(PB.fullname(m)) no active fluxes found"
     end
-     
+
+
     rt = ([v for v in input_vardata_active], [v for v in output_vardata_active]) # narrow Types of Vectors
     
     return rt

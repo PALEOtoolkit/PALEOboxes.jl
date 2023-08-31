@@ -282,7 +282,7 @@ function create_domain_from_config(
         keyval = pop!(conf, keyname, defaultval)
         keyval = externalvalue(keyval, external_parameters)
         keyval isa Bool || 
-            error("config error: reaction $(domain.name).reactions.$(reactname) "*
+            error("config error: reaction $(domain.name).$(reactname) "*
                 "invalid '$keyname' key $keyval (must be a Bool)")
         return keyval
     end
@@ -290,7 +290,7 @@ function create_domain_from_config(
     if !isnothing(conf_reactions)
         for (reactname, conf_reactionraw) in conf_reactions
             !isnothing(conf_reactionraw) || 
-                error("config error: reaction $(domain.name).reactions.$(reactname) has no configuration")
+                error("config error: reaction $(domain.name).$(reactname) has no configuration")
             conf_reaction = copy(conf_reactionraw)
             reactenabled = pop_bool_key!(conf_reaction, "enabled", true)
             reactdisabled = pop_bool_key!(conf_reaction, "disabled", false)            
@@ -298,9 +298,8 @@ function create_domain_from_config(
             if reactenabled && !reactdisabled
                 classname = pop!(conf_reaction, "class", missing)
                 !ismissing(classname) ||
-                    error("config error: reaction $(domain.name).reactions.$(reactname) missing 'class' key")
+                    error("config error: reaction $(domain.name).$(reactname) missing 'class' key")
                 # create the reaction instance and add it to our list
-                @info "  creating reaction $(domain.name).reactions.$reactname classname $classname"
                 push!(
                     domain.reactions, 
                     create_reaction_from_config(
@@ -308,7 +307,7 @@ function create_domain_from_config(
                     )
                 )
             else
-                @info "not creating reaction $(domain.name).reactions.$(reactname) (enabled=$reactenabled, disabled=$reactdisabled)"
+                @info "not creating reaction $(domain.name).$(reactname) (enabled=$reactenabled, disabled=$reactdisabled)"
             end
         end
     else
@@ -333,12 +332,12 @@ function _link_print(domain::Domain, @nospecialize(reaction::AbstractReaction), 
 end
 
 function _link_print_not_linked(domain::Domain, @nospecialize(reaction::AbstractReaction), variable::VariableReaction,
-    linkvar_domain::Domain, linkvar_name::AbstractString, dolog)
+    linkvar_domain::Domain, linkvar_name::AbstractString, io::IOBuffer)
     if isnothing(variable.linkvar)
         linkreq_fullname = combine_link_name(variable.linkreq_domain, variable.linkreq_subdomain, linkvar_name)
         rname = domain.name*"."*reaction.name
         if variable.link_optional
-            @info "    optional $(rpad(rname, 40)) $(rpad(variable.localname,20)) -| $linkreq_fullname"
+            println(io, "    optional $(rpad(rname, 40)) $(rpad(variable.localname,20)) -| $linkreq_fullname")
         else
             @warn "    required $(rpad(rname, 40)) $(rpad(variable.localname,20)) -| $linkreq_fullname"
         end
