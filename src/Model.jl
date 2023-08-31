@@ -245,23 +245,27 @@ function create_model_from_config(
         end
     end
     
+    io = IOBuffer()    
     parameters = get(conf_model, "parameters", Dict{String, Any}())  
     if isnothing(parameters)
         @warn "empty Model.parameters"
         parameters = Dict{String,Any}()
+    else
+        println(io, "Model.parameters:")
     end
     # extrapars can override parameter from configuration file, but not create new parameters (to catch typos)
     for (parname, value) in modelpars
         if haskey(parameters, parname)
-            @info "    Resetting Model parameter $(rpad(parname, 20)) = $value (configuration file had value=$value)"
+            println(io, "    Resetting Model parameter $(rpad(parname, 20)) = $value (configuration file had value=$value)")
             parameters[parname] = value
         else
             error("configuration error: modelpars parameter $parname not present in configuration file for Model parameters:")
         end
     end
     for (parname, value) in parameters
-        @info "    Model parameter: $(rpad(parname,20)) = $value"
+        println(io, "    $(rpad(parname,20)) = $value")
     end
+    @info String(take!(io))
 
     @timeit "Model" model = Model(
         config_files=[abspath(fn) for fn in config_files],

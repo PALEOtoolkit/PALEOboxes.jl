@@ -401,7 +401,7 @@ function create_reaction_from_config(
         end
         par_modstr = ("[Default]     ", "[config.yaml] ")[1+par_modified]
         println(io, "    set parameters: $par_modstr $(rpad(par.name,20))=$(rawvalue)")
-        value = substitutevalue(parentmodule(typeof(newreaction)), externalvalue(rawvalue, newreaction.base.external_parameters))
+        value = substitutevalue(parentmodule(typeof(newreaction)), externalvalue(io, rawvalue, newreaction.base.external_parameters))
         if isa(rawvalue, AbstractString) && value != rawvalue
             par_modified = true
             println(io, "      after substitution $(par.name)=$(value)")
@@ -456,7 +456,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
         return lt
     end
 
-    io = nothing
+    io = devnull
 
     if !isnothing(reaction.base._conf_variable_links) # missing or empty 'variable_links:' will return nothing
         # sort Dict so wild cards (ending in *) are processed first, so they can be selectively overridden
@@ -467,7 +467,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
         end
         for (name, fullmapnameraw) in cvl
             try
-                fullmapname = externalvalue(fullmapnameraw, reaction.base.external_parameters)
+                fullmapname = externalvalue(io, fullmapnameraw, reaction.base.external_parameters)
                 linkreq_domain, linkreq_subdomain, mapname = split_link_name(fullmapname)
                 
                 match_vars = _gen_var_names(get_variables(reaction), name, mapname)
@@ -492,7 +492,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
                     end
                 end
             catch
-                isnothing(io) || @info String(take!(io))
+                io === devnull || @info String(take!(io))
                 @warn "_configure_variables: error setting Variable link for $(nameof(typeof(reaction))) $(fullname(reaction)) $name"
                 rethrow()
             end
@@ -502,7 +502,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
     # set variable attributes
     if !isnothing(reaction.base._conf_variable_attributes)
         if dolog 
-            io = isnothing(io) ? IOBuffer() : io
+            io = (io === devnull) ? IOBuffer() : io
             println(io, "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction)) variable_attributes:")
         end
         cva = reaction.base._conf_variable_attributes 
@@ -532,14 +532,14 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
                     end
                 end
             catch
-                isnothing(io) || @info String(take!(io))
+                io === devnull || @info String(take!(io))
                 @warn "_configure_variables: error setting Variable attribute for $(nameof(typeof(reaction))) $(fullname(reaction)) $nameattrib"
                 rethrow()
             end
         end
     end
     
-    isnothing(io) ||  @info String(take!(io))
+    io === devnull ||  @info String(take!(io))
 
     return nothing
 end

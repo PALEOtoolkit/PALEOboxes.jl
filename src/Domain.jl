@@ -278,11 +278,11 @@ function create_domain_from_config(
     # reactions 
     conf_reactions = get(conf_domain, "reactions", Dict{Any,Any}())
     
-    function pop_bool_key!(conf, keyname, defaultval)
+    function pop_bool_key!(reactname, conf, keyname, defaultval)
         keyval = pop!(conf, keyname, defaultval)
         keyval = externalvalue(keyval, external_parameters)
         keyval isa Bool || 
-            error("config error: reaction $(domain.name).$(reactname) "*
+            error("config error: reaction $(name).$(reactname) "*
                 "invalid '$keyname' key $keyval (must be a Bool)")
         return keyval
     end
@@ -292,8 +292,8 @@ function create_domain_from_config(
             !isnothing(conf_reactionraw) || 
                 error("config error: reaction $(domain.name).$(reactname) has no configuration")
             conf_reaction = copy(conf_reactionraw)
-            reactenabled = pop_bool_key!(conf_reaction, "enabled", true)
-            reactdisabled = pop_bool_key!(conf_reaction, "disabled", false)            
+            reactenabled = pop_bool_key!(reactname, conf_reaction, "enabled", true)
+            reactdisabled = pop_bool_key!(reactname, conf_reaction, "disabled", false)            
             
             if reactenabled && !reactdisabled
                 classname = pop!(conf_reaction, "class", missing)
