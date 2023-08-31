@@ -51,6 +51,9 @@ end
 
 function PB.register_methods!(rj::ReactionSum)
 
+    io = IOBuffer()
+    println(io, "register_methods: $(PB.fullname(rj)) $(PB.typename(rj))")
+
     vars_to_add = []
     empty!(rj.var_multipliers)
 
@@ -62,9 +65,9 @@ function PB.register_methods!(rj::ReactionSum)
         elseif length(svmn) == 2
             mult, varname = (parse(Float64, svmn[1]), rj.pars.vars_prefix[]*svmn[2])
         else
-            error("reaction ", fullname(rj), "invalid field in vars_to_add ", varmultname)
+            PB.infoerror(io, "reaction ", fullname(rj), "invalid field in vars_to_add ", varmultname)
         end
-        @info "reaction $(PB.fullname(rj)) add $mult * $varname"
+        println(io, "    add $mult * $varname")
         push!(rj.var_multipliers, mult)
 
         # generate new name with domain prefix to disambiguate eg O2 in atm and ocean
@@ -99,6 +102,8 @@ function PB.register_methods!(rj::ReactionSum)
             PB.VarList_tuple(vars_to_add, components=true)
         ),
     )
+
+    @info String(take!(io))
 
     return nothing
 end

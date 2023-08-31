@@ -412,17 +412,19 @@ function setvalueanddefault!(par::Union{Parameter, VecParameter, VecVecParameter
 end
 
 """
-    externalvalue(rawvalue::AbstractString, external_parameters) -> value
+    externalvalue(io, rawvalue::AbstractString, external_parameters) -> value
 
 Replace `"external%somename"`` with `external_parameters["somename"]`
+
+Write log message to io
 """
-function externalvalue(rawvalue::AbstractString, external_parameters)
+function externalvalue(io::IO, rawvalue::AbstractString, external_parameters)
     # substitute 'external%parname' with value of external parameter 'parname'
     if length(rawvalue) > 9 && findfirst("external%", rawvalue) == 1:9 
         externalkey = rawvalue[10:end]
         if haskey(external_parameters, externalkey)
             value = external_parameters[externalkey]
-            @info "      expandvalue: $rawvalue -> $value"
+            println(io, "      expandvalue: $rawvalue -> $value")
         else
             error("      $(rawvalue) external parameter $(externalkey) not found")
         end
@@ -434,7 +436,14 @@ function externalvalue(rawvalue::AbstractString, external_parameters)
 end
 
 "Non-string values returned unmodified"
-externalvalue(rawvalue, external_parameters) = rawvalue
+externalvalue(io::IO, rawvalue, external_parameters) = rawvalue
+
+function externalvalue(rawvalue, external_parameters)
+    io = IOBuffer()
+    ev = externalvalue(io, rawvalue, external_parameters)
+    iszero(io.size) || @info String(take!(io))
+    return ev
+end
 
 """
     substitutevalue(module, rawvalue::AbstractString) -> value
