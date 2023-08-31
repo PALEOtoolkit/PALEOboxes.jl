@@ -18,7 +18,7 @@ function find_all_reactions()
     rdict = Dict{String, Type}()
     duplicate_keys = []
     for ReactionType in rtypes
-        rname = String(last(split(string(ReactionType), ".")))
+        rname = _classname(ReactionType)
         if haskey(rdict, rname)
             push!(duplicate_keys, (rname, ReactionType))
         end
@@ -35,6 +35,13 @@ function find_all_reactions()
 
     return rdict
 end
+
+"""
+    _classname(ReactionType::Type{<:AbstractReaction}) -> String
+
+Get Reaction classname from `ReactionType` (this is the Julia Type after stripping module prefixes and converting to String)
+"""
+_classname(ReactionType::Type{<:AbstractReaction}) = String(last(split(string(ReactionType), ".")))
 
 """
     find_reaction(class::AbstractString) -> ReactionType
@@ -54,26 +61,42 @@ end
 """
     create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase) -> reaction::AbstractReaction
 
-Create a `ReactionType` and set `base` field.
+Default method to create a `ReactionType` and set `base` field.
 
-Default implementation may be overridden to eg set additional fields
+A reaction implementation may optionally implement a custom method eg to set additional fields
 """
 function create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase)
     return ReactionType(base=base)
 end
 
-function create_reaction(rdict::Dict{String, Type}, classname::String, name::String, external_parameters::Dict{String, Any})
-   
+"""
+    create_reaction(rdict::Dict{String, Type}, classname::String, name::String, external_parameters::Dict{String, Any}) -> reaction::AbstractReaction
+    create_reaction(ReactionType::Type{<:AbstractReaction}, name::String, external_parameters::Dict{String, Any}) -> reaction::AbstractReaction
+
+Create and configure a reaction.
+
+Sets `ReactionBase` with name, classname, external_parameters, and list of `Parameters` from `pars` field (if present)
+""" 
+function create_reaction(
+    ReactionType::Type{<:AbstractReaction}, name::String, external_parameters::Dict{String, Any};
+    classname=_classname(ReactionType),
+)
+    base=ReactionBase(;name, classname, external_parameters)
+    rj = create_reaction(ReactionType, base)
+    # Add parameters from pars field
+    if hasproperty(rj, :pars)
+        add_par(rj, rj.pars)
+    end
+    return rj
+end
+
+function create_reaction(
+    rdict::Dict{String, Type}, classname::String, name::String, external_parameters::Dict{String, Any}
+)   
     if haskey(rdict, classname)
-        base=ReactionBase(name=name, classname=classname, external_parameters=external_parameters)
-        rj = create_reaction(rdict[classname], base)
-        # Add parameters from pars field
-        if hasproperty(rj, :pars)
-            add_par(rj, rj.pars)
-        end
-        return rj
+        return create_reaction(rdict[classname], name, external_parameters; classname)
     else
-        error("classname $classname not found")
+        error("create_reaction: name $name classname $classname not found")
         return nothing
     end
 end

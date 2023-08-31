@@ -89,7 +89,13 @@ function get_statevar_norm end
 # Run code to precompile
 #######################################################
 
-function precompile_reaction(rdict, classname; logger=Logging.NullLogger())
+"""
+    precompile_reaction(rdict::Dict{String, Type}, classname::AbstractString; logger=Logging.NullLogger())
+    precompile_reaction(ReactionType::Type{<:AbstractReaction}; logger=Logging.NullLogger())
+
+For use in @PrecompileTools.compile_workload: create Reaction and call register_methods
+"""
+function precompile_reaction(rdict::Dict{String, Type}, classname::AbstractString; logger=Logging.NullLogger())
 
     try
         Logging.with_logger(logger) do
@@ -98,33 +104,54 @@ function precompile_reaction(rdict, classname; logger=Logging.NullLogger())
             register_methods!(rj)
         end
     catch ex
-        @info "precompile_reaction(rdict, $classname) failed with exception:" ex
+        @warn "precompile_reaction(rdict, $classname) failed with exception:" ex
     end
 
     return nothing
 end
 
-# create and take a timestep for a test configuration
-function run_model(configfile::AbstractString, configname::AbstractString; logger=Logging.NullLogger())
-    
+function precompile_reaction(ReactionType::Type{<:AbstractReaction}; logger=Logging.NullLogger())
+
     try
         Logging.with_logger(logger) do
-            model =  create_model_from_config(configfile, configname)
-            run_model(model; logger=logger)
+            rj = create_reaction(ReactionType, "test", Dict{String, Any}())
+            rj.base.domain = Domain(name="test", ID=1, parameters=Dict{String, Any}())
+            register_methods!(rj)
         end
     catch ex
-        @info "run_model($configfile, $configname) failed with exception:" ex
+        @warn "precompile_reaction($ReactionType) failed with exception:" ex
+    end
+
+    return nothing
+end
+
+"""
+    run_model(configfile::AbstractString, configname::AbstractString; call_do_deriv=true, tforce=0.0, logger=Logging.NullLogger())
+    run_model(model::Model; call_do_deriv=true, tforce=0.0, logger=Logging.NullLogger())
+
+For use in @PrecompileTools.compile_workload: create_model_from_config and optionally call do_deriv at time tforce
+"""
+function run_model(configfile::AbstractString, configname::AbstractString; logger=Logging.NullLogger(), kwargs...)
+    
+    try
+        model = Logging.with_logger(logger) do 
+            create_model_from_config(configfile, configname)
+        end
+        run_model(model; logger, kwargs...)
+    catch ex
+        @warn "run_model($configfile, $configname) failed with exception:" ex
     end
     
     return nothing
 end
 
-function run_model(model::Model; call_do_deriv=false, logger=Logging.NullLogger())
+function run_model(model::Model; call_do_deriv=true, tforce=0.0, logger=Logging.NullLogger())
 
     try
         Logging.with_logger(logger) do
+            arrays_idx = 1
             modeldata =  create_modeldata(model)
-            allocate_variables!(model, modeldata)
+            allocate_variables!(model, modeldata, arrays_idx)
 
             check_ready(model, modeldata)
 
@@ -136,14 +163,23 @@ function run_model(model::Model; call_do_deriv=false, logger=Logging.NullLogger(
             dispatch_setup(model, :norm_value, modeldata)   
             dispatch_setup(model, :initial_value, modeldata)
 
-            # take a time step - TODO, can be model dependent on missing setup
+            # take a time step at forcing time tforce - TODO, can be model dependent on missing setup
             if call_do_deriv
+                # set tforce (if present)
+                hostdep_vars = VariableDomain[]
+                for dom in model.domains
+                    dv, _ = get_host_variables(dom, VF_Undefined)
+                    append!(hostdep_vars, dv )
+                end
+                hostdep = VariableAggregatorNamed(hostdep_vars, modeldata, arrays_idx)
+                set_values!(hostdep, Val(:global), Val(:tforce), tforce; allow_missing=true)
+
                 dispatchlists = modeldata.dispatchlists_all
                 do_deriv(dispatchlists)
             end
         end
     catch ex
-        @info "run_model($model; call_do_deriv=$call_do_deriv) failed with exception:" ex
+        @warn "run_model($model; call_do_deriv=$call_do_deriv) failed with exception:" ex
     end
 
     return nothing
