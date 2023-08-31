@@ -884,7 +884,9 @@ function _link_variables!(model::Model)
     _link_variables!(model, _link_create_dep, true)
     _link_variables!(model, _link_link, true)
     @info "link_variables unlinked variables:"
-    _link_variables!(model, _link_print_not_linked, true)
+    io = IOBuffer()
+    _link_variables!(model, _link_print_not_linked, io)
+    @info String(take!(io))
     # 
    
     return nothing

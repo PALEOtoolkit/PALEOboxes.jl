@@ -364,9 +364,13 @@ function create_reaction_from_config(
     conf_reaction,
     external_parameters::Dict{String, Any}
 )
-       
+ 
+    io = IOBuffer()
+
     newreaction = create_reaction(rdict, classname, name, external_parameters)
     newreaction.base.domain = domain
+
+    println(io, "create_reaction_from_config: $(fullname(newreaction)) classname $classname")
 
     for k in keys(conf_reaction)
         if !(k in ("operatorID", "parameters", "variable_links", "variable_attributes"))
@@ -376,7 +380,7 @@ function create_reaction_from_config(
 
     operatorID = get(conf_reaction, "operatorID", nothing)
     if !isnothing(operatorID)
-        @info "reaction $(fullname(newreaction)) operatorID=$(operatorID)"
+        println(io, "    operatorID=$(operatorID)")
         newreaction.base.operatorID = operatorID
     end
 
@@ -396,22 +400,24 @@ function create_reaction_from_config(
             par_modified = true
         end
         par_modstr = ("[Default]     ", "[config.yaml] ")[1+par_modified]
-        @info "    set parameters: $par_modstr $(rpad(par.name,20))=$(rawvalue)" 
+        println(io, "    set parameters: $par_modstr $(rpad(par.name,20))=$(rawvalue)")
         value = substitutevalue(parentmodule(typeof(newreaction)), externalvalue(rawvalue, newreaction.base.external_parameters))
         if isa(rawvalue, AbstractString) && value != rawvalue
             par_modified = true
-            @info "      after substitution $(par.name)=$(value)"
+            println(io, "      after substitution $(par.name)=$(value)")
         end
         if par_modified
             setvalue!(par, value)
         end
     end    
 
+    @info String(take!(io))
+
     if !isempty(conf_parameters)
         io = IOBuffer()
-        write(io, "reaction $(fullname(newreaction)) has no Parameter(s):\n")
+        println(io, "reaction $(fullname(newreaction)) has no Parameter(s):")
         for (k, v) in conf_parameters
-            write(io, "    $k:    $v\n")
+            println(io, "    $k:    $v")
         end
         error(String(take!(io)))
     end
@@ -450,10 +456,15 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
         return lt
     end
 
+    io = nothing
+
     if !isnothing(reaction.base._conf_variable_links) # missing or empty 'variable_links:' will return nothing
         # sort Dict so wild cards (ending in *) are processed first, so they can be selectively overridden
         cvl = sort(reaction.base._conf_variable_links, lt=sortstarfirst)
-        dolog && @info "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction))"
+        if dolog
+            io = IOBuffer()
+            println(io, "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction)) variable_links:")
+        end
         for (name, fullmapnameraw) in cvl
             try
                 fullmapname = externalvalue(fullmapnameraw, reaction.base.external_parameters)
@@ -472,7 +483,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
 
                         # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
                         dolog && !(var.localname in uniquelocalnames) && 
-                            @info "    set variable_links: $(rpad(var.localname,20)) -> $linkreq_fullname"
+                            println(io, "    set variable_links: $(rpad(var.localname,20)) -> $linkreq_fullname")
                         push!(uniquelocalnames, var.localname)
 
                         var.linkreq_name = newname
@@ -481,6 +492,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
                     end
                 end
             catch
+                isnothing(io) || @info String(take!(io))
                 @warn "_configure_variables: error setting Variable link for $(nameof(typeof(reaction))) $(fullname(reaction)) $name"
                 rethrow()
             end
@@ -489,6 +501,10 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
 
     # set variable attributes
     if !isnothing(reaction.base._conf_variable_attributes)
+        if dolog 
+            io = isnothing(io) ? IOBuffer() : io
+            println(io, "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction)) variable_attributes:")
+        end
         cva = reaction.base._conf_variable_attributes 
         for (nameattrib, value) in cva
             try
@@ -509,19 +525,22 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
 
                         # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
                         dolog && !(var.localname in uniquelocalnames) && 
-                            @info "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(value, 20)) "
+                            println(io, "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(value, 20)) ")
                         push!(uniquelocalnames, var.localname)
 
                         set_attribute!(var, Symbol(attrib), value)                   
                     end
                 end
             catch
+                isnothing(io) || @info String(take!(io))
                 @warn "_configure_variables: error setting Variable attribute for $(nameof(typeof(reaction))) $(fullname(reaction)) $nameattrib"
                 rethrow()
             end
         end
     end
     
+    isnothing(io) ||  @info String(take!(io))
+
     return nothing
 end
 
