@@ -221,9 +221,11 @@ function create_model_from_config(
 )
 
     io = IOBuffer()
-    println(io)
-    println(io, lpad("", 80, "="))
-    println(io, "create_model_from_config: configmodel $configmodel")
+    print(io, """
+    
+    ================================================================================
+    create_model_from_config: configmodel $configmodel
+    """)
 
     # concatenate input yaml files
     yamltext = ""
@@ -233,8 +235,9 @@ function create_model_from_config(
         isfile(fnpath) || PB.infoerror(io, "config file $fnpath not found")
         yamltext *= read(fnpath, String) * "\n" # add newline so concatenation correct if one file doesn't have a blank line at end
     end
-    println(io, lpad("", 80, "="))
-    println(io)
+    print(io, """
+    ================================================================================
+    """)
     @info String(take!(io))
 
     data = nothing
@@ -283,18 +286,25 @@ function create_model_from_config(
 
     conf_domains = conf_model["domains"]
 
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "creating Domains\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    creating Domains
+    ================================================================================
+    """
+
     @timeit "creating Domains" begin
     rdict = find_all_reactions()
     @info "generated Reaction catalog with $(length(rdict)) Reactions"
 
     for (name, conf_domain) in conf_domains
         nextDomainID = length(model.domains) + 1
-        @info "\n"*lpad("", 80, "=")*"\n"*
-            "creating domain '$(name)' ID=$nextDomainID\n"*
-            lpad("", 80, "=")
+        @info """
+
+        ================================================================================
+        creating domain '$(name)' ID=$nextDomainID
+        ================================================================================
+        """
         if isnothing(conf_domain) # empty domain will return nothing
             conf_domain = Dict()
         end       
@@ -305,19 +315,24 @@ function create_model_from_config(
     end
     end # timeit
     # request configuration of Domain sizes, Subdomains
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "set_model_geometry\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    set_model_geometry
+    ================================================================================
+    """
     for dom in model.domains
         for react in dom.reactions
             set_model_geometry(react, model)
         end
     end
 
-    # register methods
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "register_reaction_methods!\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+    
+    ================================================================================
+    register_reaction_methods!
+    ================================================================================
+    """
     @timeit "_register_reaction_methods" _register_reaction_methods!(model)
 
     # Link variables
@@ -326,9 +341,12 @@ function create_model_from_config(
     # sort methods
     @timeit "_sort_method_dispatch" _sort_method_dispatch!(model, sort_methods_algorithm=sort_methods_algorithm)
 
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "create_model_from_config: done\n"*
-        lpad("", 80, "=")
+    @info """
+    
+    ================================================================================
+    create_model_from_config: done
+    ================================================================================
+    """
 
     return model
 end
@@ -381,9 +399,12 @@ function allocate_variables!(
     model::Model, modeldata::AbstractModelData, arrays_idx::Int; 
     kwargs...
 )
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "allocate_variables! (modeldata arrays_idx=$arrays_idx)\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+    
+    ================================================================================
+    allocate_variables! (modeldata arrays_idx=$arrays_idx)
+    ================================================================================
+    """
 
     check_modeldata(model, modeldata)
     for dom in model.domains
@@ -418,9 +439,9 @@ function check_ready(
                 fullname_hv = fullname(hv)
                 if !(fullname_hv in expect_hostdep_varnames)
                     io = IOBuffer()
-                    write(io, "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a "*
+                    println(io, "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a "*
                     "missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either "*
-                    "in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)\n")
+                    "in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)")
                     show_links(io, hv)
                     @warn String(take!(io))
                     ready = false
@@ -477,9 +498,12 @@ function initialize_reactiondata!(
     create_dispatchlists_all=false,
     generated_dispatch=true,
 )
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "initialize_reactiondata! (modeldata arrays_indices=$arrays_indices)\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    initialize_reactiondata! (modeldata arrays_indices=$arrays_indices)
+    ================================================================================
+    """
 
     check_modeldata(model, modeldata)
 
@@ -540,9 +564,12 @@ Call setup methods, eg to initialize data arrays (including state variables).
 function dispatch_setup(
     model::Model, attribute_name, modeldata::AbstractModelData, cellranges=modeldata.cellranges_all
 )
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "dispatch_setup :$attribute_name\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+    
+    ================================================================================
+    dispatch_setup :$attribute_name
+    ================================================================================
+    """
 
     check_modeldata(model, modeldata) 
 
@@ -890,9 +917,12 @@ function _link_variables!(model::Model)
     # First pass - variables defined in config file    
     foreach(_link_clear!, model.domains)
 
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "link_variables: first pass\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    link_variables: first pass
+    ================================================================================
+    """
     # _link_variables!(model, _link_print)
     _link_variables!(model, _link_create, false)
     _link_variables!(model, _link_create_contrib, false)
@@ -901,17 +931,23 @@ function _link_variables!(model::Model)
 
     # Allow reactions to define additional variables, based on 
     # the model structure
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "link_variables: register_reaction_dynamic_methods and configure variables\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    link_variables: register_reaction_dynamic_methods and configure variables
+    ================================================================================
+    """
     _register_reaction_dynamic_methods!(model)
 
     # Second pass including additional variables
     foreach(_link_clear!, model.domains)
 
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "link_variables: second pass:\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    link_variables: second pass:
+    ================================================================================
+    """
     _link_variables!(model, _link_print, true)
     _link_variables!(model, _link_create, true)
     _link_variables!(model, _link_create_contrib, true)
@@ -919,10 +955,12 @@ function _link_variables!(model::Model)
     _link_variables!(model, _link_link, true)
 
     io = IOBuffer()
-    println(io)
-    println(io, lpad("", 80, "="))
-    println(io, "link_variables: unlinked variables:")
-    println(io, lpad("", 80, "="))
+    print(io, """
+    
+    ================================================================================
+    link_variables! unlinked variables:
+    ================================================================================
+    """)
     _link_variables!(model, _link_print_not_linked, io)
     @info String(take!(io))
    
@@ -940,9 +978,12 @@ NB: dynamic Variables are not recreated, so will not reflect any changes
 function relink_variables!(model::Model)
     foreach(_link_clear!, model.domains)
 
-    @info "\n"*lpad("", 80, "=")*"\n"*
-        "relink_variables!:\n"*
-        lpad("", 80, "=")*"\n"
+    @info """
+
+    ================================================================================
+    relink_variables!:
+    ================================================================================
+    """
     _link_variables!(model, _link_print, true)
     _link_variables!(model, _link_create, true)
     _link_variables!(model, _link_create_contrib, true)
@@ -950,10 +991,12 @@ function relink_variables!(model::Model)
     _link_variables!(model, _link_link, true)
 
     io = IOBuffer()
-    println(io)
-    println(io, lpad("", 80, "="))
-    println(io, "relink_variables! unlinked variables:")
-    println(io, lpad("", 80, "="))
+    println(io, """
+    
+    ================================================================================
+    relink_variables! unlinked variables:
+    ================================================================================
+    """)
     _link_variables!(model, _link_print_not_linked, io)
     @info String(take!(io))
    
