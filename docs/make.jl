@@ -4,9 +4,13 @@ import PALEOboxes
 
 using DocumenterCitations
 
-bib = CitationBibliography(joinpath(@__DIR__, "src/paleo_references.bib"))
+bib = CitationBibliography(
+        joinpath(@__DIR__, "src/paleo_references.bib"),
+        style=:authoryear,
+    )
 
-makedocs(bib, sitename="PALEOboxes Documentation", 
+makedocs(;
+        sitename="PALEOboxes Documentation", 
         pages = [
             "Home" => "index.md",
             "Design" => [
@@ -25,6 +29,7 @@ makedocs(bib, sitename="PALEOboxes Documentation",
         format = Documenter.HTML(
             prettyurls = get(ENV, "CI", nothing) == "true"
         ),
+        plugins = [bib],
         # repo = "https://github.com/PALEOtoolkit/PALEOboxes.jl/blob/master/{path}#{line}"
     )
 
