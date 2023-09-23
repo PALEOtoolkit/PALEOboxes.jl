@@ -184,6 +184,7 @@ add_method_do_totals_default!
 ```@docs
 RateStoich
 create_ratestoich_method
+add_rate_stoichiometry!
 ```
 
 ## Internal details of Variable arrays accessor generation
