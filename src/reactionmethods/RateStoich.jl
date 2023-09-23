@@ -20,7 +20,7 @@ in the usual case where this Variable is supplied as `ratevartemplate` this will
 - `stoich_statevarname`: collection of Tuple(stoichiometry, name) eg ((-2.0, "O2"), (-1.0,"H2S::Isotope"), (1.0, "SO4::Isotope"))
 - `deltavarname_eta`: optional tuple of variable delta + eta ("SO4\\_delta", -30.0) or ("SO4\\_delta", rj.pars.delta). If a Parameter is supplied, this is read in `do_react_ratestoich` to allow modification.
 - `processname::String`: optional tag to identify the type of reaction in model output
-- `add_rate_stoichiometry=true`: `true` to add call [`add_rate_stoichiometry`](@ref) to add metadata to `ratevartemplate`.
+- `add_rate_stoichiometry=true`: `true` to add call [`add_rate_stoichiometry!`](@ref) to add metadata to `ratevartemplate`.
 
 # Examples:
 Create a `RateStoich` representing the reaction   2 O2 + H2S -> H2SO4
