@@ -506,7 +506,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
             println(io, "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction)) variable_attributes:")
         end
         cva = reaction.base._conf_variable_attributes 
-        for (nameattrib, value) in cva
+        for (nameattrib, rawvalue) in cva
             try
                 split_na = split(nameattrib, (':', '%'))
                 length(split_na) == 2 || error("   invalid variable:attribute or variable%attribute $nameattrib")
@@ -514,7 +514,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
                 match_vars = _gen_var_names(get_variables(reaction), name, "not used") # no wild cards (trailing *) allowed
                 uniquelocalnames = Set{String}()
                 if isempty(match_vars)
-                    allow_missing || error("    $nameattrib = $value no variables match $name")
+                    allow_missing || error("    $nameattrib = $rawvalue no variables match $name")
                 else
                     for (var, dummy) = match_vars
                         # if isnothing(var.linkvar)
@@ -524,10 +524,12 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
                         # end
 
                         # Variables may appear in multiple ReactionMethods, so just print a log message for the first one
-                        dolog && !(var.localname in uniquelocalnames) && 
-                            println(io, "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(value, 20)) ")
+                        iofirstvar = (dolog && !(var.localname in uniquelocalnames)) ? io : devnull
                         push!(uniquelocalnames, var.localname)
 
+                        println(iofirstvar, "    set attribute: $(rpad(var.localname,20)) :$(rpad(attrib,20)) = $(rpad(rawvalue, 20)) ")
+
+                        value = externalvalue(iofirstvar, rawvalue, reaction.base.external_parameters)
                         set_attribute!(var, Symbol(attrib), value)                   
                     end
                 end
