@@ -13,6 +13,7 @@ CurrentModule = PALEOboxes.Reservoirs
 ```
 ```@docs
 ReactionReservoirScalar
+ReactionReservoirAtm
 ReactionReservoir
 ReactionReservoirWellMixed
 ReactionReservoirConst
