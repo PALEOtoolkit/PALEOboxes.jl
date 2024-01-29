@@ -232,7 +232,7 @@ function create_model_from_config(
     for fn in config_files
         fnpath = abspath(fn)
         println(io, "    config_file: ", fnpath)
-        isfile(fnpath) || PB.infoerror(io, "config file $fnpath not found")
+        isfile(fnpath) || infoerror(io, "config file $fnpath not found")
         yamltext *= read(fnpath, String) * "\n" # add newline so concatenation correct if one file doesn't have a blank line at end
     end
     print(io, """
