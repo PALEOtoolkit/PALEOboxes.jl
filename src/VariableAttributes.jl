@@ -171,6 +171,8 @@ const StandardAttributes = [
                                           :deposition_velocity,   missing,        false,      "cm s-1",   "surface deposition velocity for atmospheric tracer")
     Attribute{Union{Float64,Missing}, Nothing}(
                                           :rainout,               missing,        false,      "",         "normalized rainout rate for atmospheric tracer")
+    Attribute{Union{Float64,Missing}, Nothing}(
+                                          :gamma,                 missing,        false,      "",         "bioirrigation scaling factor for sediment solute")
 ]
 
 
