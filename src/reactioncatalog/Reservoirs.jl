@@ -240,7 +240,8 @@ function PB.register_methods!(rj::ReactionReservoir)
                 :vertical_movement=>0.0,
                 :specific_light_extinction=>0.0,
                 :vphase=>PB.VP_Undefined,
-                :diffusivity_speciesname=>""
+                :diffusivity_speciesname=>"",
+                :gamma=>missing,
             )
         )
     ]
