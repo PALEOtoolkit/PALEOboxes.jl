@@ -126,27 +126,33 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
 end
 
 """
-    ReactionReservoir,  ReactionReservoirTotal
+    ReactionReservoir, ReactionReservoirConc, ReactionReservoirTotal, ReactionReservoirConcTotal
 
 A single (vector) reservoir (state variable) representing a biogeochemical tracer, ie one value per cell in a spatially-resolved
 Domain (eg ocean).
 
-State Variables created depend on parameters:
-- `stateexplicit=true`: usual case to represent an ODE variable and time derivative, create state variable 
-  `R` (mol m-3, with attribute `vfunction=VF_StateExplicit`) and `R_sms` (mol m-3 yr-1, with attribute `vfunction=VF_Deriv`).
-- `stateexplicit=false`: for use with an ODE implicit state variable, create `R_sms` (with attribute `vfunction=VF_Deriv`) and a Dependency `R` (which 
-  should be linked to a Variable with attribute `vfunction=VF_Total` calculated elsewhere, this Variable should also set the initial value). 
+State Variables can represent either per-cell concentration, or per-cell moles:
+- `ReactionReservoir`, `ReactionReservoirTotal` (`state_conc=false`): create `R` (mol) and `R_sms` (mol yr-1) as state variable and source-sink,
+  calculate `R_conc` (mol m-3)
+- `ReactionReservoirConc`, `ReactionReservoirConcTotal` (`state_conc=true`): create `R_conc` (mol m-3) and `R_conc_sms` (mol m-3 yr-1) as state variable and source-sink,
+  calculate `R` (mol), NB: `R_sms` (mol yr-1) is still available and is added to `R_conc_sms`.
+
+The function of state Variables created also depend on the `stateexplict` parameter:
+  - `stateexplicit=true`: usual case to represent an ODE variable and time derivative, create state variable 
+    `R` or `R_conc` (with attribute `vfunction=VF_StateExplicit`) and `R_sms` or `R_conc_sms` (with attribute `vfunction=VF_Deriv`).
+  - `stateexplicit=false`: for use with an ODE implicit state variable, create `R_sms` or `R_conc_sms` (with attribute `vfunction=VF_Deriv`) and a Dependency `R` or `R_conc` (which 
+    should be linked to a Variable with attribute `vfunction=VF_Total` calculated elsewhere, this Variable should also set the initial value). 
 
 In addition:
-- a Property `R_conc` (concentration in mol m-3) is always created.
 - if parameter `field_data <: AbstractIsotopeScalar` (eg `IsotopeLinear`), a Property `R_delta` is created.
-- `ReactionReservoirTotal` also calculates the Domain total `R_total` (units mol), eg to check budgets.
+- `ReactionReservoirTotal` or `ReactionReservoirConcTotal` also calculates the Domain total `R_total` (units mol), eg to check budgets.
 
 Local name prefix `R` should then be renamed using `variable_links:` in the configuration file.
 
 # Initialisation
-Initial value is set using `variable_attributes:` in the configuration file, using `R:initial_value` and `R:initial_delta`
-(NB: although `initial_value` is set on `R`, it *sets concentration in `mol m-3`*.)
+Initial value is set using `variable_attributes:` in the configuration file, using `R:initial_value` and `R:initial_delta` (for `ReactionReservoir`)
+or `R_conc:initial_value` and `R_conc:initial_delta` (for a `ReactionReservoirConc`).
+(NB: even if `initial_value` is set on `R`, it *sets concentration in `mol m-3`*.)
 
 Transport is defined by attributes `:advect`, `:vertical_movement` (m d-1) set on the concentration variable `R_conc`. Optical
 extinction is defined by the `:specific_light_extinction` (m^2 mol-1) attribute set on the concentration variable `R_conc`.
@@ -189,6 +195,9 @@ Base.@kwdef mutable struct ReactionReservoir{P} <: PB.AbstractReaction
 
         PB.ParBool("stateexplicit", true,
             description="true to define a StateExplicit Variable, false to just calculate conc etc from eg a Total Variable defined elsewhere"),
+
+        PB.ParBool("state_conc", false,
+            description="true to define R_conc, R_sms_conc as the state variable pair and calculate R, false to define R, R_sms and calculate R_conc"),
     )
 end
 
@@ -200,51 +209,75 @@ function PB.create_reaction(::Type{ReactionReservoirTotal}, base::PB.ReactionBas
     return rj
 end
 
+abstract type ReactionReservoirConc <: PB.AbstractReaction end
+function PB.create_reaction(::Type{ReactionReservoirConc}, base::PB.ReactionBase)
+    rj = ReactionReservoir(base=base)
+    PB.setvalueanddefault!(rj.pars.state_conc, true)
+    PB.setfrozen!(rj.pars.state_conc)
+    return rj
+end
+
+abstract type ReactionReservoirConcTotal <: PB.AbstractReaction end
+function PB.create_reaction(::Type{ReactionReservoirConcTotal}, base::PB.ReactionBase)
+    rj = ReactionReservoir(base=base)
+    PB.setvalueanddefault!(rj.pars.state_conc, true)
+    PB.setfrozen!(rj.pars.state_conc)
+    PB.setvalueanddefault!(rj.pars.total, true)
+    PB.setfrozen!(rj.pars.total)
+    return rj
+end
+
 
 function PB.register_methods!(rj::ReactionReservoir)
+
+    PB.setfrozen!(rj.pars.field_data)
+    PB.setfrozen!(rj.pars.total)
+
+    R_attributes=(
+        :field_data=>rj.pars.field_data[],
+        :calc_total=>rj.pars.total[],
+    )
+    R_conc_attributes = (
+        :field_data=>rj.pars.field_data[], 
+        :advect=>true,
+        :vertical_movement=>0.0,
+        :specific_light_extinction=>0.0,
+        :vphase=>PB.VP_Undefined,
+        :diffusivity_speciesname=>"",
+        :gamma=>missing,
+    )
 
     volume  = PB.VarDep("volume",   "m3",       "cell volume (or cell phase volume eg for a sediment with solid and liquid phases)")
 
     if rj.pars.stateexplicit[]
-        R   = PB.VarStateExplicit("R",        "mol",      "vector reservoir",
-            attributes=(:field_data=>rj.pars.field_data[], :calc_total=>rj.pars.total[],)
-        )
-        PB.add_method_setup_initialvalue_vars_default!(
-            rj, [R],
-            convertvars = [volume],
-            convertfn = ((volume,), i) -> volume[i],
-            convertinfo = " * volume",
-        )
+        if rj.pars.state_conc[]
+            R = PB.VarProp("R",        "mol",      "vector reservoir"; attributes=R_attributes)            
+            R_conc = PB.VarStateExplicit("R_conc",   "mol m-3",  "concentration"; attributes=R_conc_attributes)
+            PB.add_method_setup_initialvalue_vars_default!(rj, [R_conc])
+        else
+            R = PB.VarStateExplicit("R",        "mol",      "vector reservoir"; attributes=R_attributes)
+            PB.add_method_setup_initialvalue_vars_default!(
+                rj, [R],
+                convertvars = [volume],
+                convertfn = ((volume,), i) -> volume[i],
+                convertinfo = " * volume",
+            )
+            R_conc = PB.VarProp("R_conc",   "mol m-3",  "concentration"; attributes=R_conc_attributes)
+        end
     else
-        # eg a Total Variable defined elsewhere
-        R = PB.VarDep("R",        "mol",      "vector reservoir",
-            attributes=(:field_data=>rj.pars.field_data[], :calc_total=>rj.pars.total[],)
-        )
-        # initial value setup handled elsewhere
+         # eg a Total Variable defined elsewhere
+         # initial value setup handled elsewhere
+        if rj.pars.state_conc[]           
+            R = PB.VarProp("R",        "mol",      "vector reservoir"; attributes=R_attributes)
+            R_conc = PB.VarDep("R_conc",   "mol m-3",  "concentration"; attributes=R_conc_attributes)
+        else
+            R = PB.VarDep("R",        "mol",      "vector reservoir"; attributes=R_attributes)
+            R_conc = PB.VarProp("R_conc",   "mol m-3",  "concentration"; attributes=R_conc_attributes)
+        end
     end
     PB.setfrozen!(rj.pars.stateexplicit)
 
-    R_sms = PB.VarDeriv("R_sms",    "mol yr-1", "vector reservoir source-sinks",
-        attributes=(:field_data=>rj.pars.field_data[], ),
-    )
-    # sms variable not used by us, but must appear in a method to be linked and created
-    PB.add_method_do_nothing!(rj, [R_sms])
-
-    do_vars = PB.VariableReaction[
-        PB.VarDep(R),
-        volume,
-        PB.VarProp("R_conc",   "mol m-3",  "concentration",
-            attributes=(
-                :field_data=>rj.pars.field_data[], 
-                :advect=>true,
-                :vertical_movement=>0.0,
-                :specific_light_extinction=>0.0,
-                :vphase=>PB.VP_Undefined,
-                :diffusivity_speciesname=>"",
-                :gamma=>missing,
-            )
-        )
-    ]
+    do_vars = PB.VariableReaction[R, R_conc, volume,]
 
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarProp("R_delta", "per mil", "isotopic composition"))
@@ -252,9 +285,24 @@ function PB.register_methods!(rj::ReactionReservoir)
             @warn "$(PB.fullname(rj)) using experimental limit_delta_conc $(rj.pars.limit_delta_conc[]) mol m-3"
         end
     end
-    PB.setfrozen!(rj.pars.field_data)
 
     PB.add_method_do!(rj, do_reactionreservoir, (PB.VarList_namedtuple(do_vars),))
+
+    if rj.pars.state_conc[]
+        R_conc_sms = PB.VarDeriv("R_conc_sms",    "mol m-3 yr-1", "vector reservoir source-sinks",
+            attributes=(:field_data=>rj.pars.field_data[], ),
+        )
+        R_sms = PB.VarTarget("R_sms",    "mol yr-1", "vector reservoir source-sinks",
+            attributes=(:field_data=>rj.pars.field_data[], ),
+        )
+        PB.add_method_do!(rj, do_reactionreservoirconc_sms, (PB.VarList_namedtuple([volume, R_conc_sms, R_sms]),))
+    else
+        R_sms = PB.VarDeriv("R_sms",    "mol yr-1", "vector reservoir source-sinks",
+            attributes=(:field_data=>rj.pars.field_data[], ),
+        )
+        # sms variable not used by us, but must appear in a method to be linked and created
+        PB.add_method_do_nothing!(rj, [R_sms])
+    end
 
     if rj.pars.total[]
         PB.add_method_do_totals_default!(rj, [R])
@@ -269,8 +317,14 @@ end
 
 function do_reactionreservoir(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
 
-    @inbounds for i in cellrange.indices
-        vars.R_conc[i]  = vars.R[i]/vars.volume[i]
+    if pars.state_conc[]
+        @inbounds for i in cellrange.indices
+            vars.R[i]  = vars.R_conc[i]*vars.volume[i]
+        end
+    else
+        @inbounds for i in cellrange.indices
+            vars.R_conc[i]  = vars.R[i]/vars.volume[i]
+        end
     end
 
     if hasfield(typeof(vars), :R_delta)
@@ -292,6 +346,14 @@ function do_reactionreservoir(m::PB.AbstractReactionMethod, pars, (vars, ), cell
     return nothing
 end
 
+function do_reactionreservoirconc_sms(m::PB.AbstractReactionMethod, pars, (vars, ), cellrange::PB.AbstractCellRange, deltat)
+
+    @inbounds for i in cellrange.indices
+        vars.R_conc_sms[i]  += vars.R_sms[i]/vars.volume[i]
+    end
+
+    return nothing
+end
 
 """
     ReactionReservoirConst

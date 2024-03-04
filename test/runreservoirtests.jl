@@ -59,7 +59,7 @@ end
     
     stateexplicit_vars, stateexplicit_sms_vars =
         PB.get_host_variables(ocean_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
-    @test length(stateexplicit_vars) == 1
+    @test length(stateexplicit_vars) == 2
     # get ocean state variable aggregator
     ocean_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata, 1)
 
@@ -68,7 +68,7 @@ end
     @test length(global_hostdep_vars_vec) == 4
  
     ocean_hostdep_vars_vec =  PB.get_variables(ocean_domain, hostdep=true)
-    @test length(ocean_hostdep_vars_vec) == 2
+    @test length(ocean_hostdep_vars_vec) == 4
  
     PB.initialize_reactiondata!(model, modeldata; create_dispatchlists_all=true)
     
@@ -92,8 +92,9 @@ end
     @info "global const variables:"
     @test all_data.global.ConstS[] == 1.0
 
-    @info "ocean host-dependent variables:\n"
-    @test all_data.ocean.T[1]           == 1.0*10.0    
+    @info "ocean host-dependent variable initialisation:\n"
+    @test  all_data.ocean.T[1]           == 1.0*10.0
+    @test  all_data.ocean.C_conc == fill(2.0, ocean_length)
 
     # take a time step
     dispatchlists = modeldata.dispatchlists_all
@@ -105,8 +106,11 @@ end
 
     @info "ocean model-created variables:\n"
     @test  all_data.ocean.T_conc == fill(1.0, ocean_length)
+    @test  all_data.ocean.C[1]           == 2.0*10.0
+    
     PB.do_deriv(dispatchlists) # repeat do_deriv to check total is reinitialized each time step
     @test  all_data.ocean.T_total[] == 1.0*10.0*ocean_length
+    @test  all_data.ocean.C_total[] == 2.0*10.0*ocean_length
 
     @info "sum variables:"
     @test  all_data.ocean.vectorsum == fill(30.0, ocean_length)
