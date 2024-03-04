@@ -86,6 +86,14 @@ model1:
                         R:norm_value:           10.0  # concentration m-3                  
                         R:initial_value:        1.0  # concentration m-3
 
+                reservoir_conc_tracer:
+                    class: ReactionReservoirConcTotal
+                    variable_links:
+                        R*: C*
+                    variable_attributes:
+                        R_conc:norm_value:           10.0  # concentration m-3                  
+                        R_conc:initial_value:        2.0  # concentration m-3
+
                 vector_sum:
                     class: ReactionVectorSum
                     parameters:

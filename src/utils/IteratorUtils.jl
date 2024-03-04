@@ -5,6 +5,7 @@ module IteratorUtils
     check_lengths_equal(it1, it2, it3)
     check_lengths_equal(it1, it2, it3, it4)
     check_lengths_equal(it1, it2, it3, it4, it5)
+    check_lengths_equal(it1, it2, it3, it4, it5, it6)
 
 
 Error if iterables it1 ... itn do not have the same length (length(t1) == length(t2) == ...) 
@@ -247,6 +248,18 @@ end
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
         push!(ex.args, quote; f(t1[$j], t2[$j], t3[$j], t4[$j], t5[$j], p); end)
+    end
+    push!(ex.args, quote; return nothing; end)
+
+    return ex
+end
+
+@inline foreach_longtuple_p(f::F, t1, t2, t3, t4, t5, t6, p; errmsg="iterables lengths differ") where{F} =
+    (check_lengths_equal(t1, t2, t3, t4, t5, t6; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, t5, t6, p))
+@generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, t4, t5, t6, p)
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(t1)
+        push!(ex.args, quote; f(t1[$j], t2[$j], t3[$j], t4[$j], t5[$j], t6[$j], p); end)
     end
     push!(ex.args, quote; return nothing; end)
 
