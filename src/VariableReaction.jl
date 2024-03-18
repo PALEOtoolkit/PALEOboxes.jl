@@ -355,6 +355,11 @@ VarTotalScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
 VarTotal(localname, units, description; attributes::Tuple=(), kwargs... ) = 
         VarContrib(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Total), kwargs...)
 
+VarStateTotalScalar(localname, units, description; attributes::Tuple=(), kwargs...) =
+    VarDepScalar(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateTotal), kwargs...)
+VarStateTotal(localname, units, description; attributes::Tuple=(), kwargs... ) = 
+    VarDep(localname, units, description; attributes=(:field_data=>ScalarData, attributes..., :vfunction=>VF_StateTotal), kwargs...)
+
 # set :initialize_to_zero as :vfunction VF_Deriv is host-dependent so there will be no VT_ReactTarget within the model to handle :initialize_to_zero
 VarDerivScalar(localname, units, description; attributes::Tuple=(), kwargs... ) =
     VarContribScalar(localname, units, description; attributes=(:initialize_to_zero=>true, :field_data=>ScalarData, attributes..., :vfunction=>VF_Deriv), kwargs...)
@@ -393,6 +398,8 @@ VarDep, VarDepColumn, VarDepScalar, VarDepStateIndep, VarDepColumnStateIndep, Va
 VarTarget, VarTargetScalar,
 VarContrib, VarContribColumn, VarContribScalar,
 VarStateExplicit, VarStateExplicitScalar,
+VarTotal, VarTotalScalar,
+VarStateTotal, VarStateTotalScalar,
 VarDeriv, VarDerivScalar,
 VarState, VarStateScalar,
 VarConstraint, VarConstraintScalar
@@ -443,9 +450,11 @@ Collection and view are determined by `varlist` Type.
 function create_accessors(va::AbstractVarList, modeldata::AbstractModelData, arrays_idx::Int) end
 
 """
-    get_variables(varlist::AbstractVarList) -> Vector{VariableReaction}
+    get_variables(varlist::AbstractVarList; flatten=true) -> Vector{VariableReaction}
 
-Return VariableReaction in `varlist` as a flat Vector.
+Return VariableReaction in `varlist`.
+
+If `flatten=true`, a Vector-of-Vectors is flattened.
 """
 function get_variables(va::AbstractVarList) end
 
@@ -462,7 +471,7 @@ struct VarList_single <: AbstractVarList
     VarList_single(var; components=false) = new(copy(var), components)
 end
 
-get_variables(vl::VarList_single) = [vl.var]
+get_variables(vl::VarList_single; flatten=true) = [vl.var]
 
 create_accessors(vl::VarList_single, modeldata::AbstractModelData, arrays_idx::Int) = 
     create_accessor(vl.var, modeldata, arrays_idx, vl.components)
@@ -481,7 +490,7 @@ struct VarList_components <:  AbstractVarList
         new([copy(v) for v in varcollection], allow_unlinked)
 end
 
-get_variables(vl::VarList_components) = vl.vars
+get_variables(vl::VarList_components; flatten=true) = vl.vars
 
 function create_accessors(vl::VarList_components, modeldata::AbstractModelData, arrays_idx::Int)
     accessors_generic = []
@@ -547,7 +556,7 @@ function VarList_namedtuple_fields(objectwithvars; components=false)
 end
 
 
-get_variables(vl::VarList_namedtuple) = vl.vars
+get_variables(vl::VarList_namedtuple; flatten=true) = vl.vars
 
 create_accessors(vl::VarList_namedtuple, modeldata::AbstractModelData, arrays_idx::Int) =
     NamedTuple{Tuple(vl.keys)}(create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
@@ -558,18 +567,38 @@ create_accessors(vl::VarList_namedtuple, modeldata::AbstractModelData, arrays_id
 Create a `VarList_tuple` describing a collection of `VariableReaction`s,
 `create_accessors` will then return a Tuple of data arrays.
 
+An entry of `nothing` in `varcollection` will produce `nothing` in the corresponding
+entry in the Tuple of arrays supplied to the Reaction method.
+
 If `components = true`, each Tuple field will be a Vector of data array components.
 """
 struct VarList_tuple <: AbstractVarList
-    vars::Vector{VariableReaction}
+    vars::Vector{Union{VariableReaction, Nothing}}
     components::Bool
-    VarList_tuple(varcollection; components=false) = new([copy(v) for v in varcollection], components)
+    VarList_tuple(varcollection; components=false) = new([isnothing(v) ? nothing : copy(v) for v in varcollection], components)
 end
 
-get_variables(vl::VarList_tuple) = vl.vars
+get_variables(vl::VarList_tuple; flatten=true) = vl.vars
 
 create_accessors(vl::VarList_tuple, modeldata::AbstractModelData, arrays_idx::Int) =
-    Tuple(create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
+    Tuple(isnothing(v) ? nothing : create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
+
+
+"""
+    VarList_ttuple(varcollection) -> VarList_ttuple
+
+Create a `VarList_ttuple` describing a collection of collections of `VariableReaction`s,
+`create_accessors` will then return a Tuple of Tuples of data arrays.
+"""
+struct VarList_ttuple <: AbstractVarList
+    vars::Vector{Vector{VariableReaction}}
+    VarList_ttuple(vars) = new([[copy(v) for v in vv] for vv in vars])
+end
+
+get_variables(vl::VarList_ttuple; flatten=true) = flatten ? vcat(vl.vars...) : vl.vars
+
+create_accessors(vl::VarList_ttuple, modeldata::AbstractModelData, arrays_idx::Int) = 
+    Tuple(Tuple(create_accessor(v, modeldata, arrays_idx, false) for v in vv) for vv in vl.vars)
 
 """
     VarList_vector(varcollection; components=false, forceview=false) -> VarList_vector
@@ -590,7 +619,7 @@ struct VarList_vector <: AbstractVarList
         new([copy(v) for v in varcollection], components, forceview)
 end
 
-get_variables(vl::VarList_vector) = vl.vars
+get_variables(vl::VarList_vector; flatten=true) = vl.vars
 
 create_accessors(vl::VarList_vector, modeldata::AbstractModelData, arrays_idx::Int) = 
     [create_accessor(v, modeldata, arrays_idx, vl.components, forceview=vl.forceview) for v in vl.vars]
@@ -610,7 +639,7 @@ struct VarList_vvector <: AbstractVarList
     VarList_vvector(vars; components=false) = new([[copy(v) for v in vv] for vv in vars], components)
 end
 
-get_variables(vl::VarList_vvector) = vcat(vl.vars...)
+get_variables(vl::VarList_vvector; flatten=true) = flatten ? vcat(vl.vars...) : vl.vars
 
 create_accessors(vl::VarList_vvector, modeldata::AbstractModelData, arrays_idx::Int) = 
     [[create_accessor(v, modeldata, arrays_idx, vl.components) for v in vv] for vv in vl.vars]
@@ -624,21 +653,9 @@ Create a placeholder for a missing/unavailable VariableReaction.
 struct VarList_nothing <: AbstractVarList
 end
 
-get_variables(vl::VarList_nothing) = VariableReaction[] 
+get_variables(vl::VarList_nothing; flatten=true) = VariableReaction[] 
 create_accessors(vl::VarList_nothing, modeldata::AbstractModelData, arrays_idx::Int) = nothing
 
-"""
-    VarList_tuple_nothing(nvar) -> VarList_tuple_nothing
-
-Create a placeholder for `nvar` missing/unavailable VariableReactions.
-`create_accessors` will then return an `NTuple{nvar, Nothing}`.
-"""   
-struct VarList_tuple_nothing <: AbstractVarList
-    nvar::Int
-end
-
-get_variables(vl::VarList_tuple_nothing) = VariableReaction[] 
-create_accessors(vl::VarList_tuple_nothing, modeldata::AbstractModelData, arrays_idx::Int) = ntuple(x->nothing, vl.nvar)
 
 """
     VarList_fields(varcollection) -> VarList_fields
@@ -651,7 +668,7 @@ struct VarList_fields <: AbstractVarList
     VarList_fields(varcollection) = new([copy(v) for v in varcollection])
 end
 
-get_variables(vl::VarList_fields) = vl.vars
+get_variables(vl::VarList_fields; flatten=true) = vl.vars
 
 function create_accessors(vl::VarList_fields, modeldata::AbstractModelData, arrays_idx::Int)
     accessors = []

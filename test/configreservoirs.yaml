@@ -87,7 +87,9 @@ model1:
                         R:initial_value:        1.0  # concentration m-3
 
                 reservoir_conc_tracer:
-                    class: ReactionReservoirConcTotal
+                    class: ReactionReservoirTotal
+                    parameters:
+                        state_conc: true
                     variable_links:
                         R*: C*
                     variable_attributes:

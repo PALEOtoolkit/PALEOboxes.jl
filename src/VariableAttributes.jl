@@ -51,7 +51,7 @@ defining the Variable function to the host ODE or DAE solver.
 Explicit ODE problems with dS/dt = F(S) consist of pairs of S::VF_StateExplicit, F::VF_Deriv Variables.
 
 An implicit ODE problem with dU/dt = F(U) where Total variables U are functions U(S) of State variables S
-will consist of pairs of U::VF_Total and F::VF_Deriv Variables, and also the same number of S::VF_State (in 
+will consist of pairs of U::VF_Total and F::VF_Deriv Variables, and also the same number of S::VF_StateTotal (in 
 no particular order).
 
 Algebraic constraints  C(S) = 0 include variables C::VF_Constraint and the same number of S::VF_State,
@@ -66,6 +66,7 @@ Not all solvers support all combinations.
     VF_Constraint       = 3
     VF_State            = 4
     VF_Deriv            = 5
+    VF_StateTotal       = 6
 end
 
 "parse eg \"VF_Deriv\" as Enum VF_Deriv"
@@ -104,7 +105,7 @@ added with `default_value` when Variable is created), `units`, and an optional `
 Note that Variable attributes are stored as a per-Variable `Dict(name => value)`, these definitions are only used to provide defaults,
 check types, and provide descriptive metadata.
 
-`ParseFromString` should usually be `false`: a value of `Type T` is then required when calling [`set_attribute!`](@ref).
+`ParseFromString` should usually be `Nothing`: a value of `Type T` is then required when calling [`set_attribute!`](@ref).
 If `ParseFromString` is `true`, then [`set_attribute!`](@ref) will accept an `AbstractString` and call `Base.parse(T, strvalue)`
 to convert to `T`. This allows eg an enum-valued Attribute to be defined by Attribute{EnumType, true} and implementing
 parse(EnumType, rawvalue::AbstractString)
@@ -149,7 +150,10 @@ const StandardAttributes = [
     Attribute{Vector{Int}, Nothing}(      :operatorID,            Int[],          false,      "",         "Reaction operatorIDs that modify this Variable")
     Attribute{VariablePhase, VariablePhase}(
                                           :vphase,                VP_Undefined,   false,      "",         "phase for concentrations in multiphase cells")
-    Attribute{String, Nothing}(           :totalname,             "",             false,      "",         "total Variable name for this species")
+    Attribute{Vector{String}, Nothing}(   :totalnames,            String[],       false,      "",         "Vector of total Variable names for this species")
+    Attribute{String, Nothing}(           :rate_processname,      "",             false,      "",         "process name for this reaction rate variable")
+    Attribute{Vector{String}, Nothing}(   :rate_species,          String[],       false,      "",         "Vector of reactant and product species for this reaction rate variable")
+    Attribute{Vector{Float64}, Nothing}(  :rate_stoichiometry,    Float64[],      false,      "",         "Vector of reactant and product stoichiometries for this reaction rate variable")
     Attribute{String, Nothing}(           :safe_name,             "",             false,      "",         "optional short or escaped name for compatibility with other software")
     Attribute{String, Nothing}(           :long_name,             "",             false,      "",         "netcdf long descriptive name")
     Attribute{String, Nothing}(           :units,                 "",             true,       "",         "where possible should follow netcdf conventions")
@@ -160,7 +164,11 @@ const StandardAttributes = [
     # Attribute{Bool, Nothing}(            :optional,             false,          true,       "",         "")
     Attribute{Bool, Nothing}(             :initialize_to_zero,    false,          false,       "",        "request initialize to zero at start of each timestep.")
     Attribute{Float64, Nothing}(          :vertical_movement,     0.0,            false,      "m d-1",    "vertical advective transport (+ve upwards) in column")
-    Attribute{String, Nothing}(           :diffusivity_speciesname, "",           false,      "",         "species name to define diffusivity")
+    Attribute{String, Nothing}(           :diffusivity_speciesname, "",           false,      "",         "species name to define diffusivity and charge")
+    Attribute{Union{Float64,Missing}, Nothing}(           
+                                          :diffusivity,           missing,        false,      "cm^2/s",   "species diffusivity")
+    Attribute{Union{Float64,Missing}, Nothing}(           
+                                          :charge,                missing,        false,      "",         "species charge")
     Attribute{Union{Float64,Vector{Float64}}, Nothing}(
                                           :initial_value,         0.0,            true,       "",         "initial value to be applied eg to state or constant variable")
     Attribute{Union{Float64,Vector{Float64}}, Nothing}(
@@ -198,6 +206,21 @@ false
 """
 function is_standard_attribute(attribute::Symbol) 
     return !isnothing(findfirst(a->a.name==attribute, StandardAttributes))
+end
+
+
+"""
+    standard_attribute_type(attribute::Symbol) -> DataType
+
+"""
+function standard_attribute_type(attribute::Symbol) 
+    idx = findfirst(a->a.name==attribute, StandardAttributes)
+
+    if isnothing(idx)
+        return nothing
+    else
+        return attributeType(StandardAttributes[idx])
+    end
 end
 
 ###################################

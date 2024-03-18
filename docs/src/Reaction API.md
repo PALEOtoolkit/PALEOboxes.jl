@@ -74,10 +74,10 @@ AbstractVarList
 VarList_single
 VarList_namedtuple
 VarList_tuple
+VarList_ttuple
 VarList_vector
 VarList_vvector
 VarList_nothing
-VarList_tuple_nothing
 ```
 
 ### Implementing method functions
