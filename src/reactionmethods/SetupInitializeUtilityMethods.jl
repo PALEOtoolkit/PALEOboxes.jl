@@ -17,7 +17,7 @@ at beginning of integration.
   
 # Keywords
 - `filterfn`: set to f(var)::Bool to override the default selection for state variables only
-  (Variables with `:vfunction in (VF_StateExplicit, VF_State, VF_Total, VF_Constraint)`)
+  (Variables with `:vfunction in (VF_StateExplicit, VF_State, VF_Total, VF_StateTotal, VF_Constraint)`)
 - `force_initial_norm_value=false`: `true` to always use `:initial_value`, `:norm_value`, even for variables with `:vfunction=VF_Undefined`
 - `transfer_attribute_vars=[]`: Set to a list of the same length as `variables` to initialise `variables`
   from attributes of `transfer_attribute_vars`.
@@ -41,7 +41,7 @@ Example: To interpret `:initial_value` as a concentration-like quantity:
 """
 function add_method_setup_initialvalue_vars_default!(
     react::AbstractReaction, variables;
-    filterfn=var -> get_attribute(var, :vfunction) in (VF_StateExplicit, VF_State, VF_Total, VF_Constraint),
+    filterfn=var -> get_attribute(var, :vfunction) in (VF_StateExplicit, VF_State, VF_Total,VF_StateTotal, VF_Constraint),
     force_initial_norm_value=false,
     transfer_attribute_vars = [],
     convertvars = [],

@@ -361,7 +361,7 @@ end
 
 function add_dependency(vardom::VariableDomPropDep, varreact::VariableReaction{VT_ReactDependency})
     push!(vardom.var_dependencies, varreact)
-    if get_attribute(varreact, :vfunction) in (VF_StateExplicit, VF_State) 
+    if get_attribute(varreact, :vfunction) in (VF_StateExplicit, VF_StateTotal, VF_State) 
         @debug "    Resetting master variable"
         _reset_master!(vardom, varreact)
     end   
@@ -371,7 +371,7 @@ end
 function add_dependency(vardom::VariableDomContribTarget, varreact::VariableReaction{VT_ReactDependency})
     push!(vardom.var_dependencies, varreact)
     vf = get_attribute(varreact, :vfunction)
-    if vf in (VF_StateExplicit, VF_State) 
+    if vf in (VF_StateExplicit, VF_StateTotal, VF_State) 
         error("attempt to link Dependency with :vfunction==$vf to a VariableDomContribTarget "*
             "$(fullname(varreact)) --> $(fullname(vardom))")
     end   

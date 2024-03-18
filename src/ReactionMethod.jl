@@ -128,7 +128,7 @@ call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, 5}, vardata, 
     
 Get all [`VariableReaction`](@ref)s from `method` as a Tuple of `Vector{VariableReaction}`
 """
-get_variables_tuple(@nospecialize(method::ReactionMethod)) = Tuple(get_variables(vl) for vl in method.varlists)
+get_variables_tuple(@nospecialize(method::ReactionMethod); flatten=true) = Tuple(get_variables(vl; flatten) for vl in method.varlists)
 
 """
     get_variables(method::AbstractReactionMethod; filterfn = v -> true) -> Vector{VariableReaction}

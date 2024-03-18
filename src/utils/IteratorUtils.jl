@@ -21,6 +21,10 @@ Error if iterables it1 ... itn do not have the same length (length(t1) == length
     throw(ArgumentError(errmsg))
 @inline check_lengths_equal(it1, it2, it3, it4, it5, it6; errmsg="lengths differ") = length(it1) == length(it2) == length(it3) == length(it4) == length(it5) == length(it6) || 
     throw(ArgumentError(errmsg))
+@inline check_lengths_equal(it1, it2, it3, it4, it5, it6, it7; errmsg="lengths differ") = length(it1) == length(it2) == length(it3) == length(it4) == length(it5) == length(it6) == length(it7) || 
+    throw(ArgumentError(errmsg))
+@inline check_lengths_equal(it1, it2, it3, it4, it5, it6, it7, it8; errmsg="lengths differ") = length(it1) == length(it2) == length(it3) == length(it4) == length(it5) == length(it6) == length(it7) == length(it8) || 
+    throw(ArgumentError(errmsg))    
 
 """
     zipstrict(iters...; errmsg="iterables lengths differ")
@@ -43,7 +47,7 @@ end
 
 """
     foreach_tuple(f, t1::Tuple; errmsg="iterables lengths differ")
-    foreach_tuple(f, t1::Tuple, t2::Tuple; errmsg="iterables lengths differ")
+    foreach_tuple(f, t1::Tuple, t2; errmsg="iterables lengths differ")
 
 Call `f(t1[n])` for each element `n` of `t1::Tuple`.
 Call `f(t1[n], t2[n])` for each element `n` of `t1::Tuple`, `t2::Tuple`.
@@ -67,11 +71,31 @@ foreach_tuple_unchecked(f, t1::Tuple{Any, }) =
 foreach_tuple_unchecked(f, t1::Tuple) =
     (@Base._inline_meta; f(t1[1]); foreach_tuple_unchecked(f, Base.tail(t1)); nothing)
 
-foreach_tuple_unchecked(f, t1::Tuple{}, t2::Tuple{}) = ()
-foreach_tuple_unchecked(f, t1::Tuple{Any, }, t2::Tuple{Any,}) =
-    (@Base._inline_meta; f(t1[1], t2[1]); nothing)
-foreach_tuple_unchecked(f, t1::Tuple, t2::Tuple) =
-    (@Base._inline_meta; f(t1[1], t2[1]); foreach_tuple_unchecked(f, Base.tail(t1), Base.tail(t2)); nothing)
+foreach_tuple_unchecked(f, t1::Tuple{}, tv2) = ()
+foreach_tuple_unchecked(f, i::Int64, t1::Tuple{Any, }, tv2) =
+    (@Base._inline_meta; f(t1[1], tv2[i]); nothing)
+foreach_tuple_unchecked(f, i::Int64, t1::Tuple, tv2) =
+    (@Base._inline_meta; f(t1[1], tv2[i]); foreach_tuple_unchecked(f, i+1, Base.tail(t1), tv2); nothing)
+foreach_tuple_unchecked(f, t1::Tuple, tv2) =
+    (@Base._inline_meta; foreach_tuple_unchecked(f, 1, t1, tv2); nothing)
+
+@inline foreach_tuple_p(f::F, t1, p; errmsg="iterables lengths differ") where{F} =
+    foreach_tuple_unchecked_p(f, t1, p)
+foreach_tuple_unchecked_p(f, t1::Tuple{}, p) = ()
+foreach_tuple_unchecked_p(f, t1::Tuple{Any, }, p) =
+    (@Base._inline_meta; f(t1[1], p); nothing)
+foreach_tuple_unchecked_p(f, t1::Tuple, p) =
+    (@Base._inline_meta; f(t1[1], p); foreach_tuple_unchecked_p(f, Base.tail(t1), p); nothing)
+
+@inline foreach_tuple_p(f::F, t1, tv2, p; errmsg="iterables lengths differ") where{F} =
+    (check_lengths_equal(t1, tv2; errmsg=errmsg); foreach_tuple_unchecked_p(f, 1, t1, tv2, p))
+foreach_tuple_unchecked_p(f, t1::Tuple{}, tv2, p) = ()
+foreach_tuple_unchecked_p(f, i::Int, t1::Tuple{Any, }, tv2, p) =
+    (@Base._inline_meta; f(t1[1], tv2[i], p); nothing)
+foreach_tuple_unchecked_p(f, i::Int, t1::Tuple, tv2, p) =
+    (@Base._inline_meta; f(t1[1], tv2[i], p); foreach_tuple_unchecked_p(f, i+1, Base.tail(t1), tv2, p); nothing)
+foreach_tuple_unchecked_p(f, t1::Tuple, tv2, p) =
+    (@Base._inline_meta; foreach_tuple_unchecked_p(f, 1, t1, tv2, p); nothing)
 
 """
     foreach_longtuple(f, t1::Tuple, t2, ... tm; errmsg="iterables lengths differ")
@@ -260,6 +284,30 @@ end
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
         push!(ex.args, quote; f(t1[$j], t2[$j], t3[$j], t4[$j], t5[$j], t6[$j], p); end)
+    end
+    push!(ex.args, quote; return nothing; end)
+
+    return ex
+end
+
+@inline foreach_longtuple_p(f::F, t1, t2, t3, t4, t5, t6, t7, p; errmsg="iterables lengths differ") where{F} =
+    (check_lengths_equal(t1, t2, t3, t4, t5, t6, t7; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, t5, t6, t7, p))
+@generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, t4, t5, t6, t7, p)
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(t1)
+        push!(ex.args, quote; f(t1[$j], t2[$j], t3[$j], t4[$j], t5[$j], t6[$j], t7[$j], p); end)
+    end
+    push!(ex.args, quote; return nothing; end)
+
+    return ex
+end
+
+@inline foreach_longtuple_p(f::F, t1, t2, t3, t4, t5, t6, t7, t8, p; errmsg="iterables lengths differ") where{F} =
+    (check_lengths_equal(t1, t2, t3, t4, t5, t6, t7, t8; errmsg=errmsg); foreach_longtuple_unchecked_p(f, t1, t2, t3, t4, t5, t6, t7, t8, p))
+@generated function foreach_longtuple_unchecked_p(f, t1::Tuple, t2, t3, t4, t5, t6, t7, t8, p)
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(t1)
+        push!(ex.args, quote; f(t1[$j], t2[$j], t3[$j], t4[$j], t5[$j], t6[$j], t7[$j], t8[$j], p); end)
     end
     push!(ex.args, quote; return nothing; end)
 
