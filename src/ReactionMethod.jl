@@ -105,15 +105,33 @@ end
 
 get_nargs(method::ReactionMethod{M, R, P, Nargs}) where {M, R, P, Nargs} = Nargs
 get_nargs(methodref::Ref{ReactionMethod{M, R, P, Nargs}}) where {M, R, P, Nargs} = Nargs
-# deprecated form without pars
+# deprecated methodfn form without pars
 @inline call_method(method::ReactionMethod{M, R, P, 4}, vardata, cr, modelctxt) where {M, R, P} = 
     method.methodfn(method, vardata, cr, modelctxt)
-# updated form with pars
+# updated methodfn form with pars
 @inline call_method(method::ReactionMethod{M, R, P, 5}, vardata, cr, modelctxt) where {M, R, P} = 
     method.methodfn(method, method.reaction.pars, vardata, cr, modelctxt)    
 
 @noinline call_method(methodref::Ref{<: ReactionMethod}, vardataref::Ref, cr, modelctxt) = 
     call_method(methodref[], vardataref[], cr, modelctxt)
+
+# with modified pars for sensitivity studies: deprecated methodfn form without pars
+@inline call_method(method::ReactionMethod{M, R, P, 4}, pars,  vardata, cr, modelctxt) where {M, R, P} = 
+    method.methodfn(method, vardata, cr, modelctxt)
+# with modified pars for sensitivity studies: updated methodfn form with pars
+@inline call_method(method::ReactionMethod{M, R, P, 5}, pars, vardata, cr, modelctxt) where {M, R, P} = 
+    method.methodfn(method, pars, vardata, cr, modelctxt)    
+
+@noinline call_method(methodref::Ref{<: ReactionMethod}, pars, vardataref::Ref, cr, modelctxt) = 
+    call_method(methodref[], pars, vardataref[], cr, modelctxt)
+
+
+@inline has_modified_parameters(pa::ParameterAggregator, methodref::Ref{<: ReactionMethod}) = 
+    has_modified_parameters(pa, methodref[].reaction)
+
+@inline get_parameters(pa::ParameterAggregator, methodref::Ref{<: ReactionMethod}) =
+    get_parameters(pa, methodref[].reaction)
+
 
 # for benchmarking etc: apply codefn to the ReactionMethod methodfn (without this, will just apply to the call_method wrapper)
 # codefn=code_warntype, code_llvm, code_native

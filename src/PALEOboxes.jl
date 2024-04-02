@@ -26,6 +26,7 @@ import DataFrames
 using DocStringExtensions
 import OrderedCollections
 import Logging
+import Printf
 
 import PrecompileTools
 import TimerOutputs: @timeit, @timeit_debug
@@ -44,11 +45,14 @@ include("data/IsotopeData.jl")
 include("VariableAttributes.jl")
 include("VariableReaction.jl")
 include("VariableDomain.jl")
+
+include("Parameter.jl")
+include("ParameterAggregator.jl")
+
 include("ReactionMethodSorting.jl")
 include("Model.jl")
 include("Domain.jl")
 include("CellRange.jl")
-include("Parameter.jl")
 include("ReactionMethod.jl")
 include("Reaction.jl")
 include("ReactionFactory.jl")
