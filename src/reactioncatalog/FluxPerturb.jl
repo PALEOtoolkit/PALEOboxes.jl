@@ -1,17 +1,8 @@
 module FluxPerturb
 
-import Interpolations
-
-
 import PALEOboxes as PB
 
 using ..DocStrings
-
-const LINEARINTERPOLATION_TEMPLATE = Interpolations.LinearInterpolation(
-    [0.0, 1.0], 
-    [NaN, NaN],
-    extrapolation_bc = Interpolations.Throw()
-)
 
 
 """
@@ -25,7 +16,9 @@ The input time Variable is `tforce`, with default linking to the `global.tforce`
 
 Use the configuration file to rename output variable `F` (and if necessary, the input Variable `tforce`).
 
-NB: no extrapolation ! (so eg set guard values for `perturb_times` at -1e30, 1e30)
+Set `extrapolate = "extrapolate"` to use `extrapolate_before`, `extrapolate_after` to set constant values
+when 'tforce' is out-of-range of `perturb_times` (or alternatively, set `extrapolate = "throw"` and use 
+guard values for `perturb_times` at -1e30, 1e30).
 
 # Parameters
 $(PARS)
@@ -47,10 +40,18 @@ Base.@kwdef mutable struct ReactionFluxPerturb{P} <: PB.AbstractReaction
             description="interpolated perturbation totals"),
         PB.ParDoubleVec("perturb_deltas",[0.0, 0.0], units="per mil",
             description="interpolated perturbation deltas"),
+        PB.ParString("extrapolate", "throw", allowed_values=["throw", "constant"],
+            description="behaviour if tforce is out of range"),
+        PB.ParDouble("extrapolate_before", NaN,
+            description="value to use if 'extrapolate=constant' and tforce < first(perturb_times)"),
+        PB.ParDouble("extrapolate_before_delta", NaN,
+            description="value to use if 'extrapolate=constant' and tforce < first(perturb_times)"),
+        PB.ParDouble("extrapolate_after", NaN,
+            description="value to use if 'extrapolate=constant' and tforce > last(perturb_times)"),
+        PB.ParDouble("extrapolate_after_delta", NaN,
+            description="value to use if 'extrapolate=constant' and tforce > last(perturb_times)"),
     )
 
-    interp_Ftotal::typeof(LINEARINTERPOLATION_TEMPLATE) = LINEARINTERPOLATION_TEMPLATE
-    interp_Fdelta::typeof(LINEARINTERPOLATION_TEMPLATE) = LINEARINTERPOLATION_TEMPLATE
 end
 
 
@@ -69,13 +70,6 @@ function PB.register_methods!(rj::ReactionFluxPerturb)
             attributes=(:field_data=>IsotopeType,)),
     ]
 
-    PB.add_method_setup!(
-        rj,
-        setup_flux_perturb,
-        Tuple{}(), 
-        p=IsotopeType,
-    )
-
     PB.add_method_do!(
         rj,
         do_flux_perturb,
@@ -86,54 +80,53 @@ function PB.register_methods!(rj::ReactionFluxPerturb)
     return nothing
 end
 
-function setup_flux_perturb(
-    m::PB.ReactionMethod,
-    pars,
-    _,
-    cellrange::PB.AbstractCellRange,
-    attribute_name,
-)
-    attribute_name == :setup || return
-
-    @info "$(PB.fullname(m)):"
-
-    rj = m.reaction
-    IsotopeType = m.p
-
-    rj.interp_Ftotal = Interpolations.LinearInterpolation(
-        pars.perturb_times[:], 
-        pars.perturb_totals[:],
-        extrapolation_bc = Interpolations.Throw()
-    )
-
-    if IsotopeType <: PB.AbstractIsotopeScalar
-        rj.interp_Fdelta = Interpolations.LinearInterpolation(
-            pars.perturb_times[:], 
-            pars.perturb_deltas[:],
-            extrapolation_bc = Interpolations.Throw()
-        )
-    end
-
-    return nothing
-end
 
 function do_flux_perturb(
-    m::PB.ReactionMethod, 
+    m::PB.ReactionMethod,
+    pars, 
     (vars, ),
     cellrange::PB.AbstractCellRange,
     deltat
 )
-    rj = m.reaction
     IsotopeType = m.p
 
     tforce              = vars.tforce[]    
-    F                   = @PB.isotope_totaldelta(IsotopeType, rj.interp_Ftotal(tforce), rj.interp_Fdelta(tforce))
+
+    f = zero(first(pars.perturb_totals.v)*vars.tforce[]) # ensure zero is of correct type for perturb_totals, tforce
+    f_delta = zero(first(pars.perturb_deltas.v)*vars.tforce[])
+
+    idx_after = searchsortedfirst(pars.perturb_times.v, tforce)
+    if tforce == first(pars.perturb_times.v) # extra check as searchsortedfirst uses >=
+        idx_after += 1
+    end
+
+    if idx_after == 1        
+        (pars.extrapolate[] == "constant") || error("tforce $tforce out-of-range, < first(perturb_times) = $(first(pars.perturb_times.v))")
+        f += pars.extrapolate_before[]
+        f_delta += pars.extrapolate_before_delta[]
+    elseif idx_after > length(pars.perturb_times.v)
+        (pars.extrapolate[] == "constant") || error("tforce $tforce out-of-range, > last(perturb_times) = $(last(pars.perturb_times.v))")
+        f += pars.extrapolate_after[]
+        f_delta += pars.extrapolate_after_delta[]
+    else
+        # linearly interpolate
+        t_l, t_h = pars.perturb_times.v[idx_after-1], pars.perturb_times.v[idx_after]
+
+        x_l = (t_h-tforce)/(t_h - t_l)
+        x_h = (tforce-t_l)/(t_h - t_l)
+
+        f += x_l*pars.perturb_totals.v[idx_after-1] + x_h*pars.perturb_totals.v[idx_after]
+        f_delta += x_l*pars.perturb_deltas.v[idx_after-1] + x_h*pars.perturb_deltas.v[idx_after]
+    end
+
+    F = @PB.isotope_totaldelta(IsotopeType, f, f_delta)
 
     vars.F[]            += F
     vars.FApplied[]     = F
   
     return nothing
 end
+
 
 
 """
