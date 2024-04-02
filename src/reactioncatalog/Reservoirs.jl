@@ -14,8 +14,11 @@ A single scalar biogeochemical reservoir with optional paired isotope reservoir,
 (eg sedimentary or ocean reservoirs for COPSE [Bergman2004](@cite)).
 
 Creates State and associated Variables, depending on parameter settings:
-- `const=false`: usual case, create state variable `R` (units mol, with attribute `vfunction=VF_StateExplicit`)
-  and `R_sms` (units mol yr-1, with attribute `vfunction=VF_Deriv`).
+- `const=false`: usual case
+  - `state_norm=false` create state variable `R` (units mol, with attribute `vfunction=VF_StateExplicit`)
+    and `R_sms` (units mol yr-1, with attribute `vfunction=VF_Deriv`).
+  - `state_norm=true` create state variable `R_solve` (`R` normalized by the values of attribute `R:norm_value`, with attribute `vfunction=VF_StateExplicit`)
+    and `R_solve_sms` (units yr-1, with attribute `vfunction=VF_Deriv`).
 - `const=true`: a constant value, create `R` (a Property), and `R_sms` (a Target)
 
 In addition:
@@ -59,55 +62,65 @@ Base.@kwdef mutable struct ReactionReservoirScalar{P} <: PB.AbstractReaction
             description="disable / enable isotopes and specify isotope type"),
         PB.ParBool("const", false,
             description="true to provide a constant value: R is not a state variable, fluxes in R_sms Variable are ignored"),
+        PB.ParBool("state_norm", false,
+            description="true to provide solver with normalized values"),
     )
 
     norm_value::Float64  = NaN
 end
 
-function do_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (vars, ), cr::PB.AbstractCellRange, deltat)
-    rj = m.reaction
-
-    vars.R_norm[]  = PB.get_total(vars.R[])/rj.norm_value
-
-    if hasfield(typeof(vars), :R_delta)
-        vars.R_delta[] = PB.get_delta(vars.R[])
-    end
-    return nothing
-end
 
 function PB.register_methods!(rj::ReactionReservoirScalar)
 
-    # callback function to store Variable norm during setup
-    function setup_callback(m, attribute_value, v, vdata)
-        v.localname == "R" || error("setup_callback unexpected Variable $(PB.fullname(v))")
-        if attribute_value == :norm_value
-            m.reaction.norm_value = PB.value_ad(PB.get_total(vdata[]))
-        end
-        return nothing
-    end
-
+    do_vars = PB.VariableReaction[PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
     if rj.pars.const[]
         R            = PB.VarPropScalar(      "R", "mol", "scalar constant reservoir", attributes=(:field_data =>rj.pars.field_data[],))
-        PB.add_method_setup_initialvalue_vars_default!(
-            rj, [R], 
-            filterfn = v->true, # force setup even though R is not a state Variable
-            force_initial_norm_value=true, # setup :norm_value, :initial_value to get norm_value callback, even though R is not a state Variable
-            setup_callback=setup_callback
-        )
-        R_sms       = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))        
-    else        
-        R           = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
-        PB.add_method_setup_initialvalue_vars_default!(rj, [R], setup_callback=setup_callback)
+        push!(do_vars, R)
 
-        R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+        PB.add_method_setup!(
+            rj,
+            setup_reactionreservoirscalar,
+            (PB.VarList_fields([R]), PB.VarList_nothing() ),
+        )
+
+        R_sms        = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))      
+        # sms variable not used by us, but must appear in a method to be linked and created
+        PB.add_method_do_nothing!(rj, [R_sms])
+    else
+        if rj.pars.state_norm[]
+            R           = PB.VarPropScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))            
+            R_solve     = PB.VarStateExplicitScalar("R_solve", "", "normalized scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
+            append!(do_vars, [R, R_solve])
+            PB.add_method_setup!(
+                rj,
+                setup_reactionreservoirscalar,
+                (PB.VarList_fields([R]), PB.VarList_fields([R_solve]) ),
+            )
+
+            R_sms       = PB.VarTarget(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+            R_solve_sms = PB.VarDerivScalar(     "R_solve_sms", "yr-1", "normalized scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+        
+            PB.add_method_do!(
+                rj,
+                do_reactionreservoirscalar_sms,
+                (PB.VarList_namedtuple([R_sms, R_solve_sms]), ),
+            )
+        else 
+            R           = PB.VarStateExplicitScalar("R", "mol", "scalar reservoir", attributes=(:field_data =>rj.pars.field_data[],))
+            push!(do_vars, R)
+            PB.add_method_setup!(
+                rj,
+                setup_reactionreservoirscalar,
+                (PB.VarList_fields([R]), PB.VarList_nothing() ),
+            )
+
+            R_sms       = PB.VarDerivScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+            # sms variable not used by us, but must appear in a method to be linked and created
+            PB.add_method_do_nothing!(rj, [R_sms])
+        end
+        PB.setfrozen!(rj.pars.state_norm)
     end
     PB.setfrozen!(rj.pars.const)
-
-    # don't include R_sms here, as if it is a VarTarget (constant case) that then creates a loop if some other reaction
-    # tries to read R and write R_sms
-    do_vars = [R, PB.VarPropScalar("R_norm", "", "scalar reservoir normalized")]
-    # sms variable not used by us, but must appear in a method to be linked and created
-    PB.add_method_do_nothing!(rj, [R_sms])
 
     if rj.pars.field_data[] <: PB.AbstractIsotopeScalar
         push!(do_vars, PB.VarPropScalar("R_delta", "per mil", "scalar reservoir isotope delta"))
@@ -124,6 +137,62 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
 
     return nothing
 end
+
+function setup_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (R, R_solve, ), cellrange::PB.AbstractCellRange, attribute_name)
+    rj = m.reaction
+
+    # VariableReactions corresponding to (R, R_solve)
+    R_vars, R_solve_vars = PB.get_variables_tuple(m)
+    R_var = only(R_vars)
+    R_domvar = R_var.linkvar
+
+    rj.norm_value = PB.get_attribute(R_domvar, :norm_value)
+
+    if pars.const[] && (attribute_name == :setup)
+        PB.init_field!(
+            only(R), :initial_value, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
+        )
+    elseif  attribute_name in (:norm_value, :initial_value)
+        if pars.state_norm[]
+            R_solve_var = only(R_solve_vars)
+            R_solve_domvar = R_solve_var.linkvar
+            PB.init_field!(
+                only(R_solve), attribute_name, R_domvar, (_, _)->1/rj.norm_value, [], cellrange, (PB.fullname(R_solve_domvar), " / $(rj.norm_value)", " [from $(PB.fullname(R_domvar))]")
+            )
+        else
+            PB.init_field!(
+                only(R), attribute_name, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
+            )
+        end
+    end
+
+    return nothing
+end
+
+function do_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (vars, ), cr::PB.AbstractCellRange, deltat)
+    rj = m.reaction
+
+    if pars.state_norm[]
+        vars.R[] = vars.R_solve[]*rj.norm_value
+        vars.R_norm[] = PB.get_total(vars.R_solve[])
+    else
+        vars.R_norm[]  = PB.get_total(vars.R[])/rj.norm_value
+    end
+
+    if hasfield(typeof(vars), :R_delta)
+        vars.R_delta[] = PB.get_delta(vars.R[])
+    end
+    return nothing
+end
+
+function do_reactionreservoirscalar_sms(m::PB.AbstractReactionMethod, pars, (vars, ), cr::PB.AbstractCellRange, deltat)
+    rj = m.reaction
+
+    vars.R_solve_sms[]  += vars.R_sms[]/rj.norm_value
+  
+    return nothing
+end
+
 
 """
     ReactionReservoir, ReactionReservoirTotal
