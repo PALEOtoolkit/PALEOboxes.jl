@@ -6,7 +6,7 @@ import Infiltrator
 A biogeochemical model consisting of [`Domain`](@ref)s, created from a [YAML](https://en.wikipedia.org/wiki/YAML)
 configuration file using [`create_model_from_config`](@ref).
 """
-Base.@kwdef mutable struct Model
+Base.@kwdef mutable struct Model <: AbstractModel
     name::String
     config_files::Vector{String}
     parameters::Dict{String, Any}                    
@@ -713,6 +713,7 @@ end
 
 """
     do_deriv(dispatchlists, deltat::Float64=0.0)
+    do_deriv(dispatchlists, pa::ParameterAggregator, deltat::Float64=0.0)
 
 Wrapper function to calculate entire derivative (initialize and do methods) in one call.
 `dispatchlists` is from [`create_dispatch_methodlists`](@ref).
@@ -726,20 +727,61 @@ function do_deriv(dispatchlists, deltat::Float64=0.0)
     return nothing
 end
 
+function do_deriv(dispatchlists, pa::ParameterAggregator, deltat::Float64=0.0)
+
+    dispatch_methodlist(dispatchlists.list_initialize) # assume initialize methods don't use parameters
+
+    dispatch_methodlist(dispatchlists.list_do, pa, deltat)
+
+    return nothing
+end
 
 """
     dispatch_methodlist(dl::ReactionMethodDispatchList, deltat::Float64=0.0)
+    dispatch_methodlist(dl::ReactionMethodDispatchList, pa::ParameterAggregator, deltat::Float64=0.0)
+    dispatch_methodlist(dl::ReactionMethodDispatchListNoGen, deltat::Float64=0.0)
+    dispatch_methodlist(dl::ReactionMethodDispatchListNoGen, pa::ParameterAggregator, deltat::Float64=0.0)
 
-Dispatch to a list of methods.
+Call a list of ReactionMethods.
 
 # Implementation
 
-As an optimisation, uses @generated for Type stability
+As an optimisation, with `dl::ReactionMethodDispatchList` uses @generated for Type stability
 and to avoid dynamic dispatch, instead of iterating over lists.
 
 [`ReactionMethodDispatchList`](@ref) fields are Tuples hence are fully Typed, the @generated
 function emits unrolled code with a function call for each Tuple element. 
 """
+function dispatch_methodlist(
+    dl::ReactionMethodDispatchListNoGen, 
+    deltat::Float64=0.0
+)
+
+   for i in eachindex(dl.methods)
+        call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
+   end
+
+   return nothing
+end
+
+function dispatch_methodlist(
+    dl::ReactionMethodDispatchListNoGen,
+    pa::ParameterAggregator,
+    deltat::Float64=0.0
+)
+
+   for j in eachindex(dl.methods)
+        methodref = dl.methods[j]
+        if has_modified_parameters(pa, methodref)
+            call_method(methodref, get_parameters(pa, methodref), dl.vardatas[j], dl.cellranges[j], deltat)
+        else
+            call_method(methodref, dl.vardatas[j], dl.cellranges[j], deltat)
+        end
+   end
+
+   return nothing
+end
+
 @generated function dispatch_methodlist(
     dl::ReactionMethodDispatchList{M, V, C}, 
     deltat::Float64=0.0
@@ -764,27 +806,40 @@ function emits unrolled code with a function call for each Tuple element.
     return ex
 end
 
-function dispatch_methodlist(
-    dl::ReactionMethodDispatchListNoGen, 
+@generated function dispatch_methodlist(
+    dl::ReactionMethodDispatchList{M, V, C},
+    pa::ParameterAggregator,
     deltat::Float64=0.0
-)
+) where {M, V, C}
 
-   for i in eachindex(dl.methods)
-        call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
-   end
-
-   return nothing
+    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
+     
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(M)
+        push!(ex.args,
+            quote
+                if has_modified_parameters(pa, dl.methods[$j])
+                    call_method(dl.methods[$j], get_parameters(pa, dl.methods[$j]), dl.vardatas[$j], dl.cellranges[$j], deltat)
+                else
+                    call_method(dl.methods[$j], dl.vardatas[$j], dl.cellranges[$j], deltat)
+                end
+            end
+        )
+    end
+    push!(ex.args, quote; return nothing; end)
+    
+    return ex
 end
 
 #################################
 # Pretty printing
 ################################
 
-"compact form"
+# compact form
 function Base.show(io::IO, model::Model)
     print(io, "Model(config_files='", model.config_files,"', name='", model.name,"')")
 end
-"multiline form"
+# multiline form
 function Base.show(io::IO, ::MIME"text/plain", model::Model)
     println(io, "Model")
     println(io, "\tname='", model.name,"'")

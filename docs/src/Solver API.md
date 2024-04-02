@@ -38,6 +38,11 @@ copyto!(dest::AbstractVector, src::VariableAggregator; dof::Int=1)
 VariableAggregatorNamed
 ```
 
+Aggregated collections of a subset of Parameters as a flattened Vector (eg for sensitivity studies) is provided by [`ParameterAggregator`](@ref):
+```@docs
+ParameterAggregator
+```
+
 ## Defining CellRanges
 ```@meta
 CurrentModule = PALEOboxes

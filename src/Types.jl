@@ -95,6 +95,9 @@ end
 abstract type VariableDomain <: VariableBase
 end
 
+abstract type AbstractModel
+end
+
 """
     AbstractDomain
 
