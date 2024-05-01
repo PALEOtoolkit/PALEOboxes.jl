@@ -97,7 +97,7 @@ function PB.register_methods!(rj::ReactionReservoirScalar)
                 (PB.VarList_fields([R]), PB.VarList_fields([R_solve]) ),
             )
 
-            R_sms       = PB.VarTarget(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
+            R_sms       = PB.VarTargetScalar(     "R_sms", "mol yr-1", "scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
             R_solve_sms = PB.VarDerivScalar(     "R_solve_sms", "yr-1", "normalized scalar reservoir source-sinks", attributes=(:field_data =>rj.pars.field_data[],))
         
             PB.add_method_do!(
