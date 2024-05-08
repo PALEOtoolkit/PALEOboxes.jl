@@ -42,11 +42,15 @@ Base.@kwdef mutable struct ReactionForceGrid{P} <: PB.AbstractReaction
             description="netcdf file with gridded time-series data"),
         PB.ParString("matlab_file", "",
             description="matlab file with gridded time-series data"),
+        PB.ParString("matlab_key", "",
+            description="Dictionary key in Matlab file to use (empty string to stay at top level Dict)"),
 
         PB.ParString("data_var", "",
             description="variable name in data file"),
         PB.ParString("time_var", "time",
             description="time variable name in data file (empty to generate evenly spaced times from cycle_time)"),
+        PB.ParDouble("time_fac", 1.0, units="",
+            description="multiplier to convert time_var to model time (yr)"),
 
         PB.ParInt("tidx_start", 1,
             description="first record in data file to use"),
@@ -54,7 +58,9 @@ Base.@kwdef mutable struct ReactionForceGrid{P} <: PB.AbstractReaction
             description="last record in data file to use (set equal to tidx_start for constant forcing from single record)"),
         PB.ParBool("use_timeav", false,
             description="true to average records and provide constant forcing at time-averaged value"),
-        PB.ParDouble("cycle_time", 1.0, units="yr",
+        PB.ParBool("time_extrap_const", false,
+            description="true to extrapolate out-of-range times to first/last value, false to error if time out-of-range"),
+        PB.ParDouble("cycle_time", 0.0, units="yr",
             description="time periodicity to apply (0.0 to disable periodic)"),
 
         PB.ParStringVec("interp_vars", String[],
@@ -63,6 +69,8 @@ Base.@kwdef mutable struct ReactionForceGrid{P} <: PB.AbstractReaction
         PB.ParBoolVec("interp_log", Bool[],
             description="true to interpolate interp_vars in log space"),
 
+        PB.ParDouble("data_replace_nan", NaN, units="",
+            description="value to replace NaN in data"),
         PB.ParDouble("scale", 1.0, units="",
             description="scaling factor to apply"),
         PB.ParDouble("constant_offset", 0.0, units="",
@@ -126,9 +134,13 @@ function prepare_do_force_grid(
             _prepare_data(rj, ds)
         end
     elseif !isempty(rj.pars.matlab_file[]) && isempty(rj.pars.netcdf_file[])
-        @info "    reading variable '$(rj.pars.data_var[])' from matlab file '$(rj.pars.matlab_file[])'"
+        @info "    reading variable '$(rj.pars.data_var[])' from matlab file '$(rj.pars.matlab_file[])' key '$(rj.pars.matlab_key[])'"
 
-        ds = MAT.matread(rj.pars.matlab_file[]) # must return a Dict varname=>vardata
+        ds = MAT.matread(rj.pars.matlab_file[])   # must return a Dict varname=>vardata 
+        if !isempty(rj.pars.matlab_key[])
+            ds = ds[rj.pars.matlab_key[]]
+        end
+       
         _prepare_data(rj, ds)
     else
         error("    both netcdf_file $(rj.pars.netcdf_file[]) and matlab_file $(rj.pars.matlab_file[]) are specified")
@@ -178,18 +190,19 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     tmp_var  = Array(ds[rj.pars.data_var[]][cartesiancolons..., interpcolons..., rj.pars.tidx_start[]:rj.pars.tidx_end[]])
 
     # copy into data_var,  mapping ngriddims -> 1 linear index and creating time average if necessary
+    drn = rj.pars.data_replace_nan[]
     if rj.pars.use_timeav[]
         @views rj.data_var[internalcolons..., interpcolons..., 1] .= 0.0
         for i in 1:num_nc_time_recs
             if length(interpdims) == 0
-                @views rj.data_var[internalcolons..., 1] .+= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., i])/num_nc_time_recs
+                @views rj.data_var[internalcolons..., 1] .+= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., i]), drn) ./num_nc_time_recs
             elseif length(interpdims) == 1
                 for id1 in 1:interpdims[1]
-                    @views rj.data_var[internalcolons..., id1, 1] .+= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, i])/num_nc_time_recs
+                    @views rj.data_var[internalcolons..., id1, 1] .+= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, i]), drn) ./num_nc_time_recs
                 end
             elseif length(interpdims) == 2
                 for id1 in 1:interpdims[1], id2 in 1:interpdims[2]
-                    @views rj.data_var[internalcolons..., id1, id2, 1] .+= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, id2, i])/num_nc_time_recs
+                    @views rj.data_var[internalcolons..., id1, id2, 1] .+= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, id2, i]), drn) ./num_nc_time_recs
                 end
             else
                 error("  > 2 interpdims not supported")
@@ -198,14 +211,14 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     else
         for i in 1:num_nc_time_recs 
             if length(interpdims) == 0           
-                @views rj.data_var[internalcolons..., i] .= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., i])
+                @views rj.data_var[internalcolons..., i] .= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., i]), drn)
             elseif length(interpdims) == 1
                 for id1 in 1:interpdims[1]
-                    @views rj.data_var[internalcolons..., id1, i] .= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, i])
+                    @views rj.data_var[internalcolons..., id1, i] .= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, i]), drn)
                 end
             elseif length(interpdims) == 2
                 for id1 in 1:interpdims[1], id2 in 1:interpdims[2]
-                    @views rj.data_var[internalcolons..., id1, id2, i] .= PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, id2, i])
+                    @views rj.data_var[internalcolons..., id1, id2, i] .= _replace_nan!(PB.Grids.cartesian_to_internal(rj.domain.grid, tmp_var[cartesiancolons..., id1, id2, i]), drn)
                 end
             else
                 error("  > 2 interpdims not supported")
@@ -216,14 +229,15 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # create time interpolator
     if num_time_recs > 1
         if !isempty(rj.pars.time_var[])
-            @info "  reading variable '$(rj.pars.time_var[])' to generate time-dependent forcing from $num_time_recs time records"
-            rj.data_time = Array(ds[rj.pars.time_var[]][rj.pars.tidx_start[]:rj.pars.tidx_end[]])
+            @info "  reading variable '$(rj.pars.time_var[])' * $(rj.pars.time_fac[]) to generate time-dependent forcing from $num_time_recs time records"
+            rj.data_time = Array(ds[rj.pars.time_var[]][rj.pars.tidx_start[]:rj.pars.tidx_end[]]) .* rj.pars.time_fac[]
+            @info "  data_time: $(rj.data_time)"
         else
-            @info "  generating evenly spaced intervals to apply time-dependent forcing from $num_time_recs time records"
-            rj.data_time = collect(range(0.5/num_time_recs, step=1.0/num_time_recs, length=num_time_recs))
+            @info "  generating evenly spaced intervals in range 0.0 - $(rj.pars.time_fac[]) to apply time-dependent forcing from $num_time_recs time records"
+            rj.data_time = collect(range(0.5/num_time_recs, step=1.0/num_time_recs, length=num_time_recs)) .* rj.pars.time_fac[]
         end
         # create time interpolation
-        rj.time_interp = PB.LinInterp(rj.data_time, rj.pars.cycle_time[])
+        rj.time_interp = PB.LinInterp(rj.data_time, rj.pars.cycle_time[]; extrap_const=rj.pars.time_extrap_const[])
     else
         @info "  generating constant time forcing from $num_nc_time_recs time record(s)"
         rj.time_interp = nothing
@@ -243,12 +257,21 @@ function _prepare_data(rj::ReactionForceGrid, ds)
         @info "  interpolate $vname (log $vlog) values $vvalues"
         length(vvalues) == size(rj.data_var)[ninternaldims+vidx] ||
             error("  number of values != array size of dimension $(ninternaldims+vidx)")
-        push!(rj.interp_interp, PB.LinInterp(vvalues, extrap_const=true))
+        push!(rj.interp_interp, PB.LinInterp(vvalues[:], extrap_const=true))
     end
     rj.interp_fn = tuple(rj.interp_fn...)
     rj.interp_interp = tuple(rj.interp_interp...)
 
     return nothing
+end
+
+function _replace_nan!(x::AbstractArray, rnan)
+    for i in eachindex(x)
+        if isnan(x[i])
+            x[i] = rnan
+        end
+    end
+    return x
 end
 
 function do_force_grid(
