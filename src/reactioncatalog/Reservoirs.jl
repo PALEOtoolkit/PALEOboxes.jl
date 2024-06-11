@@ -213,8 +213,8 @@ In addition:
 Local name prefix `R` should then be renamed using `variable_links:` in the configuration file.
 
 # Initialisation
-Initial value is set using `variable_attributes:` in the configuration file, using `R:initial_value` and `R:initial_delta` (for `ReactionReservoir`)
-or `R_conc:initial_value` and `R_conc:initial_delta` (for a `ReactionReservoirConc`).
+Initial value is set using `variable_attributes:` in the configuration file, using `R:initial_value` and `R:initial_delta` 
+(for 'state_conc=false') or `R_conc:initial_value` and `R_conc:initial_delta` (for a 'state_conc=true').
 (NB: even if `initial_value` is set on `R`, it *sets concentration in `mol m-3`*.)
 
 Transport is defined by attributes `:advect`, `:vertical_movement` (m d-1) set on the concentration variable `R_conc`. Optical

@@ -367,51 +367,55 @@ function create_reaction_from_config(
  
     io = IOBuffer()
 
-    newreaction = create_reaction(rdict, classname, name, external_parameters)
-    newreaction.base.domain = domain
+    local newreaction, conf_parameters  # make available outside try block
 
-    println(io, "create_reaction_from_config: $(fullname(newreaction)) classname $classname")
+    try
+        println(io, "create_reaction_from_config: $(domain.name).$name classname $classname")
 
-    for k in keys(conf_reaction)
-        if !(k in ("operatorID", "parameters", "variable_links", "variable_attributes"))
-            error("reaction $(fullname(newreaction)) configuration error invalid key '$k'")
+        newreaction = create_reaction(rdict, classname, name, external_parameters)
+        newreaction.base.domain = domain
+
+        for k in keys(conf_reaction)
+            if !(k in ("operatorID", "parameters", "variable_links", "variable_attributes"))
+                error("reaction $(fullname(newreaction)) configuration error invalid key '$k'")
+            end
         end
+
+        operatorID = get(conf_reaction, "operatorID", nothing)
+        if !isnothing(operatorID)
+            println(io, "    operatorID=$(operatorID)")
+            newreaction.base.operatorID = operatorID
+        end
+
+        # set parameters
+        allpars = get_parameters(newreaction)
+        conf_parameters_raw = get(conf_reaction, "parameters", Dict{Any,Any}())  # empty 'parameters:' will return nothing
+        conf_parameters = isnothing(conf_parameters_raw) ? Dict{Any, Any}() : copy(conf_parameters_raw)
+        for par in allpars
+            rawvalue = par.v
+            par_modified = false
+            if par.external && haskey(newreaction.base.external_parameters, par.name)
+                rawvalue = newreaction.base.external_parameters[par.name]
+                par_modified = true
+            end
+            if haskey(conf_parameters, par.name)
+                rawvalue = pop!(conf_parameters, par.name)
+                par_modified = true
+            end
+            par_modstr = ("[Default]     ", "[config.yaml] ")[1+par_modified]
+            println(io, "    set parameters: $par_modstr $(rpad(par.name,20))=$(rawvalue)")
+            value = substitutevalue(parentmodule(typeof(newreaction)), externalvalue(io, rawvalue, newreaction.base.external_parameters))
+            if isa(rawvalue, AbstractString) && value != rawvalue
+                par_modified = true
+                println(io, "      after substitution $(par.name)=$(value)")
+            end
+            if par_modified
+                setvalue!(par, value)
+            end
+        end
+    finally
+        @info String(take!(io))
     end
-
-    operatorID = get(conf_reaction, "operatorID", nothing)
-    if !isnothing(operatorID)
-        println(io, "    operatorID=$(operatorID)")
-        newreaction.base.operatorID = operatorID
-    end
-
-    # set parameters
-    allpars = get_parameters(newreaction)
-    conf_parameters_raw = get(conf_reaction, "parameters", Dict{Any,Any}())  # empty 'parameters:' will return nothing
-    conf_parameters = isnothing(conf_parameters_raw) ? Dict{Any, Any}() : copy(conf_parameters_raw)
-    for par in allpars
-        rawvalue = par.v
-        par_modified = false
-        if par.external && haskey(newreaction.base.external_parameters, par.name)
-            rawvalue = newreaction.base.external_parameters[par.name]
-            par_modified = true
-        end
-        if haskey(conf_parameters, par.name)
-            rawvalue = pop!(conf_parameters, par.name)
-            par_modified = true
-        end
-        par_modstr = ("[Default]     ", "[config.yaml] ")[1+par_modified]
-        println(io, "    set parameters: $par_modstr $(rpad(par.name,20))=$(rawvalue)")
-        value = substitutevalue(parentmodule(typeof(newreaction)), externalvalue(io, rawvalue, newreaction.base.external_parameters))
-        if isa(rawvalue, AbstractString) && value != rawvalue
-            par_modified = true
-            println(io, "      after substitution $(par.name)=$(value)")
-        end
-        if par_modified
-            setvalue!(par, value)
-        end
-    end    
-
-    @info String(take!(io))
 
     if !isempty(conf_parameters)
         io = IOBuffer()
