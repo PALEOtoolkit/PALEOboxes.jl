@@ -578,11 +578,12 @@ struct VarList_tuple <: AbstractVarList
     VarList_tuple(varcollection; components=false) = new([isnothing(v) ? nothing : copy(v) for v in varcollection], components)
 end
 
-get_variables(vl::VarList_tuple; flatten=true) = vl.vars
+get_variables(vl::VarList_tuple; flatten=true) = filter(!isnothing, vl.vars)
 
 create_accessors(vl::VarList_tuple, modeldata::AbstractModelData, arrays_idx::Int) =
     Tuple(isnothing(v) ? nothing : create_accessor(v, modeldata, arrays_idx, vl.components) for v in vl.vars)
 
+VarList_tuple_nothing(nvec) = VarList_tuple(fill(nothing, nvec))
 
 """
     VarList_ttuple(varcollection) -> VarList_ttuple
