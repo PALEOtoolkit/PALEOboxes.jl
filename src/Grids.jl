@@ -217,6 +217,10 @@ PB.internal_size(space::Type{PB.ScalarSpace}, grid::Union{PB.AbstractMesh, Nothi
 # allow Vector variables length 1 in a 0D Domain without a grid
 PB.internal_size(space::Type{PB.CellSpace}, grid::Nothing) = (1, )
 
+# allow single dimension
+PB.cartesian_size(grid::Nothing) = (1, )
+cartesian_to_internal(grid::Nothing, griddata::AbstractArray) = griddata
+
 get_subdomain(grid::Nothing, subdomainname::AbstractString) = error("get_subdomain: no subdomain $subdomainname")
 
 """
@@ -264,6 +268,10 @@ function Base.show(io::IO, grid::UnstructuredVectorGrid)
 end
 
 PB.internal_size(space::Type{PB.CellSpace}, grid::UnstructuredVectorGrid) = (grid.ncells, )
+
+# single dimension
+PB.cartesian_size(grid::UnstructuredVectorGrid) = (grid.ncells, )
+cartesian_to_internal(grid::UnstructuredVectorGrid, griddata::AbstractArray) = griddata
 
 """
     get_region(grid::UnstructuredVectorGrid, values; cell) -> 
@@ -332,6 +340,10 @@ end
 
 PB.internal_size(space::Type{PB.CellSpace}, grid::UnstructuredColumnGrid) = (grid.ncells, )
 PB.internal_size(space::Type{PB.ColumnSpace}, grid::UnstructuredColumnGrid) = (length(grid.Icolumns), )
+
+# single dimension
+PB.cartesian_size(grid::UnstructuredColumnGrid) = (grid.ncells, )
+cartesian_to_internal(grid::UnstructuredColumnGrid, griddata::AbstractArray) = griddata
 
 """
     get_region(grid::UnstructuredColumnGrid, values; column, [cell=nothing]) -> 
