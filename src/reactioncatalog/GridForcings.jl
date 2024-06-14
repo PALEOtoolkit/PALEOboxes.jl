@@ -128,13 +128,13 @@ function prepare_do_force_grid(
     @info "prepare_do_force_grid: $(PB.fullname(rj))"
 
     if !isempty(rj.pars.netcdf_file[]) && isempty(rj.pars.matlab_file[])
-        @info "    reading variable '$(rj.pars.data_var[])' from netcdf file '$(rj.pars.netcdf_file[])'"
+        @info "    reading 'data_var' from variable '$(rj.pars.data_var[])' in netcdf file '$(rj.pars.netcdf_file[])'"
 
         NCDatasets.Dataset(rj.pars.netcdf_file[]) do ds
             _prepare_data(rj, ds)
         end
     elseif !isempty(rj.pars.matlab_file[]) && isempty(rj.pars.netcdf_file[])
-        @info "    reading variable '$(rj.pars.data_var[])' from matlab file '$(rj.pars.matlab_file[])' key '$(rj.pars.matlab_key[])'"
+        @info "    reading 'data_var' from variable '$(rj.pars.data_var[])' in matlab file '$(rj.pars.matlab_file[])' key '$(rj.pars.matlab_key[])'"
 
         ds = MAT.matread(rj.pars.matlab_file[])   # must return a Dict varname=>vardata 
         if !isempty(rj.pars.matlab_key[])
@@ -183,7 +183,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     #           grid             interp           time
     data_ndims = ninternaldims + length(interpdims) + 1
     rj.data_var = Array{Float64, data_ndims}(undef, PB.internal_size(PB.CellSpace, rj.domain.grid)..., interpdims..., num_time_recs)
-    @info "  size(data_var) = $(size(rj.data_var))"
+    @info "    size(data_var) = $(size(rj.data_var))"
         
     # TODO - reorder indices (currently require  gridvars..., interpvars..., timevar)
     # read netcdf data, taking only the time records we need
@@ -229,17 +229,18 @@ function _prepare_data(rj::ReactionForceGrid, ds)
     # create time interpolator
     if num_time_recs > 1
         if !isempty(rj.pars.time_var[])
-            @info "  reading variable '$(rj.pars.time_var[])' * $(rj.pars.time_fac[]) to generate time-dependent forcing from $num_time_recs time records"
+            @info "    reading 'data_time' from variable '$(rj.pars.time_var[])' * $(rj.pars.time_fac[]) to generate time-dependent forcing from $num_time_recs records out of $num_nc_time_recs in file"
             rj.data_time = Array(ds[rj.pars.time_var[]][rj.pars.tidx_start[]:rj.pars.tidx_end[]]) .* rj.pars.time_fac[]
-            @info "  data_time: $(rj.data_time)"
+            @info "    data_time[1]: $(rj.data_time[1])  = $(ds[rj.pars.time_var[]][rj.pars.tidx_start[]]) * $(rj.pars.time_fac[])"
+            @info "    data_time[$(length(rj.data_time))]: $(rj.data_time[end]) = $(ds[rj.pars.time_var[]][rj.pars.tidx_end[]]) * $(rj.pars.time_fac[])"
         else
-            @info "  generating evenly spaced intervals in range 0.0 - $(rj.pars.time_fac[]) to apply time-dependent forcing from $num_time_recs time records"
+            @info "    generating evenly spaced intervals in range 0.0 - $(rj.pars.time_fac[]) to apply time-dependent forcing from $num_time_recs records with no time axis defined"
             rj.data_time = collect(range(0.5/num_time_recs, step=1.0/num_time_recs, length=num_time_recs)) .* rj.pars.time_fac[]
         end
         # create time interpolation
         rj.time_interp = PB.LinInterp(rj.data_time, rj.pars.cycle_time[]; extrap_const=rj.pars.time_extrap_const[])
     else
-        @info "  generating constant time forcing from $num_nc_time_recs time record(s)"
+        @info "    generating constant time forcing from $num_nc_time_recs time record(s)"
         rj.time_interp = nothing
     end
 
