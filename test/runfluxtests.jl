@@ -18,7 +18,7 @@ import PALEOboxes as PB
 
     modeldata =  PB.create_modeldata(model)
 
-    PB.allocate_variables!(model, modeldata, 1)
+    PB.allocate_variables!(model, modeldata, 1; check_units_opt=:error)
  
     @test  PB.check_ready(model, modeldata) == true    
 

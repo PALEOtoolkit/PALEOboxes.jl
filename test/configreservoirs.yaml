@@ -45,6 +45,8 @@ model1:
                         vars_to_add: [1e-4*ocean.vectorsum, ConstS] # 3 + 1 = 4
                     variable_links:
                         sum: scalarsum
+                    variable_attributes:
+                        sum%units:  mol
 
         ocean:
             
@@ -60,6 +62,7 @@ model1:
                         constnames: ["volume"]
                     variable_attributes:                       
                         volume:initial_value:        10.0
+                        volume:units:                m3
 
                 const_volume_total:
                     class: ReactionScalarConst
@@ -67,6 +70,7 @@ model1:
                         constnames: ["volume_total"]
                     variable_attributes:                       
                         volume_total:initial_value:  10000.0
+                        volume_total:units:          m^3
 
                 reservoir_const:
                     class: ReactionReservoirConst
@@ -99,9 +103,11 @@ model1:
                 vector_sum:
                     class: ReactionVectorSum
                     parameters:
-                        vars_to_add: [volume, 2*T]
+                        vars_to_add: [0.5*C, 2*T]
                     variable_links:
                         sum: vectorsum # 30.0
+                    variable_attributes:
+                        sum%units:  mol
 
                 weightedmean:
                     class: ReactionWeightedMean

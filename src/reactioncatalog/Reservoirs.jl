@@ -740,9 +740,9 @@ function PB.register_methods!(rj::ReactionConst)
     for varnameisotope in rj.pars.constnames
         varname, IsotopeType = PB.split_nameisotope(varnameisotope, rj.external_parameters)
         if rj.scalar
-            constvar = PB.VarPropScalarStateIndep(varname, "", "constant value", attributes=(:field_data=>IsotopeType, ))
+            constvar = PB.VarPropScalarStateIndep(varname, "unknown", "constant value", attributes=(:field_data=>IsotopeType, ))
         else
-            constvar = PB.VarPropStateIndep(varname, "", "constant value", attributes=(:field_data=>IsotopeType, ))
+            constvar = PB.VarPropStateIndep(varname, "unknown", "constant value", attributes=(:field_data=>IsotopeType, ))
         end
         push!(vars_const, constvar)
     end

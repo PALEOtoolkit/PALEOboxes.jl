@@ -214,15 +214,18 @@ end
         [, eltypemap::Dict{String, DataType}],
         [, default_host_dependent_field_data=nothing],
         [, allow_base_link=true],
-        [, use_base_vars=String[]])
+        [. use_base_transfer_jacobian=true],
+        [, use_base_vars=String[]],
+        [, check_units_opt=:no])
 
-Allocate or link memory for [`VariableDomain`](@ref)s `vars` in `modeldata` arrays `arrays_idx`
+Allocate or link memory for [`VariableDomain`](@ref)s `vars` in `modeldata` array set `arrays_idx`
 
 Element type of allocated Arrays is determined by `eltype(modeldata, arrays_idx)` (the usual case, allowing use of AD types), 
 which can be overridden by Variable `:datatype` attribute if present (allowing Variables to ignore AD types).
 `:datatype` may be either a Julia `DataType` (eg Float64), or a string to be looked up in `eltypemap`.
 
-If `allow_base_link==true`, and any of the following are true a link is made to the base array, instead of allocating:
+If `allow_base_link==true`, and any of the following are true a link is made to the base array (`arrays_idx=1`), 
+instead of allocating a new array in array set `arrays_idx`:
     - Variable element type matches `modeldata` base eltype (arrays_idx=1)
     - `use_base_transfer_jacobian=true` and Variable `:transfer_jacobian` attribute is set
     - Variable full name is in `use_base_vars`
@@ -230,6 +233,9 @@ If `allow_base_link==true`, and any of the following are true a link is made to 
 Field data type is determined by Variable `:field_data` attribute, optionally this can take a
 `default_host_dependent_field_data` default for Variables with `host_dependent(v)==true` (these are Variables with no Target or no Property linked,
 intended to be external dependencies supplied by the solver).
+
+If `check_units_opt != :no` then the `:units` field of linked variable is checked, resulting in either a warning (if `check_units_opt=:warn`)
+or error (if `check_units_opt=:error`).
 """
 function allocate_variables!(
     vars, modeldata::AbstractModelData, arrays_idx::Int; 
@@ -238,10 +244,13 @@ function allocate_variables!(
     allow_base_link=true,
     use_base_transfer_jacobian=true,
     use_base_vars=String[],
+    check_units_opt=:no,
 )
     
     for v in vars
         check_lengths(v)
+
+        check_units(v; check_units_opt)
 
         data_dims = Tuple(
             get_data_dimension(v.domain, dimname) 
@@ -353,6 +362,46 @@ function check_lengths(var::VariableDomain)
     end
 
     return nothing
+end
+
+"""
+    check_units(var::VariableDomain; check_units_opt=:warn)
+
+Check that units of all linked Variables match
+"""
+function check_units(var::VariableDomain; check_units_opt=:warn)
+
+    check_units_opt in (:no, :warn, :error) ||
+        error("check_units(): unsupported option check_units_opt=$check_units_opt (allowed values are :no, :warn, :error)")
+
+    check_units_opt == :no && return
+
+    var_units = get_attribute(var, :units)
+
+    num_errors = 0
+    
+    for lv in get_all_links(var)
+        lv_units = get_attribute(lv, :units)
+        
+        if !_compare_units(var_units, lv_units)
+            num_errors += 1 
+            @warn "check_units: VariableDomain $(fullname(var)), :units=\"$var_units\" (from master $(typename(var.master.method.reaction)) $(fullname(var.master)))"*
+                  " != $(fullname(lv)), :units=\"$lv_units\" (created by $(typename(lv.method.reaction)) $(fullname(lv.method.reaction)))"
+        end
+    end
+
+    if check_units_opt == :error && !iszero(num_errors)
+        error("check_units: VariableDomain $(fullname(var)), :units=$var_units units of linked variables do not match")
+    end
+
+    return num_errors
+end
+
+function _compare_units(units1, units2)
+    # very crude regularization of unit strings:  m^3 and m3 are both accepted
+    units1 = replace(units1, "^"=>"")
+    units2 = replace(units2, "^"=>"") 
+    return (units1 == units2) || (units1 == "unknown") || (units2 == "unknown")
 end
 
 ####################################################################

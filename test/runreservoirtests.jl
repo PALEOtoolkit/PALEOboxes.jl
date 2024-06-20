@@ -36,13 +36,13 @@ end
 
     # allocate internal variables
     modeldata =  PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata, 1; hostdep=false)
+    PB.allocate_variables!(model, modeldata, 1; hostdep=false, check_units_opt=:error)
 
     @test length( PB.get_unallocated_variables(global_domain, modeldata, 1)) == 4
     @test  PB.check_ready(global_domain, modeldata, throw_on_error=false) == false    
 
     # allocate arrays for host dependencies and set data pointers
-    PB.allocate_variables!(model, modeldata, 1; hostdep=true)
+    PB.allocate_variables!(model, modeldata, 1; hostdep=true, check_units_opt=:error)
     @test  PB.check_ready(global_domain, modeldata) == true
 
     # get all variable data arrays

@@ -94,18 +94,18 @@ function PB.register_methods!(rj::ReactionForceGrid)
 
     vars = [
         PB.VarDepScalar("global.tforce", "yr",  "historical time at which to apply forcings, present = 0 yr"),
-        PB.VarProp("F", "", "interpolated forcing"),    
+        PB.VarProp("F", "unknown", "interpolated forcing"),    
     ]
     if rj.pars.scale_offset_var[] != 0.0
         @info "  adding scalar offset from Variable 'scalar_offset'"
-        push!(vars, PB.VarDepScalar("scalar_offset", "",  "scalar offset"))
+        push!(vars, PB.VarDepScalar("scalar_offset", "unknown",  "scalar offset"))
     end
     PB.setfrozen!(rj.pars.scale_offset_var)
 
     interp_vars = []
     for (vname, vlog) in PB.IteratorUtils.zipstrict(rj.pars.interp_vars, rj.pars.interp_log; errmsg="length(interp_vars) != length(interp_log)")
         @info "  adding interpolation Variable $vname log $vlog"
-        push!(interp_vars, PB.VarDepScalar(vname, "",  "interpolation variable log $vlog"))
+        push!(interp_vars, PB.VarDepScalar(vname, "unknown",  "interpolation variable log $vlog"))
     end
     PB.setfrozen!(rj.pars.interp_vars, rj.pars.interp_log)
 

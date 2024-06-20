@@ -12,7 +12,7 @@ include("ReactionRateStoichMock.jl")
     domain.grid = PB.Grids.UnstructuredVectorGrid(ncells=10)  
     @test PB.get_length(domain) == 10
     modeldata = PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata, 1)
+    PB.allocate_variables!(model, modeldata, 1; check_units_opt=:error)
     PB.check_ready(model, modeldata)
 
     all_vars = PB.VariableAggregatorNamed(modeldata)
