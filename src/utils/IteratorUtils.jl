@@ -316,8 +316,9 @@ end
 
 """
     reduce_longtuple(f, rinit, t1::Tuple, t2, ... tm; errmsg="iterables lengths differ") -> r
+    reduce_longtuple_p(f, rinit, t1::Tuple, t2, ... tm, p; errmsg="iterables lengths differ") -> r
 
-Call `r += f(r, t1[n], t2[n], ... tm[n])`  for each element
+Call `r += f(r, t1[n], t2[n], ... tm[n])` or `r += f(r, t1[n], t2[n], ... tm[n], p)` for each element
 `n` of `t1::Tuple`, `t2`, ... `tm`. Initial value of `r = rinit`
 
 # Implementation
@@ -342,6 +343,30 @@ end
     ex = quote ; end  # empty expression
     for j=1:fieldcount(t1)
         push!(ex.args, quote; rinit = f(rinit, t1[$j], t2[$j]); end)
+    end
+    push!(ex.args, quote; return rinit; end)
+
+    return ex
+end
+
+@inline reduce_longtuple_p(f::F, rinit, t1, p; errmsg="iterables lengths differ") where{F} = 
+    reduce_longtuple_unchecked_p(f, rinit, t1, p)
+@generated function reduce_longtuple_unchecked_p(f, rinit, t1::Tuple, p)
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(t1)
+        push!(ex.args, quote; rinit = f(rinit, t1[$j], p); end)
+    end
+    push!(ex.args, quote; return rinit; end)
+
+    return ex
+end
+
+@inline reduce_longtuple_p(f::F, rinit, t1, t2, p; errmsg="iterables lengths differ") where{F} = 
+    (check_lengths_equal(t1, t2; errmsg=errmsg); reduce_longtuple_unchecked_p(f, rinit, t1, t2, p))
+@generated function reduce_longtuple_unchecked_p(f, rinit, t1::Tuple, t2, p)
+    ex = quote ; end  # empty expression
+    for j=1:fieldcount(t1)
+        push!(ex.args, quote; rinit = f(rinit, t1[$j], t2[$j], p); end)
     end
     push!(ex.args, quote; return rinit; end)
 
