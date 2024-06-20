@@ -12,6 +12,7 @@ model1:
                 constnames: ["volume"]
             variable_attributes:                       
                 volume:initial_value:        10.0
+                volume:units:                m3
 
         reservoir_H2S:
             class: ReactionReservoirTotal

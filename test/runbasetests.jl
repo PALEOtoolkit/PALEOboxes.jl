@@ -57,7 +57,7 @@ include("ReactionPaleoMockModule.jl")
     modeldata = PB.create_modeldata(model)
 
     @test length(PB.get_unallocated_variables(ocean_domain, modeldata, 1)) == 5
-    PB.allocate_variables!(ocean_domain, modeldata, 1, hostdep=false)
+    PB.allocate_variables!(ocean_domain, modeldata, 1; hostdep=false, check_units_opt=:error)
     @test length(PB.get_unallocated_variables(ocean_domain, modeldata, 1)) == 1
     @test PB.check_ready(ocean_domain, modeldata, throw_on_error=false) == false
 

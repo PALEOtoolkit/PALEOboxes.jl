@@ -77,7 +77,7 @@ function PB.register_methods!(rj::ReactionSum)
 
         # mark all vars_to_add as optional to help diagnose config errors
         # default :field_data=>PB.UndefinedData  to allow Variable to link to any data type (this is checked later)
-        v =  PB.VarDep(localname => "("*varname*")", "", "")
+        v =  PB.VarDep(localname => "("*varname*")", "unknown", "")
 
         # no length check if scalar sum
         if !rj.pars.vectorsum[]
@@ -88,10 +88,10 @@ function PB.register_methods!(rj::ReactionSum)
 
     if rj.pars.vectorsum[]
         methodfn = do_vectorsum
-        var_sum = PB.VarProp("sum", "", "sum of specified variables")
+        var_sum = PB.VarProp("sum", "unknown", "sum of specified variables")
     else
         methodfn = do_scalarsum
-        var_sum = PB.VarPropScalar("sum", "", "sum of specified variables")
+        var_sum = PB.VarPropScalar("sum", "unknown", "sum of specified variables")
     end
 
     PB.add_method_do!(
@@ -115,6 +115,13 @@ function PB.register_dynamic_methods!(rj::ReactionSum)
 
     var_sum = PB.get_variable(method_sum, "sum")
     vars_to_add = PB.get_variables(method_sum, filterfn = v->v.localname != "sum")
+
+    # set units from sum variable
+    # (may have been set explicitly in yaml file)
+    sum_units = PB.get_attribute(var_sum, :units)
+    for v in vars_to_add
+        PB.set_attribute!(v, :units,  sum_units)
+    end
 
     # check variable components match and update var_sum.components
     if rj.pars.component_to_add[] == 0
@@ -231,11 +238,11 @@ end
 function PB.register_methods!(rj::ReactionWeightedMean)
 
     vars = [
-        PB.VarDep(       "var", "measure-1", "variable to calculate weighted mean from",
+        PB.VarDep(       "var", "unknown", "variable to calculate weighted mean from",
             attributes=(:field_data=>rj.pars.field_data[],)),
-        PB.VarDep(       "measure", "", "cell area or volume"),
-        PB.VarDepScalar( "measure_total", "", "total Domain area or volume"),
-        PB.VarPropScalar("var_mean", "", "weighted mean over Domain area or volume",
+        PB.VarDep(       "measure", "unknown", "cell area or volume"),
+        PB.VarDepScalar( "measure_total", "unknown", "total Domain area or volume"),
+        PB.VarPropScalar("var_mean", "unknown", "weighted mean over Domain area or volume",
             attributes=(:field_data=>rj.pars.field_data[], :initialize_to_zero=>true, :atomic=>true)),
     ]
 
@@ -289,10 +296,10 @@ end
 function PB.register_methods!(rj::ReactionAreaVolumeValInRange)
 
     vars = [
-        PB.VarDep(       "rangevar", "mol m-3", "variable to check within range";
+        PB.VarDep(       "rangevar", "unknown", "variable to check within range";
             attributes=(:field_data=>PB.ScalarData, )), # total only, not isotope
-        PB.VarDep(       "measure", "", "cell area or volume"),
-        PB.VarDepScalar( "measure_total", "", "total Domain area or volume"),
+        PB.VarDep(       "measure", "unknown", "cell area or volume"),
+        PB.VarDepScalar( "measure_total", "unknown", "total Domain area or volume"),
         PB.VarPropScalar("frac", "", "fraction of Domain area or volume in specified range",
             attributes=(:initialize_to_zero=>true, :atomic=>true)),
     ]

@@ -22,7 +22,7 @@ include("ReactionPaleoMockModule.jl")
 
     modeldata = PB.create_modeldata(model)
 
-    PB.allocate_variables!(ocean_domain, modeldata, 1, hostdep=false)
+    PB.allocate_variables!(ocean_domain, modeldata, 1; hostdep=false, check_units_opt=:error)
     @test length(PB.get_unallocated_variables(ocean_domain, modeldata, 1)) == 1
 
     @test length(hostvars) == 1
@@ -73,7 +73,7 @@ end
     @test PB.get_length(surface_domain) == prod(dsize)
 
     modeldata = PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata, 1)
+    PB.allocate_variables!(model, modeldata, 1; check_units_opt=:error)
     @test PB.check_ready(model, modeldata; throw_on_error=false) == true
 
     modelcreated_vars_dict = Dict([(var.name, var) for var in PB.get_variables(surface_domain, hostdep=false)])
@@ -104,7 +104,7 @@ end
     @test PB.get_length(surface_domain) == prod(dsize)
 
     modeldata = PB.create_modeldata(model)
-    PB.allocate_variables!(model, modeldata, 1)
+    PB.allocate_variables!(model, modeldata, 1; check_units_opt=:error)
     @test PB.check_ready(model, modeldata, throw_on_error=false) == true
 
     modelcreated_vars_dict = Dict([(var.name, var) for var in PB.get_variables(surface_domain, hostdep=false)])
