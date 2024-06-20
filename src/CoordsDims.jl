@@ -119,7 +119,7 @@ end
 """
     NamedDimension
 
-A named dimension, with optional attached fixed coordinates `coords`
+A named dimension, with optional preferred coordinates `coords`
 
 PALEO convention is that where possible `coords` contains three elements, for cell
 midpoints, lower edges, upper edges, in that order.
@@ -127,15 +127,16 @@ midpoints, lower edges, upper edges, in that order.
 mutable struct NamedDimension
     name::String
     size::Int64    
-    coords::Vector{FixedCoord} # may be empty
+    coords::Vector{String} # may be empty
 end
 
+if false
 "create from size only (no coords)"
-function NamedDimension(name, size::Integer)
+function NamedDimension(name, size::Integer, coords=String[])
     return NamedDimension(
         name, 
         size, 
-        FixedCoord[],
+        String[],
     )
 end
 
@@ -191,9 +192,9 @@ function build_coords_edges(nd::NamedDimension)
     end
 end
 
+end
+
 function Base.show(io::IO, nd::NamedDimension)
-    print(io, "NamedDimension(name=", nd.name, ", size=", nd.size, ", coords=(")
-    join(io, [c.name for c in nd.coords], ", ")
-    print(io, "))")
+    print(io, "NamedDimension(name=", nd.name, ", size=", nd.size, ", coords=", nd.coords, ")")
     return nothing
 end
