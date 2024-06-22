@@ -46,7 +46,8 @@ _classname(ReactionType::Type{<:AbstractReaction}) = String(last(split(string(Re
 """
     find_reaction(class::AbstractString) -> ReactionType
 
-Look up "class" in list of Reactions from [`find_all_reactions`](@ref), and return 
+Look up "class" in list of Reactions available in currently loaded modules
+(using [`find_all_reactions`](@ref)), and return 
 fully-qualified Reaction Type (including module prefixes).
 """
 function find_reaction(class::AbstractString)
@@ -57,6 +58,29 @@ function find_reaction(class::AbstractString)
         error("class \"$class\" not found")
     end
 end
+
+"""
+    doc_reaction(class::AbstractString)
+
+Look up "class" using [`find_reaction`](@ref), and display
+fully-qualified Reaction Type and docstring in the Julia REPL.
+
+NB: the VS Code Documentation browser has similar functionality
+and is often easier to use. The key difference that it looks
+at definitions *visible in the VS code projects and editor windows*, whilst
+`doc_reaction` looks at definitions *available to code in the current REPL* ie 
+provided by modules that are currently loaded in the REPL.
+"""
+function doc_reaction(class::AbstractString)
+    RType = find_reaction(class)
+
+    println("\"$class\" -> $RType\n")
+
+    display(Base.Docs.doc(RType))
+
+    return RType
+end
+
 
 """
     create_reaction(ReactionType::Type{<:AbstractReaction}, base::ReactionBase) -> reaction::AbstractReaction
