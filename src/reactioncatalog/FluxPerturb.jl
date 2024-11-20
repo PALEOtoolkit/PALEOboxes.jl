@@ -103,11 +103,15 @@ function do_flux_perturb(
     if idx_after == 1        
         (pars.extrapolate[] == "constant") || error("tforce $tforce out-of-range, < first(perturb_times) = $(first(pars.perturb_times.v))")
         f += pars.extrapolate_before[]
-        f_delta += pars.extrapolate_before_delta[]
+        if IsotopeType != PB.ScalarData
+            f_delta += pars.extrapolate_before_delta[]
+        end
     elseif idx_after > length(pars.perturb_times.v)
         (pars.extrapolate[] == "constant") || error("tforce $tforce out-of-range, > last(perturb_times) = $(last(pars.perturb_times.v))")
         f += pars.extrapolate_after[]
-        f_delta += pars.extrapolate_after_delta[]
+        if IsotopeType != PB.ScalarData
+            f_delta += pars.extrapolate_after_delta[]
+        end
     else
         # linearly interpolate
         t_l, t_h = pars.perturb_times.v[idx_after-1], pars.perturb_times.v[idx_after]
@@ -116,7 +120,9 @@ function do_flux_perturb(
         x_h = (tforce-t_l)/(t_h - t_l)
 
         f += x_l*pars.perturb_totals.v[idx_after-1] + x_h*pars.perturb_totals.v[idx_after]
-        f_delta += x_l*pars.perturb_deltas.v[idx_after-1] + x_h*pars.perturb_deltas.v[idx_after]
+        if IsotopeType != PB.ScalarData
+            f_delta += x_l*pars.perturb_deltas.v[idx_after-1] + x_h*pars.perturb_deltas.v[idx_after]
+        end
     end
 
     F = @PB.isotope_totaldelta(IsotopeType, f, f_delta)
