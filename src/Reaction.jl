@@ -464,7 +464,7 @@ function _configure_variables(@nospecialize(reaction::AbstractReaction); allow_m
 
     if !isnothing(reaction.base._conf_variable_links) # missing or empty 'variable_links:' will return nothing
         # sort Dict so wild cards (ending in *) are processed first, so they can be selectively overridden
-        cvl = sort(reaction.base._conf_variable_links, lt=sortstarfirst)
+        cvl = sort(OrderedCollections.OrderedDict(reaction.base._conf_variable_links), lt=sortstarfirst)
         if dolog
             io = IOBuffer()
             println(io, "_configure_variables: $(nameof(typeof(reaction))) $(fullname(reaction)) variable_links:")
