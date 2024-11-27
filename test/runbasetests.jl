@@ -136,3 +136,13 @@ end
     @test length(model.domains) == 3
 
 end
+
+@testset "PALEOboxes base unlinked variable" begin
+
+    model = PB.create_model_from_config("configbase.yaml", "model_with_unlinked_variable")
+
+    @test PB.check_variable_links(model; throw_on_error=true, expect_hostdep_varnames=["ocean.host_supplied_dep"]) == true
+    
+    @test_throws ErrorException PB.check_variable_links(model) 
+
+end

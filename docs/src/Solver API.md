@@ -13,6 +13,7 @@ CurrentModule = PALEOboxes
 ```
 ```@docs
 create_model_from_config(config_file::AbstractString, configmodel::AbstractString)
+check_variable_links
 create_modeldata(model::Model, vectype::DataType=Array{Float64,1})
 ModelData
 add_arrays_data!

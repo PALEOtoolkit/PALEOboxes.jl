@@ -357,6 +357,42 @@ end
 ##################################
 
 """
+    check_variable_links(model, modeldata; [throw_on_error=true] [, expect_hostdep_varnames=["global.tforce"]]) -> links_ok::Bool
+
+Check all Variables linked correctly, by checking that there are no unexpected host-dependent non-state Variables (ie unlinked Variables)
+"""
+function check_variable_links(
+    model::Model;
+    throw_on_error=true,
+    expect_hostdep_varnames=["global.tforce"],
+)
+    links_ok = true
+    for dom in model.domains
+        dom_hdv, _ = get_host_variables(dom, VF_Undefined)
+        for hv in dom_hdv
+            fullname_hv = fullname(hv)
+            if !(fullname_hv in expect_hostdep_varnames)
+                io = IOBuffer()
+                println(io, "check_variable_links: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a "*
+                "missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either "*
+                "in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)")
+                show_links(io, hv)
+                @warn String(take!(io))
+                links_ok = false
+            end
+        end
+    end    
+
+    if !links_ok
+        @error "check_variable_links failed"
+        throw_on_error && error("check_variable_links failed")
+    end
+
+    return links_ok
+end
+
+
+"""
     create_modeldata(model::Model [, eltype] [; threadsafe]) -> modeldata::ModelData
 
 Create a new [`ModelData`](@ref) struct for model variables of element type `eltype`.
@@ -417,37 +453,19 @@ end
 
 
 """
-    check_ready(model, modeldata; [throw_on_error=true] [, check_hostdep_varnames=true] [, expect_hostdep_varnames=["global.tforce"]]) -> ready
+    check_ready(model, modeldata; [throw_on_error=true]) -> ready::Bool
 
-Check all variable pointers set, and no unexpected host-dependent non-state Variables (ie unlinked Variables)
+Check all variable pointers set (ie all arrays allocated for variable data)
 """
 function check_ready(
     model::Model, modeldata::AbstractModelData;
     throw_on_error=true,
-    check_hostdep_varnames=true,
-    expect_hostdep_varnames=["global.tforce"],
 )
     check_modeldata(model, modeldata)
     ready = true
     for dom in model.domains
         # don't exit on first error so display report from all Domains
         ready = ready && check_ready(dom, modeldata, throw_on_error=false)
-    
-        if check_hostdep_varnames
-            dom_hdv, _ = get_host_variables(dom, VF_Undefined)
-            for hv in dom_hdv
-                fullname_hv = fullname(hv)
-                if !(fullname_hv in expect_hostdep_varnames)
-                    io = IOBuffer()
-                    println(io, "check_ready: unexpected host-dependent Variable $fullname_hv (usually an unlinked Variable due to eg a "*
-                    "missing renaming in the :variable_links sections in the .yaml file, a spelling mistake either "*
-                    "in a Variable default name in the code or renaming in the .yaml file, or a missing Reaction)")
-                    show_links(io, hv)
-                    @warn String(take!(io))
-                    ready = false
-                end
-            end
-        end
     end    
 
     if !ready 
@@ -458,22 +476,26 @@ function check_ready(
     return ready
 end
 
-"Check configuration"
+"""
+    check_configuration(model; [throw_on_error=true]) -> config_ok::Bool
+
+Calls optional Reaction `check_configuration` methods to perform additional configuration checks.
+"""
 function check_configuration(
     model::Model;
     throw_on_error=true
 )
-    configok = true
+    config_ok = true
     for dom in model.domains
-        configok = configok && check_configuration(dom, model)
+        config_ok = config_ok && check_configuration(dom, model)
     end
 
-    if !configok
+    if !config_ok
         @error "check_configuration failed"
         throw_on_error && error("check_configuration failed")
     end
 
-    return configok
+    return config_ok
 end
 
 

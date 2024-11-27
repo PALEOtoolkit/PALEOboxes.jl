@@ -241,14 +241,14 @@ end
 
 "Check configuration"
 function check_configuration(domain::Domain, model::Model)
-    configok = true
+    config_ok = true
     for react in domain.reactions
         if !check_configuration(react, model)
-            configok = false
+            config_ok = false
         end
     end
 
-    return configok
+    return config_ok
 end
 
 
