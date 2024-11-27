@@ -134,3 +134,20 @@ model_with_invalid_variable_attribute:
         oceanfloor:
             reactions:
 
+model_with_unlinked_variable:
+    domains:
+        ocean:
+
+            reactions:
+                julia_paleo_mock:
+                    class: ReactionPaleoMock
+                    parameters:
+                    
+                    variable_links:
+                        scalar_dep:  host_supplied_dep
+
+        oceansurface:
+            reactions:
+
+        oceanfloor:
+            reactions:
