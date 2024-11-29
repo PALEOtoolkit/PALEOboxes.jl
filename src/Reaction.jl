@@ -324,11 +324,13 @@ end
 add_method_do!(@nospecialize(reaction::AbstractReaction), @nospecialize(methodfn::Function), @nospecialize(vars::Tuple{Vararg{AbstractVarList}}); kwargs...) = 
     _add_method!(reaction, methodfn, vars, add_method_do!; kwargs...)
 
+default_preparefn(m, vardata) = vardata
+
 function _add_method!(
     @nospecialize(reaction::AbstractReaction), @nospecialize(methodfn::Function), @nospecialize(vars::Tuple{Vararg{AbstractVarList}}), add_method_fn;
     name=string(methodfn),
     p=nothing,
-    preparefn=(m, vardata) -> vardata,
+    preparefn=default_preparefn,
     operatorID=reaction.operatorID,
     domain=reaction.domain
 )
@@ -611,15 +613,19 @@ function Base.show(io::IO, react::AbstractReaction)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", react::AbstractReaction)
-    println(io, typename(react))
-    println(io, "  name='", react.name, "'")
-    println(io, "  classname='", react.classname, "'")
-    println(io, "  domain='", domainname(react), "'")
-    println(io, "  operatorID=", react.operatorID)
-    println(io, "  parameters=", get_parameters(react))
-    println(io, "  methods_setup=", react.methods_setup)
-    println(io, "  methods_initialize=", react.methods_initialize)
-    println(io, "  methods_do=", react.methods_do)
+    dump_reaction(io, react)
+end
+
+function dump_reaction(io::IO, react::AbstractReaction; prefix="", show_parameters::Bool=true)
+    println(io, prefix, typename(react))
+    println(io, prefix, "  name='", react.name, "'")
+    println(io, prefix, "  classname='", react.classname, "'")
+    println(io, prefix, "  domain='", domainname(react), "'")
+    println(io, prefix, "  operatorID=", react.operatorID)
+    show_parameters && println(io, prefix, "  parameters=", get_parameters(react))
+    println(io, prefix, "  methods_setup=", react.methods_setup)
+    println(io, prefix, "  methods_initialize=", react.methods_initialize)
+    println(io, prefix, "  methods_do=", react.methods_do)
 end
 
 """

@@ -246,7 +246,7 @@ function create_model_from_config(
     catch e
         error("$(typeof(e)) while reading .yaml config file(s) $(abspath.(config_files)).\n"*
             "If the error isn't obvious by looking at the file(s) (often this is a whitespace issue), "*
-            "try an online YAML validator eg http://www.yamllint.com")
+            "install the VS Code YAML plugin, or try an online YAML validator eg http://www.yamllint.com")
     end
 
     conf_model = data[configmodel]
@@ -778,12 +778,19 @@ function dispatch_methodlist(
     dl::ReactionMethodDispatchListNoGen, 
     deltat::Float64=0.0
 )
+    lasti = -1
 
-   for i in eachindex(dl.methods)
-        call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
-   end
+    try
+        for i in eachindex(dl.methods)
+            lasti = i
+            call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
+        end
+    catch
+        lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        rethrow()
+    end
 
-   return nothing
+    return nothing
 end
 
 function dispatch_methodlist(
@@ -792,41 +799,64 @@ function dispatch_methodlist(
     deltat::Float64=0.0
 )
 
-   for j in eachindex(dl.methods)
-        methodref = dl.methods[j]
-        if has_modified_parameters(pa, methodref)
-            call_method(methodref, get_parameters(pa, methodref), dl.vardatas[j], dl.cellranges[j], deltat)
-        else
-            call_method(methodref, dl.vardatas[j], dl.cellranges[j], deltat)
-        end
-   end
+    lasti = -1
 
-   return nothing
+    try
+        for i in eachindex(dl.methods)
+            lasti  = i
+            methodref = dl.methods[i]
+            if has_modified_parameters(pa, methodref)
+                call_method(methodref, get_parameters(pa, methodref), dl.vardatas[i], dl.cellranges[i], deltat)
+            else
+                call_method(methodref, dl.vardatas[i], dl.cellranges[i], deltat)
+            end
+        end
+    catch
+        lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        rethrow()
+    end
+
+    return nothing
 end
 
 @generated function dispatch_methodlist(
     dl::ReactionMethodDispatchList{M, V, C}, 
-    deltat::Float64=0.0
+    deltat::Float64=0.0,
 ) where {M, V, C}
 
+    # Write out unrolled loop as an expression
     # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
-     
-    ex = quote ; end  # empty expression
-    for j=1:fieldcount(M)
-        push!(ex.args,
+    unrollex = quote ; end  # empty expression
+    for i=1:fieldcount(M)
+        push!(unrollex.args,
             quote
+                lasti = $i
                 # let
-                # call_method(dl.methods[$j][], dl.vardatas[$j][], dl.cellranges[$j], deltat)
+                # call_method(dl.methods[$i][], dl.vardatas[$i][], dl.cellranges[$i], deltat)
                 # pass Ref to function to reduce compile time
-                call_method(dl.methods[$j], dl.vardatas[$j], dl.cellranges[$j], deltat)
+                call_method(dl.methods[$i], dl.vardatas[$i], dl.cellranges[$i], deltat)
                 # end
             end
-            )
+        )
     end
-    push!(ex.args, quote; return nothing; end)
+
+    # interpolate the unrolled loop into a try-catch 
+    ex = quote
+        lasti = -1
+
+        try
+            $unrollex
+        catch
+            lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+            rethrow()
+        end
+
+        return nothing
+    end
     
     return ex
 end
+
 
 @generated function dispatch_methodlist(
     dl::ReactionMethodDispatchList{M, V, C},
@@ -834,23 +864,45 @@ end
     deltat::Float64=0.0
 ) where {M, V, C}
 
-    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
-     
-    ex = quote ; end  # empty expression
-    for j=1:fieldcount(M)
-        push!(ex.args,
+    # Write out unrolled loop as an expression
+    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604     
+    unrollex = quote ; end  # empty expression
+    for i=1:fieldcount(M)
+        push!(unrollex.args,
             quote
-                if has_modified_parameters(pa, dl.methods[$j])
-                    call_method(dl.methods[$j], get_parameters(pa, dl.methods[$j]), dl.vardatas[$j], dl.cellranges[$j], deltat)
+                lasti = $i
+                if has_modified_parameters(pa, dl.methods[$i])
+                    call_method(dl.methods[$i], get_parameters(pa, dl.methods[$i]), dl.vardatas[$i], dl.cellranges[$i], deltat)
                 else
-                    call_method(dl.methods[$j], dl.vardatas[$j], dl.cellranges[$j], deltat)
+                    call_method(dl.methods[$i], dl.vardatas[$i], dl.cellranges[$i], deltat)
                 end
             end
         )
     end
-    push!(ex.args, quote; return nothing; end)
     
+    # interpolate the unrolled loop into a try-catch 
+    ex = quote
+        lasti = -1
+
+        try
+            $unrollex
+        catch
+            lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+            rethrow()
+        end
+
+        return nothing
+    end
+
     return ex
+end
+
+function _dispatch_methodlist_methoderror(reactionmethod)
+    io = IOBuffer()
+    println(io, "dispatch_methodlist: a ReactionMethod failed:")
+    show(io, MIME"text/plain"(), reactionmethod)
+    @warn String(take!(io))
+    return
 end
 
 #################################

@@ -143,7 +143,7 @@ call_method_codefn(io::IO, codefn, method::ReactionMethod{M, R, P, 5}, vardata, 
 
 """
     get_variables_tuple(method::AbstractReactionMethod) -> (Vector{VariableReaction}, ...)
-    
+     println(io, typename(react))
 Get all [`VariableReaction`](@ref)s from `method` as a Tuple of `Vector{VariableReaction}`
 """
 get_variables_tuple(@nospecialize(method::ReactionMethod); flatten=true) = Tuple(get_variables(vl; flatten) for vl in method.varlists)
@@ -209,7 +209,7 @@ get_rate_stoichiometry(@nospecialize(m::ReactionMethod)) = []
 # Pretty printing
 ############################################
 
-"compact form"
+# compact form
 function Base.show(io::IO, @nospecialize(method::ReactionMethod))
     print(
         io, 
@@ -219,4 +219,17 @@ function Base.show(io::IO, @nospecialize(method::ReactionMethod))
             "', operatorID=", method.operatorID,
             ")",
     )
+end
+
+# multiline form
+function Base.show(io::IO, ::MIME"text/plain", @nospecialize(method::ReactionMethod))
+    println(io, "ReactionMethod")
+    println(io, "  fullname='", fullname(method), "'") 
+    println(io, "  methodfn=", string(method.methodfn))
+    println(io, "  preparefn=", string(method.preparefn))
+    println(io, "  domain='", method.domain.name , "'")
+    println(io, "  operatorID=", method.operatorID, "'")
+
+    print(io, "  reaction=")
+    dump_reaction(io, method.reaction; prefix="  ", show_parameters=false)
 end
