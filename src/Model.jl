@@ -819,77 +819,58 @@ function dispatch_methodlist(
     return nothing
 end
 
-function _dispatch_methodlist_methoderror(reactionmethod)
-    io = IOBuffer()
-    println(io, "dispatch_methodlist: a ReactionMethod failed:")
-    show(io, MIME"text/plain"(), reactionmethod)
-    @warn String(take!(io))
-    return
-end
-
-function dispatch_methodlist(
-    @nospecialize(dl::ReactionMethodDispatchList), 
-    deltat::Float64=0.0
-)
-    try
-        _dispatch_methodlist(dl, deltat)
-    catch
-        _dispatch_methodlist_nomethoderroravailable()
-        rethrow()
-    end
-    return nothing
-end
-
-@generated function _dispatch_methodlist(
+@generated function dispatch_methodlist(
     dl::ReactionMethodDispatchList{M, V, C}, 
-    deltat::Float64,
+    deltat::Float64=0.0,
 ) where {M, V, C}
 
+    # Write out unrolled loop as an expression
     # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
-     
-    ex = quote ; end  # empty expression
+    unrollex = quote ; end  # empty expression
     for i=1:fieldcount(M)
-        push!(ex.args,
+        push!(unrollex.args,
             quote
+                lasti = $i
                 # let
                 # call_method(dl.methods[$i][], dl.vardatas[$i][], dl.cellranges[$i], deltat)
                 # pass Ref to function to reduce compile time
                 call_method(dl.methods[$i], dl.vardatas[$i], dl.cellranges[$i], deltat)
                 # end
             end
-            )
+        )
     end
-    push!(ex.args, quote; return nothing; end)
+
+    # interpolate the unrolled loop into a try-catch 
+    ex = quote
+        lasti = -1
+
+        try
+            $unrollex
+        catch
+            lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+            rethrow()
+        end
+
+        return nothing
+    end
     
     return ex
 end
 
-function dispatch_methodlist(
-    @nospecialize(dl::ReactionMethodDispatchList),
-    @nospecialize(pa::ParameterAggregator),
-    deltat::Float64=0.0
-)
-    try
-        _dispatch_methodlist(dl, pa, deltat)
-    catch
-        _dispatch_methodlist_nomethoderroravailable()
-        rethrow()
-    end
-    return nothing
-end
 
-@generated function _dispatch_methodlist(
+@generated function dispatch_methodlist(
     dl::ReactionMethodDispatchList{M, V, C},
     pa::ParameterAggregator,
-    deltat::Float64
+    deltat::Float64=0.0
 ) where {M, V, C}
 
-    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604
-     
-    ex = quote ; end  # empty expression
+    # Write out unrolled loop as an expression
+    # See https://discourse.julialang.org/t/manually-unroll-operations-with-objects-of-tuple/11604     
+    unrollex = quote ; end  # empty expression
     for i=1:fieldcount(M)
-        push!(ex.args,
+        push!(unrollex.args,
             quote
+                lasti = $i
                 if has_modified_parameters(pa, dl.methods[$i])
                     call_method(dl.methods[$i], get_parameters(pa, dl.methods[$i]), dl.vardatas[$i], dl.cellranges[$i], deltat)
                 else
@@ -898,14 +879,30 @@ end
             end
         )
     end
-    push!(ex.args, quote; return nothing; end)
     
+    # interpolate the unrolled loop into a try-catch 
+    ex = quote
+        lasti = -1
+
+        try
+            $unrollex
+        catch
+            lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+            rethrow()
+        end
+
+        return nothing
+    end
+
     return ex
 end
 
-function _dispatch_methodlist_nomethoderroravailable()
-    @warn "dispatch_methodlist: a ReactionMethod failed.  To get a more detailed error report "*
-        "including the YAML name of the failed Reaction, rerun with 'generated_dispatch=false' argument added to PALEOmodel.initialize!"
+function _dispatch_methodlist_methoderror(reactionmethod)
+    io = IOBuffer()
+    println(io, "dispatch_methodlist: a ReactionMethod failed:")
+    show(io, MIME"text/plain"(), reactionmethod)
+    @warn String(take!(io))
+    return
 end
 
 #################################
