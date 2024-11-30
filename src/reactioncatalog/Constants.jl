@@ -25,5 +25,32 @@ const k_preindCO2atm  = 280e-6     # pre-industrial pCO2 (atm)
 const k_atmmixrN2    = 0.78084     # N2 atmospheric mixing ratio (moles / moles dry air)
 const k_atmmixrO2    = 0.20946     # O2 atmospheric mixing ratio (moles / moles dry air)
 
+"""
+    STANDARD_ATOMIC_WEIGHTS
+
+IUPAC recommended values of relative atomic masses of sources in the local environment of the Earth's crust and atmosphere
+(ie with Earth-specific isotope composition)
+"""
+const STANDARD_ATOMIC_WEIGHTS = (
+    H   = 1.0080,
+    He  = 4.0026,
+    Li  = 6.94,
+    C   = 12.011,
+    N   = 14.007,
+    O   = 15.999,
+    F   = 18.998,
+    Na  = 22.990,
+    P   = 30.974,
+    S   = 32.06,
+    Cl  = 35.45,
+    Ar  = 39.95,
+    K   = 39.098,
+    Ti  = 47.867,
+    V   = 50.942,
+    Cr  = 51.996,
+    Fe  = 55.845,
+    Rb  = 85.468,
+    Cs  = 132.91,
+)
 
 end

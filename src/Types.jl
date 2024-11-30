@@ -214,6 +214,7 @@ end
 Output accumulated log messages in io, then raise `ErrorException` with message
 """
 function infoerror(io::IOBuffer, message::AbstractString)
-    @info String(take!(io))
+    s = String(take!(io))
+    isempty(s) || @info s
     error(message)
 end

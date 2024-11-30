@@ -68,6 +68,8 @@ include("utils/TestUtils.jl")
 include("utils/SIMDutils.jl")
 include("utils/IteratorUtils.jl")
 include("utils/DocUtils.jl")
+include("utils/StringUtils.jl")
+include("utils/ChemistryUtils.jl")
 
 include("variableaggregators/VariableAggregator.jl")
 

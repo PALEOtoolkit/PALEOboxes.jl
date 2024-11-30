@@ -824,7 +824,7 @@ function _dispatch_methodlist_methoderror(reactionmethod)
     println(io, "dispatch_methodlist: a ReactionMethod failed:")
     show(io, MIME"text/plain"(), reactionmethod)
     @warn String(take!(io))
-    return
+    return nothing
 end
 
 function dispatch_methodlist(
@@ -906,6 +906,7 @@ end
 function _dispatch_methodlist_nomethoderroravailable()
     @warn "dispatch_methodlist: a ReactionMethod failed.  To get a more detailed error report "*
         "including the YAML name of the failed Reaction, rerun with 'generated_dispatch=false' argument added to PALEOmodel.initialize!"
+    return nothing
 end
 
 #################################
