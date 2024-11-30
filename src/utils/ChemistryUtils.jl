@@ -4,7 +4,7 @@ import PALEOboxes as PB
 import OrderedCollections
 
 """
-    parse_chemical_formula(formula::AbstractString) -> element_counts::OrderedDict{Symbol, Int64}
+    parse_chemical_formula(formula::AbstractString) -> element_counts::OrderedDict{Symbol, Float64}
 
 Parse a chemical formula into a Dict of element counts
 
