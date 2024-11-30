@@ -58,15 +58,8 @@ function PB.register_methods!(rj::ReactionSum)
     empty!(rj.var_multipliers)
 
     for varmultname in rj.pars.vars_to_add
-        # parse multiplier
-        svmn = split(varmultname, ['*', ' '], keepempty=false)
-        if length(svmn) == 1
-            mult, varname = (1.0, rj.pars.vars_prefix[]*svmn[1])
-        elseif length(svmn) == 2
-            mult, varname = (parse(Float64, svmn[1]), rj.pars.vars_prefix[]*svmn[2])
-        else
-            PB.infoerror(io, "reaction ", fullname(rj), "invalid field in vars_to_add ", varmultname)
-        end
+        mult, varname = PB.parse_number_name(varmultname; io, errmsg="reaction $(PB.fullname(rj)) invalid field in vars_to_add ")
+        varname = rj.pars.vars_prefix[]*varname
         println(io, "    add $mult * $varname")
         push!(rj.var_multipliers, mult)
 
