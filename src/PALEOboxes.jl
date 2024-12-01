@@ -31,6 +31,8 @@ import Printf
 import PrecompileTools
 import TimerOutputs: @timeit, @timeit_debug
 
+import FunctionWrappers # test code
+
 include("utils/DocStrings.jl")
 
 include("Types.jl")

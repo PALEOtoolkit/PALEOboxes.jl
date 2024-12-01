@@ -758,6 +758,38 @@ function do_deriv(dispatchlists, pa::ParameterAggregator, deltat::Float64=0.0)
     return nothing
 end
 
+### Test code using FunctionWrappers
+
+struct MethodCommand{M, V, C}
+    method::M
+    vardata::V
+    cellranges::C
+end
+
+function(mc::MethodCommand)(deltat)
+    call_method(mc.method[], mc.vardata[], mc.cellranges, deltat)
+    # call_method(mc.method, mc.vardata, mc.cellranges, deltat) 
+end
+
+struct ReactionMethodDispatchListNoGen
+    # used for test with ParameterAggregator
+    reactions::Vector{AbstractReaction}
+    # methodwrappers[i].obj[] to retrieve the wrapped MethodCommand
+    methodwrappers::Vector{FunctionWrappers.FunctionWrapper{Nothing, Tuple{Float64}}}
+end
+
+function ReactionMethodDispatchListNoGen(methodrefs::Vector, vardatarefs::Vector, cellranges::Vector)
+    reactions = [m[].reaction for m in methodrefs]
+    methodwrappers = [
+        FunctionWrappers.FunctionWrapper{Nothing, Tuple{Float64}}(
+            MethodCommand(m, v, c)
+        ) 
+        for (m, v, c) in zip(methodrefs, vardatarefs, cellranges)
+    ]
+    return ReactionMethodDispatchListNoGen(reactions, methodwrappers)
+end
+
+
 """
     dispatch_methodlist(dl::ReactionMethodDispatchList, deltat::Float64=0.0)
     dispatch_methodlist(dl::ReactionMethodDispatchList, pa::ParameterAggregator, deltat::Float64=0.0)
@@ -781,18 +813,22 @@ function dispatch_methodlist(
     lasti = -1
 
     try
-        for i in eachindex(dl.methods)
+        for i in eachindex(dl.methodwrappers)
             lasti = i
-            call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
+            # call_method(dl.methods[i], dl.vardatas[i], dl.cellranges[i], deltat)
+            # dl.methodcommands[i](deltat)
+            dl.methodwrappers[i](deltat)
         end
     catch
-        lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        # lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        lasti != -1 && _dispatch_methodlist_methoderror(dl.methodwrappers[lasti].obj[].method[])
         rethrow()
     end
 
     return nothing
 end
 
+# Untested guess at how to modify for FunctionWrappers 
 function dispatch_methodlist(
     dl::ReactionMethodDispatchListNoGen,
     pa::ParameterAggregator,
@@ -802,17 +838,19 @@ function dispatch_methodlist(
     lasti = -1
 
     try
-        for i in eachindex(dl.methods)
+        for i in eachindex(dl.methodwrappers)
             lasti  = i
-            methodref = dl.methods[i]
-            if has_modified_parameters(pa, methodref)
-                call_method(methodref, get_parameters(pa, methodref), dl.vardatas[i], dl.cellranges[i], deltat)
+            if has_modified_parameters(pa, dl.reactions[i])
+                methodcommand = dl.methodwrappers[i].obj[] 
+                call_method(methodcommand.method, get_parameters(pa, dl.reactions[i]), methodcommand.vardata, methodcommand.cellranges, deltat)
             else
-                call_method(methodref, dl.vardatas[i], dl.cellranges[i], deltat)
+                # call_method(methodref, dl.vardatas[i], dl.cellranges[i], deltat)
+                dl.methodwrappers[i](deltat)
             end
         end
     catch
-        lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        # lasti != -1 && _dispatch_methodlist_methoderror(dl.methods[lasti][])
+        lasti != -1 && _dispatch_methodlist_methoderror(dl.methodwrappers[lasti].obj[].method[])
         rethrow()
     end
 
