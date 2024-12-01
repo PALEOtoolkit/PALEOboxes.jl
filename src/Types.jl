@@ -186,11 +186,15 @@ end
 ReactionMethodDispatchList(methods::Vector, vardatas::Vector, cellranges::Vector) = 
     ReactionMethodDispatchList(Tuple(methods), Tuple(vardatas), Tuple(cellranges))
 
-struct ReactionMethodDispatchListNoGen
-    methods::Vector
-    vardatas::Vector
-    cellranges::Vector
-end
+# Replaced with test code using FunctionWrappers in Model.jl file
+# struct ReactionMethodDispatchListNoGen
+#     methods::Vector
+#     vardatas::Vector
+#     cellranges::Vector
+# end
+
+
+
 
 # See https://discourse.julialang.org/t/pretty-print-of-type/19555
 # Customize typeof function, as full type name is too verbose (as Tuples are of length ~ number of ReactionMethods to call)
