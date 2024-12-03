@@ -144,7 +144,18 @@ function get_host_variables(
     host_vars = get_variables(domain, filter_func(vfunction, ""))
     
     if !isempty(match_deriv_suffix)
-        host_deriv_vars = VariableDomain[get_variables(domain, filter_func(VF_Deriv, var.name*match_deriv_suffix))[] for var in host_vars]
+        host_deriv_vars = VariableDomain[]
+        for var in host_vars
+            deriv_var_name = var.name*match_deriv_suffix
+            deriv_var = get_variables(domain, filter_func(VF_Deriv, deriv_var_name))
+            if length(deriv_var) != 1
+                deriv_var_fullname = fullname(var)*match_deriv_suffix
+                error("Variable $(fullname(var)) has no corresponding host-dependent derivative Variable $deriv_var_fullname - "*
+                    "check that this Variable exists, then check links in yaml configuration, this should be a VarDomContribTarget with Contributors but no Target"*
+                    ", use PB.show_links(model, \"$deriv_var_fullname\") to see links")
+            end
+            push!(host_deriv_vars, only(deriv_var))
+        end
     else
         host_deriv_vars = nothing
     end
