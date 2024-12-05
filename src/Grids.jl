@@ -276,9 +276,12 @@ cartesian_to_internal(grid::UnstructuredVectorGrid, griddata::AbstractArray) = g
 """
     get_region(grid::UnstructuredVectorGrid, values; cell) -> 
         values_subset, (dim_subset::NamedDimension, ...)
+    get_region(grid::UnstructuredVectorGrid, values)
 
 # Keywords for region selection:
 - `cell::Union{Int, Symbol}`: an Int, or a Symbol to look up in `cellnames`
+
+`get_region(grid, values)` is also allowed for a single-cell Domain,
 """
 function get_region(grid::UnstructuredVectorGrid, values; cell::Union{Int, Symbol})
     if cell isa Int
@@ -293,6 +296,12 @@ function get_region(grid::UnstructuredVectorGrid, values; cell::Union{Int, Symbo
         values[idx],
         (),  # no dimensions (ie squeeze out a dimension length 1 for single cell)
     )
+end
+
+function get_region(grid::UnstructuredVectorGrid, values)
+    grid.ncells == 1 || throw(ArgumentError("'cell' argument is required for an UnstructuredVectorGrid with > 1 cell"))
+
+    return get_region(grid, values; cell=1)
 end
 
 """
