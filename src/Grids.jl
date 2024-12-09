@@ -274,17 +274,18 @@ PB.cartesian_size(grid::UnstructuredVectorGrid) = (grid.ncells, )
 cartesian_to_internal(grid::UnstructuredVectorGrid, griddata::AbstractArray) = griddata
 
 """
-    get_region(grid::UnstructuredVectorGrid, values; cell) -> 
+    get_region(grid::UnstructuredVectorGrid, values; cell=Nothing) -> 
         values_subset, (dim_subset::NamedDimension, ...)
-    get_region(grid::UnstructuredVectorGrid, values)
 
 # Keywords for region selection:
-- `cell::Union{Int, Symbol}`: an Int, or a Symbol to look up in `cellnames`
-
-`get_region(grid, values)` is also allowed for a single-cell Domain,
+- `cell::Union{Nothing, Int, Symbol}`: an Int for cell number (first cell = 1), or a Symbol to look up in `cellnames`
+  `cell = Nothing` is also allowed for a single-cell Domain.
 """
-function get_region(grid::UnstructuredVectorGrid, values; cell::Union{Int, Symbol})
-    if cell isa Int
+function get_region(grid::UnstructuredVectorGrid, values; cell::Union{Nothing, Int, Symbol}=nothing)
+    if isnothing(cell)
+        grid.ncells == 1 || throw(ArgumentError("'cell' argument (an Int or Symbol) is required for an UnstructuredVectorGrid with > 1 cell"))
+        idx = 1
+    elseif cell isa Int
         idx = cell
     else
         idx = get(grid.cellnames, cell, nothing)
@@ -298,11 +299,6 @@ function get_region(grid::UnstructuredVectorGrid, values; cell::Union{Int, Symbo
     )
 end
 
-function get_region(grid::UnstructuredVectorGrid, values)
-    grid.ncells == 1 || throw(ArgumentError("'cell' argument is required for an UnstructuredVectorGrid with > 1 cell"))
-
-    return get_region(grid, values; cell=1)
-end
 
 """
     create_default_cellrange(domain, grid::UnstructuredVectorGrid [; operatorID=0]) -> CellRange
