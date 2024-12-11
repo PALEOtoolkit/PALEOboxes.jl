@@ -1,15 +1,3 @@
-# Get scalar value from variable x (discarding any AD derivatives)
-value_ad(x) = x
-# Model code should implement this for any AD types used, eg
-# value_ad(x::SparsityTracing.ADval) = SparsityTracing.value(x)
-# value_ad(x::ForwardDiff.Dual) = ForwardDiff.value(x)
-
-# get scalar or ad from variable x, as specified by first argument
-value_ad(::Type{T}, x::T) where {T} = x        # pass through AD
-value_ad(::Type{T}, x::Float64) where {T} = x  # pass through Float64
-value_ad(::Type{Float64}, x)  = value_ad(x)    # strip AD
-value_ad(::Type{Float64}, x::Float64)  = x     # avoid method ambiguity
-
 # TODO there doesn't seem to be an easy way of parameterising ModelData by an Array type ?
 const PaleoArrayType = Array
 
