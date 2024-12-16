@@ -4,6 +4,7 @@ authors = ["Stuart Daines <stuart.daines@gmail.com>"]
 version = "0.21.36"
 
 [deps]
+Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -30,6 +31,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
+Atomix = "1.0"
 BenchmarkTools = "1.0"
 DataFrames = "1.1"
 DocStringExtensions = "0.8, 0.9"

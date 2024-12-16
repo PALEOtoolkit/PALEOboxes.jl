@@ -169,8 +169,8 @@ get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) =
 get_data(var::VariableDomain, domaindata::AbstractDomainData) = get_field(var, domaindata).values
 
 """
-    get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int) -> get_values_output(field.values)
-    get_data(var::VariableDomain, domaindata::AbstractDomainData) -> get_values_output(field.values)
+    get_data_output(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int) -> get_values_output(field.values)
+    get_data_output(var::VariableDomain, domaindata::AbstractDomainData) -> get_values_output(field.values)
 
 Get a sanitized version of Variable `var` data array for storing as output
 from [`get_values_output`]@ref)`(`[`Field`](@ref).values`)`
@@ -265,12 +265,6 @@ function allocate_variables!(
             mdeltype = get(eltypemap, mdeltype_str, Float64)
             @debug "Variable $(fullname(v)) mdeltype $mdeltype_str -> $mdeltype"
         end
-        
-        thread_safe = false
-        if get_attribute(v, :atomic, false) && modeldata.threadsafe
-            @info "  $(fullname(v)) allocating Atomic data"
-            thread_safe = true
-        end
 
         field_data = get_attribute(v, :field_data)
         space = get_attribute(v, :space)
@@ -297,8 +291,8 @@ function allocate_variables!(
         else
             # allocate new field array
             v_field = allocate_field(
-                field_data, data_dims, mdeltype, space, v.domain.grid,
-                thread_safe=thread_safe, allocatenans=modeldata.allocatenans
+                field_data, data_dims, mdeltype, space, v.domain.grid;
+                allocatenans=modeldata.allocatenans
             )
         end
         

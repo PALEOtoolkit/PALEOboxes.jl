@@ -628,16 +628,18 @@ function PB.register_methods!(rj::ReactionReservoirWellMixed)
     end
     PB.setfrozen!(rj.pars.initialization_type)
 
+    threadsafe = get(rj.external_parameters, "threadsafe", false)
+
     PB.add_method_do!(rj, do_reservoir_well_mixed, (PB.VarList_namedtuple(vars),))
 
     # add method to sum per-cell vec_sms to scalar sms
     vars_sms = [
         PB.VarDerivScalar(          "R_sms",    "mol yr-1", "scalar reservoir source-sinks",
-            attributes=(:field_data=>rj.pars.field_data[], :atomic=>true,)),
+            attributes=(:field_data=>rj.pars.field_data[],)),
         PB.VarTarget(               "R_vec_sms","mol yr-1", "vector reservoir source-sinks",
             attributes=(:field_data=>rj.pars.field_data[],))
     ]
-    PB.add_method_do!(rj, do_reservoir_well_mixed_sms, (PB.VarList_namedtuple(vars_sms),))
+    PB.add_method_do!(rj, do_reservoir_well_mixed_sms, (PB.VarList_namedtuple(vars_sms),); p=threadsafe)
 
     PB.add_method_initialize_zero_vars_default!(rj)
 
@@ -678,6 +680,7 @@ function do_reservoir_well_mixed_sms(
     cellrange::PB.AbstractCellRange,
     deltat,
 )
+    threadsafe = m.p
     
     # accumulate first into a subtotal,
     # in order to minimise time spent with lock held if this is one tile of a threaded model
@@ -685,7 +688,11 @@ function do_reservoir_well_mixed_sms(
     @inbounds for i in cellrange.indices
         subtotal += vars.R_vec_sms[i]
     end
-    PB.atomic_add!(vars.R_sms, subtotal)
+    if threadsafe
+        PB.atomic_add!(vars.R_sms, subtotal)
+    else
+        vars.R_sms[] += subtotal
+    end
 
     return nothing
 end

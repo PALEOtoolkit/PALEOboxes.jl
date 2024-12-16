@@ -18,26 +18,16 @@ get_components(values, field_data::Type{ScalarData}) = [values]
 
 function allocate_values(
     field_data::Type{ScalarData}, data_dims::Tuple{}, data_type, space::Type{<:AbstractSpace}, spatial_size::Tuple{Integer, Vararg{Integer}};
-    thread_safe, allocatenans,
+    allocatenans,
 )
 
-    if thread_safe
-        spatial_size == (1, ) ||
-            throw(ArgumentError("thread_safe with spatial_size != (1, )"))
-        d = AtomicScalar{data_type}()
-    else
-        d = Array{data_type, length(spatial_size)}(undef, spatial_size...)
-    end
+    d = Array{data_type, length(spatial_size)}(undef, spatial_size...)
 
     if allocatenans
         fill!(d, NaN)
     end
     
     return d
-end
-
-function get_values_output(values::AtomicScalar, data_type::Type{ScalarData}, data_dims::Tuple{}, space, mesh)
-    return [values[]]
 end
 
 function check_values(
@@ -82,6 +72,16 @@ function init_values!(
     
     return nothing
 end
+
+"""
+    atomic_add!(values::AbstractArray, v)
+
+Add `v` to `values[]` using Thread-safe atomic operation.
+
+This is a generic fallback for ScalarData containing `values` of any `data_type`.
+"""
+atomic_add!(values::AbstractArray, v) = Atomix.@atomic values[] += v
+
 
 function zero_values!(values, field_data::Type{ScalarData}, data_dims::Tuple{}, space::Type{ScalarSpace}, cellrange)
     values[] = 0.0

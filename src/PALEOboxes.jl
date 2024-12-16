@@ -27,6 +27,7 @@ using DocStringExtensions
 import OrderedCollections
 import Logging
 import Printf
+import Atomix
 
 import PrecompileTools
 import TimerOutputs: @timeit, @timeit_debug
@@ -37,7 +38,6 @@ include("Types.jl")
 include("CoordsDims.jl")
 include("Fields.jl")
 
-include("data/AtomicScalar.jl")
 include("data/ScalarData.jl")
 include("data/ArrayScalarData.jl")
 include("data/IsotopeData.jl")
