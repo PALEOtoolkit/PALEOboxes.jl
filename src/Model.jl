@@ -393,16 +393,18 @@ end
 
 
 """
-    create_modeldata(model::Model [, eltype] [; threadsafe]) -> modeldata::ModelData
+    create_modeldata(model::Model [; arrays_eltype=Float64]) -> modeldata::ModelData
 
-Create a new [`ModelData`](@ref) struct for model variables of element type `eltype`.
+Create a new [`ModelData`](@ref) struct for model variables with data arrays element type `arrays_eltype`.
 """
 function create_modeldata(
     model::Model, arrays_eltype::DataType=Float64;
-    threadsafe=false,
     allocatenans=true, # fill Arrays with NaN when first allocated
+    threadsafe=false, # deprecated
 )
-    modeldata = ModelData(model; arrays_eltype, threadsafe, allocatenans)
+    threadsafe == false || error("create_modeldata: 'threadsafe=true' no longer supported. Set parameter 'threadsafe: true' in YAML configuration file instead.")
+
+    modeldata = ModelData(model; arrays_eltype, allocatenans)
 
     modeldata.cellranges_all = create_default_cellrange(model)
 

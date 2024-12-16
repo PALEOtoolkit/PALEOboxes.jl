@@ -176,6 +176,13 @@ zero_ad
 value_ad
 ```
 
+#### Writing thread-safe code
+
+Reactions that accumulate per-cell quantities into a scalar variable (eg to calculate Domain totals) and are intended for use in
+large models that use a multithreaded solver with tiled Domains should use `atomic_add!`:
+```@docs
+atomic_add!
+```
 
 #### Optimising loops over cells using explicit SIMD instructions
 Reactions with simple loops over `cellindices` that implement time-consuming per-cell calculations 

@@ -15,10 +15,8 @@ end
 
 function allocate_values(
     field_data::Type{ArrayScalarData}, data_dims::Tuple{NamedDimension, Vararg{NamedDimension}}, data_type, space::Type{<:AbstractSpace}, spatial_size::Tuple{Integer, Vararg{Integer}};
-    thread_safe, allocatenans,
+    allocatenans,
 )
-    !thread_safe || throw(ArgumentError("ArrayScalarData with thread_safe==true"))
-
     s = _size_arrayscalardata(data_dims, space, spatial_size)
     d = Array{data_type, length(s)}(undef, s...)
 

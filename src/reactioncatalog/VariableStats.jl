@@ -236,10 +236,12 @@ function PB.register_methods!(rj::ReactionWeightedMean)
         PB.VarDep(       "measure", "unknown", "cell area or volume"),
         PB.VarDepScalar( "measure_total", "unknown", "total Domain area or volume"),
         PB.VarPropScalar("var_mean", "unknown", "weighted mean over Domain area or volume",
-            attributes=(:field_data=>rj.pars.field_data[], :initialize_to_zero=>true, :atomic=>true)),
+            attributes=(:field_data=>rj.pars.field_data[], :initialize_to_zero=>true,)),
     ]
 
-    PB.add_method_do!(rj, do_weighted_mean, (PB.VarList_namedtuple(vars),))
+    threadsafe = get(rj.external_parameters, "threadsafe", false)
+
+    PB.add_method_do!(rj, do_weighted_mean, (PB.VarList_namedtuple(vars),); p=threadsafe)
 
     PB.add_method_initialize_zero_vars_default!(rj)
 
@@ -247,7 +249,7 @@ function PB.register_methods!(rj::ReactionWeightedMean)
 end
 
 function do_weighted_mean(m::PB.ReactionMethod, (vars,), cellrange::PB.AbstractCellRange, deltat)
-    rj = m.reaction
+    threadsafe = m.p
 
     # use a subtotal to minimise time lock held if this is one tile of a threaded model
     subtotal = zero(vars.var_mean[])
@@ -255,8 +257,14 @@ function do_weighted_mean(m::PB.ReactionMethod, (vars,), cellrange::PB.AbstractC
         subtotal += vars.var[i]*vars.measure[i] # normalisation by measure_total below
     end
 
-    PB.atomic_add!(vars.var_mean, subtotal/vars.measure_total[])
-    
+    var_mean_to_add = subtotal/vars.measure_total[]
+
+    if threadsafe
+        PB.atomic_add!(vars.var_mean, var_mean_to_add)
+    else
+        vars.var_mean[] += var_mean_to_add
+    end
+
     return nothing
 end
 
@@ -294,10 +302,11 @@ function PB.register_methods!(rj::ReactionAreaVolumeValInRange)
         PB.VarDep(       "measure", "unknown", "cell area or volume"),
         PB.VarDepScalar( "measure_total", "unknown", "total Domain area or volume"),
         PB.VarPropScalar("frac", "", "fraction of Domain area or volume in specified range",
-            attributes=(:initialize_to_zero=>true, :atomic=>true)),
+            attributes=(:initialize_to_zero=>true,)),
     ]
 
-    PB.add_method_do!(rj, do_area_volume_in_range, (PB.VarList_namedtuple(vars),))
+    threadsafe = get(rj.external_parameters, "threadsafe", false)
+    PB.add_method_do!(rj, do_area_volume_in_range, (PB.VarList_namedtuple(vars),); p=threadsafe)
 
     PB.add_method_initialize_zero_vars_default!(rj)
 
@@ -305,6 +314,7 @@ function PB.register_methods!(rj::ReactionAreaVolumeValInRange)
 end
 
 function do_area_volume_in_range(m::PB.ReactionMethod, pars, (vars,), cellrange::PB.AbstractCellRange, deltat)
+    threadsafe = m.p
 
     # use a subtotal to minimise time lock held if this is one tile of a threaded model
     frac_subtotal = zero(vars.frac[])
@@ -314,7 +324,13 @@ function do_area_volume_in_range(m::PB.ReactionMethod, pars, (vars,), cellrange:
         end
     end
 
-    PB.atomic_add!(vars.frac, frac_subtotal/vars.measure_total[])
+    frac_to_add = frac_subtotal/vars.measure_total[]
+
+    if threadsafe
+        PB.atomic_add!(vars.frac, frac_to_add)
+    else
+        vars.frac[] += frac_to_add
+    end
 
     return nothing
 end

@@ -95,26 +95,34 @@ function create_totalvar(var, total_localname=nothing)
         total_localname = var.localname*"_total"
     end
     return VarPropScalar(total_localname, get_attribute(var, :units), "total "*get_attribute(var, :description),
-        attributes=(:field_data=>get_attribute(var, :field_data), :initialize_to_zero=>true, :atomic=>true),
+        attributes=(:field_data=>get_attribute(var, :field_data), :initialize_to_zero=>true,),
     )
 end
 
 """
     do_vartotals(varstats, varstats_data, cellrange::AbstractCellRange)
 
-Calculate totals. `varstats_data` is `accessors` returned by `create_accessors`. Call from the 
-`ReactionPhase` supplied to [`add_var`](@ref).
+Calculate totals.
 """
 function do_vartotals(m::AbstractReactionMethod, (vars_data, var_totals_data), cellrange::AbstractCellRange, deltat)
 
-    function calc_total(data, total_data, cellrange)
+    threadsafe = m.p
+
+    function calc_total(data, total_data, cellrange, ts)
         # accumulate first into a subtotal, and then into total_data[], in order to minimise time spent with lock held
         # if this is one tile of a threaded model
         subtotal = zero(total_data[])
+
         @inbounds for i in cellrange.indices
             subtotal += data[i]
         end
-        atomic_add!(total_data, subtotal)
+
+        if ts
+            atomic_add!(total_data, subtotal)
+        else
+            total_data[] += subtotal
+        end
+
         return nothing
     end
 
@@ -122,7 +130,7 @@ function do_vartotals(m::AbstractReactionMethod, (vars_data, var_totals_data), c
         error("do_vartotals: components length mismatch $(fullname(m)) $(get_variables_tuple(m)) (check :field_data (ScalarData, IsotopeLinear etc) match)")
     #  if cellrange.operatorID == 0 || cellrange.operatorID in totals_method.operatorID
     for iv in eachindex(vars_data)
-        calc_total(vars_data[iv], var_totals_data[iv], cellrange)
+        calc_total(vars_data[iv], var_totals_data[iv], cellrange, threadsafe)
     end
     # end
     
@@ -141,7 +149,7 @@ function _create_totals_method(
         reaction,
         methodname,
         (VarList_components(VarDep.(vars)), VarList_components(var_totals)),
-        nothing,
+        get(reaction.external_parameters, "threadsafe", false),
         operatorID,
         reaction.domain
     )

@@ -255,10 +255,10 @@ end
 
 function allocate_values(
     data::Type{IsotopeLinear}, data_dims::Tuple{}, data_type, space::Type{<:AbstractSpace}, spatial_size::Tuple{Integer, Vararg{Integer}};
-    thread_safe, allocatenans,
+    allocatenans,
 )
-    v = allocate_values(ScalarData, data_dims, data_type, space, spatial_size, thread_safe=thread_safe, allocatenans=allocatenans)
-    v_moldelta = allocate_values(ScalarData, data_dims, data_type, space, spatial_size, thread_safe=thread_safe, allocatenans=allocatenans)
+    v = allocate_values(ScalarData, data_dims, data_type, space, spatial_size; allocatenans)
+    v_moldelta = allocate_values(ScalarData, data_dims, data_type, space, spatial_size; allocatenans)
 
     return StructArrays.StructArray{IsotopeLinear{data_type, data_type}}((v, v_moldelta))
 end
@@ -403,18 +403,8 @@ function create_accessor(
 end
 
 #############################################################
-# Special cases for atomic scalar Vectors of IsotopeLinear
+# Special cases for atomic addition
 ##########################################################
-"type of an atomic scalar Vector of IsotopeLinear"
-const AtomicIsotopeLinear = StructArrays.StructVector{
-    IsotopeLinear{Float64, Float64}, 
-    NamedTuple{(:v, :v_moldelta), Tuple{AtomicScalar{Float64}, AtomicScalar{Float64}}},
-    Int64
-}
 
-atomic_add!(ias::AtomicIsotopeLinear, iv::IsotopeLinear) = (atomic_add!(ias.v, iv.v); atomic_add!(ias.v_moldelta, iv.v_moldelta))
+atomic_add!(ias::StructArrays.StructVector{<:IsotopeLinear}, iv::IsotopeLinear) = (atomic_add!(ias.v, iv.v); atomic_add!(ias.v_moldelta, iv.v_moldelta);)
 
-function get_values_output(values::AtomicIsotopeLinear, data_type::Type{IsotopeLinear}, data_dims::Tuple{}, space::Type{<:AbstractSpace}, mesh)
-    # convert to an IsotopeLinear for output
-    return StructArrays.StructArray( [values[]])
-end

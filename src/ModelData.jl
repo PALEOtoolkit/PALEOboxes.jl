@@ -20,7 +20,7 @@ end
 
 
 """
-    ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bool=false, allocatenans::Bool=true)
+    ModelData(model::Model; arrays_eltype::DataType=Float64, allocatenans::Bool=true)
 
 Create a ModelData struct containing `model` data arrays.
 
@@ -37,7 +37,6 @@ which requires Dual numbers as the array element type.
 Base.@kwdef mutable struct ModelData <: AbstractModelData
     model::Model
     domain_data::Vector{Tuple{DataType, String, Vector{DomainData}}} = Tuple{DataType, String, Vector{DomainData}}[]
-    threadsafe::Bool
     allocatenans::Bool # fill with NaN when allocating
 
     sorted_methodsdata_setup                    = nothing    # only for arrays_idx = 1
@@ -49,11 +48,13 @@ Base.@kwdef mutable struct ModelData <: AbstractModelData
     solver_view_all                             = nothing    # only for arrays_idx = 1
 end
 
-function ModelData(model::Model; arrays_eltype::DataType=Float64, threadsafe::Bool=false, allocatenans::Bool=true)
-
+function ModelData(
+    model::Model; 
+    arrays_eltype::DataType=Float64, 
+    allocatenans::Bool=true,
+)
     modeldata = ModelData(;
         model,
-        threadsafe,
         allocatenans,        
     )
 

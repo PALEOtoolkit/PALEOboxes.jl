@@ -51,7 +51,7 @@ The custom Vector of [`CellRange`](@ref)s should then be supplied to
 
 ### Multithreaded models
 To use with a multithreaded solver eg for a spatially tiled model:
-- Set `threadsafe=true` when calling [`create_modeldata`](@ref). The subsequent call to [`allocate_variables!`](@ref) will then allocate Julia `Threads.Atomic` variables for PALEO Variables with attribute `atomic: = true` (usually scalar accumulator variables for totals etc).
+- Set the global parameter `threadsafe=true` in the YAML file before calling [`create_model_from_config`](@ref). This is used by Reactions that require special handling eg atomic operations to maintain thread safety (usually those with scalar accumulator variables for totals etc).
 - Supply a `method_barrier` implementing a thread barrier function to [`initialize_reactiondata!`](@ref). Reactions are sorted into groups, where each group has no dependencies and later groups depend on earlier ones. The `method_barrier` will be inserted between these groups of independent Reactions.
 
 ### Automatic differentiation

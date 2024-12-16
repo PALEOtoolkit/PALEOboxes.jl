@@ -1,5 +1,5 @@
 
-import Infiltrator
+
 ############################################################
 # (Function) Spaces
 ###########################################################
@@ -109,6 +109,9 @@ If the subtype needs to provide values for a numerical solver (eg as a state var
 
 If the subtype has a representation as components, it should implement:
 [`num_components`](@ref), [`get_components`](@ref)
+
+If the subtype needs to provide a thread-safe atomic addition operation eg to provide scalar accumulator variables for Domain totals with a tiled model,
+it should implement [`atomic_add!`](@ref) for the field `data_type`.
 """
 AbstractData
 
@@ -116,7 +119,7 @@ AbstractData
 """
     allocate_values(
         field_data::Type{<:AbstractData}, data_dims::Tuple{Vararg{NamedDimension}}, data_type, space::Type{<:AbstractSpace}, spatial_size::Tuple;
-        thread_safe::Bool, allocatenans::Bool,
+        allocatenans::Bool,
     ) -> values
 
 allocate `Field.values` (eg an Array) for `field_data` with dimensions defined by `spatial_size` and `data_dims`
@@ -127,7 +130,7 @@ function allocate_values(
     data_type, 
     space::Type{<:AbstractSpace}, 
     spatial_size::Tuple{Integer, Vararg{Integer}}, # an NTuple with at least one element
-    thread_safe::Bool, allocatenans::Bool,
+    allocatenans::Bool,
 ) 
 end
 
@@ -315,7 +318,7 @@ Convert Field `values` to a Vector of components
 function get_components(values, field_data::Type{<:AbstractData}) end
 
 "Optional: sanitize `values` for storing as model output.
-Default implementation is usually OK - only implement eg for Atomic types that should be converted to standard types for storage"
+Default implementation is usually OK - only implement for custom types that should be converted to standard types for storage"
 get_values_output(values, data_type::Type{<:AbstractData}, data_dims::Tuple{Vararg{NamedDimension}}, space, mesh) = values
 
 
@@ -371,11 +374,11 @@ function add_field! end
 "create a new Field, allocating `values` data arrays"
 function allocate_field(
     field_data::Type, data_dims::NTuple{N, NamedDimension}, data_type::Type, space::Type{<:AbstractSpace}, mesh;
-    thread_safe::Bool, allocatenans
+    allocatenans
 ) where {N}
     v = allocate_values(
-        field_data, data_dims, data_type, space, spatial_size(space, mesh), 
-        thread_safe=thread_safe, allocatenans=allocatenans,
+        field_data, data_dims, data_type, space, spatial_size(space, mesh);
+        allocatenans,
     )
 
     return Field{field_data, space, typeof(v), N, typeof(mesh)}(v, data_dims, mesh)
