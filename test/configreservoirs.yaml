@@ -39,6 +39,29 @@ model1:
                         R:norm_value:           10.0
                         R:initial_value:        1.0
 
+                reservoir_NormS:
+                    class: ReactionReservoirScalar
+                   
+                    parameters:
+                        state_norm:             true
+                    variable_links:
+                        R*: NormS*
+                    variable_attributes:
+                        R:norm_value:           10.0
+                        R:initial_value:        1.0
+
+                reservoir_ConstNormS:
+                    class: ReactionReservoirScalar
+                   
+                    parameters:
+                        const:                  true
+                        state_norm:             true
+                    variable_links:
+                        R*: ConstNormS*
+                    variable_attributes:
+                        R:norm_value:           10.0
+                        R:initial_value:        1.0
+
                 scalar_sum:
                     class: ReactionSum
                     parameters:

@@ -38,7 +38,7 @@ end
     modeldata =  PB.create_modeldata(model)
     PB.allocate_variables!(model, modeldata, 1; hostdep=false, check_units_opt=:error)
 
-    @test length( PB.get_unallocated_variables(global_domain, modeldata, 1)) == 4
+    @test length( PB.get_unallocated_variables(global_domain, modeldata, 1)) == 6
     @test  PB.check_ready(global_domain, modeldata, throw_on_error=false) == false    
 
     # allocate arrays for host dependencies and set data pointers
@@ -53,7 +53,7 @@ end
     # check state variables
     stateexplicit_vars, stateexplicit_sms_vars =
         PB.get_host_variables(global_domain, PB.VF_StateExplicit, match_deriv_suffix="_sms")
-    @test length(stateexplicit_vars) == 2  # A and O
+    @test length(stateexplicit_vars) == 3  # A, O, NormS_solve
     # get global state variable aggregator
     global_stateexplicit_va = PB.VariableAggregator(stateexplicit_vars, fill(nothing, length(stateexplicit_vars)), modeldata, 1)
     
@@ -65,7 +65,7 @@ end
 
     # get host-dependent variables
     global_hostdep_vars_vec =  PB.get_variables(global_domain, hostdep=true)
-    @test length(global_hostdep_vars_vec) == 4
+    @test length(global_hostdep_vars_vec) == 6
  
     ocean_hostdep_vars_vec =  PB.get_variables(ocean_domain, hostdep=true)
     @test length(ocean_hostdep_vars_vec) == 4
@@ -78,11 +78,12 @@ end
     PB.dispatch_setup(model, :initial_value, modeldata)
 
     @info "global stateexplicit variables:\n"
+    @test all_data.global.NormS_solve[] == 0.1
     @test all_data.global.A.v[]  == 3.193e18   # A
     @test all_data.global.A.v_moldelta[]  == 2.0*3.193e18    # A_moldelta
     # test access via flattened vector (as used eg by an ODE solver)
     global_A_indices = PB.get_indices(global_stateexplicit_va, "global.A")
-    @test global_A_indices == 2:3
+    @test global_A_indices == 3:4  # NormS_solve, O, A - NB: order is implementation-dependent, not well defined
     stateexplicit_vector = PB.get_data(global_stateexplicit_va)
     @test stateexplicit_vector[global_A_indices] == [all_data.global.A.v[], all_data.global.A.v_moldelta[]]
     # test VariableAggregatorNamed created from VariableAggregator
@@ -91,6 +92,7 @@ end
 
     @info "global const variables:"
     @test all_data.global.ConstS[] == 1.0
+    @test all_data.global.ConstNormS[] == 1.0
 
     @info "ocean host-dependent variable initialisation:\n"
     @test  all_data.ocean.T[1]           == 1.0*10.0
@@ -103,6 +105,8 @@ end
     @info "global model-created variables:\n"
     @test  all_data.global.A_norm[] == 10.0
     @test  all_data.global.A_delta[] == 2.0
+    @test  all_data.global.NormS[] == 1.0
+    @test  all_data.global.NormS_norm[] == 0.1
 
     @info "ocean model-created variables:\n"
     @test  all_data.ocean.T_conc == fill(1.0, ocean_length)
