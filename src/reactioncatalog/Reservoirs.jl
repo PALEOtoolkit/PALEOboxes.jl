@@ -148,21 +148,25 @@ function setup_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (R, R
 
     rj.norm_value = PB.get_attribute(R_domvar, :norm_value)
 
-    if pars.const[] && (attribute_name == :setup)
-        PB.init_field!(
-            only(R), :initial_value, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
-        )
-    elseif  attribute_name in (:norm_value, :initial_value)
-        if pars.state_norm[]
-            R_solve_var = only(R_solve_vars)
-            R_solve_domvar = R_solve_var.linkvar
+    if pars.const[]
+        if attribute_name == :setup
             PB.init_field!(
-                only(R_solve), attribute_name, R_domvar, (_, _)->1/rj.norm_value, [], cellrange, (PB.fullname(R_solve_domvar), " / $(rj.norm_value)", " [from $(PB.fullname(R_domvar))]")
+                only(R), :initial_value, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
             )
-        else
-            PB.init_field!(
-                only(R), attribute_name, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
-            )
+        end
+    else
+        if attribute_name in (:norm_value, :initial_value)
+            if pars.state_norm[]
+                R_solve_var = only(R_solve_vars)
+                R_solve_domvar = R_solve_var.linkvar
+                PB.init_field!(
+                    only(R_solve), attribute_name, R_domvar, (_, _)->1/rj.norm_value, [], cellrange, (PB.fullname(R_solve_domvar), " / $(rj.norm_value)", " [from $(PB.fullname(R_domvar))]")
+                )
+            else
+                PB.init_field!(
+                    only(R), attribute_name, R_domvar, (_, _)->1.0, [], cellrange, (PB.fullname(R_domvar), "", "")
+                )
+            end
         end
     end
 
@@ -172,7 +176,7 @@ end
 function do_reactionreservoirscalar(m::PB.AbstractReactionMethod, pars, (vars, ), cr::PB.AbstractCellRange, deltat)
     rj = m.reaction
 
-    if pars.state_norm[]
+    if pars.state_norm[] && !pars.const[]
         vars.R[] = vars.R_solve[]*rj.norm_value
         vars.R_norm[] = PB.get_total(vars.R_solve[])
     else
