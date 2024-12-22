@@ -222,11 +222,11 @@ function do_method_barrier(m::ReactionMethod, _, _, _)
 end
 
 """
-    reaction_method_thread_barrier(barrier)
+    reaction_method_thread_barrier(barrier, barrierfn; [operatorID=[1]])
 
 Create a ReactionMethod holding a thread barrier `barrier`.
 """
-function reaction_method_thread_barrier(barrier, barrierfn)
+function reaction_method_thread_barrier(barrier, barrierfn; operatorID=[1])
     
     return ReactionMethod(
         do_method_barrier,
@@ -234,7 +234,7 @@ function reaction_method_thread_barrier(barrier, barrierfn)
         "thread_barrier",
         (VarList_nothing(),),
         (barrier, barrierfn), # p 
-        [-1], 
+        operatorID, 
         Domain(name="thread_barrier", ID=-1, parameters=Dict{String, Any}()),
     )
 end
