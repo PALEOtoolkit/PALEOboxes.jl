@@ -1090,30 +1090,36 @@ function get_tiled_cellranges(model::PB.Model, ntiles::Int, interior_domain_name
     interior_domain = PB.get_domain(model, interior_domain_name)
     interior_cellranges = cellrange_cartesiantile(interior_domain, interior_domain.grid, ntiles, operatorID=operatorID)
   
+    io = IOBuffer()
+    println(io, "get_tiled_cellranges:")
+
     cellranges = [] # vector of vectors, 1 per tile
     for it in 1:ntiles
-        println("creating CellRanges for tile $it")      
+        println(io, "  creating CellRanges for tile $it")      
         tcellranges = []
         push!(tcellranges, interior_cellranges[it])
         for dom in model.domains            
             if !isnothing(dom.grid) && dom != interior_domain
                 push!(tcellranges, cellrange_from_columns(dom, dom.grid, interior_cellranges[it]))            
-                println("  add CellRange for domain $(dom.name) length $(length(last(tcellranges).indices))")
+                println(io, "    add CellRange for domain $(dom.name) length $(length(last(tcellranges).indices))")
             end
         end
         push!(cellranges, tcellranges)
     end
     # create cellranges for scalar Domains
     cellrangesscalar = []
-    @info "creating CellRanges for scalar domains"
+    println(io, "  creating CellRanges for scalar domains")
     for dom in model.domains            
         if isnothing(dom.grid)
             push!(cellrangesscalar, create_default_cellrange(dom, dom.grid, operatorID=operatorID))
-            @info "  added CellRange for scalar domain $(dom.name)"
+            println(io, "    added CellRange for scalar domain $(dom.name)")
         end
     end
-    @info "adding CellRanges for scalar domains to first tile"
+    println(io, "  adding CellRanges for scalar domains to first tile")
+    
     append!(first(cellranges), cellrangesscalar)
+
+    @info String(take!(io))
 
     return cellranges
 end

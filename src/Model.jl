@@ -717,7 +717,9 @@ end
 
 function _dispatch_cellranges(@nospecialize(method::AbstractReactionMethod), cellranges)
     if is_do_barrier(method)
-        return (nothing, )
+        operatorID = method.operatorID
+        any_cellranges = any((cr.operatorID == 0 || cr.operatorID in operatorID) for cr in cellranges)
+        return any_cellranges ? (nothing, ) : ()
     else
         domain = method.domain
         operatorID = method.operatorID
