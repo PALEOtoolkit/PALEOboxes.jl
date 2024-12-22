@@ -745,8 +745,9 @@ end
  """   
 function cartesian_to_internal(grid::CartesianLinearGrid, griddata::AbstractArray)
     size(grid.linear_index) == size(griddata) || error("grid and data size mismatch")
-
-    return griddata[grid.cartesian_index]
+ 
+    # recreate vector to change type back from eg Union{Missing, Float64} to Float64, where missing will have been added by internal_to_cartesian
+    return [griddata[i] for i in grid.cartesian_index]
 end
 
 cartesian_to_internal(grid::CartesianArrayGrid, griddata::AbstractArray) = griddata
