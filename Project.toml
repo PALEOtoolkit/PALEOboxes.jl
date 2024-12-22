@@ -1,7 +1,7 @@
 name = "PALEOboxes"
 uuid = "804b410e-d900-4b2a-9ecd-f5a06d4c1fd4"
 authors = ["Stuart Daines <stuart.daines@gmail.com>"]
-version = "0.21.38"
+version = "0.21.39"
 
 [deps]
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
