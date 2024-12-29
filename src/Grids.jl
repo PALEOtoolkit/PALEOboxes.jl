@@ -190,7 +190,14 @@ function get_subdomain(grid::PB.AbstractMesh, subdomainname::AbstractString)
     
     return subdomain
 end
- 
+
+"""
+    available_spaces(grid::PB.AbstractMesh) -> NTuple{PB.Space}
+
+Tuple of Spaces supported by this grid
+"""
+function available_spaces end
+
 
 # generic handler when subdomainname present
 function PB.internal_size(space::Type{<:PB.AbstractSpace}, grid::PB.AbstractMeshOrNothing, subdomainname::AbstractString)
@@ -428,14 +435,12 @@ Minimal Grid for a Vector Domain composed of columns (not necessarily forming a 
 - `ncells::Int` total number of cells in this Domain
 - `Icolumns::Vector{Vector{Int}}`: Icolumns[n] should be the indices of column n, in order from surface to floor, where n is also the index of 
 any associated boundary surface.
-- `z_coords::Vector{FixedCoord}`: z coordinates of cell mid point, lower surface, upper surface
-- `columnnames::Vector{Symbol}:` optional column names
+- `columnnames::Vector{Symbol}`: optional column names
+- `coordinates::Dict{String, Vector{String}}`: optional attached coordinates
 """
 Base.@kwdef mutable struct UnstructuredColumnGrid <: PB.AbstractMesh
     ncells::Int64    
     Icolumns::Vector{Vector{Int}}    
-
-    # z_coords::Vector{PB.FixedCoord} = PB.FixedCoord[]
 
     "Define optional column names"
     columnnames::Vector{Symbol} = Symbol[]
@@ -516,10 +521,8 @@ the PALEO internal representation (a Vector with a linear index) and a Cartesian
 
 # Fields
 - `ncells::Int64`: number of cells in Domain = `length(linear_index)` (may be subset of total points in `prod(dims)`)
-- `dimnames::Vector{String}`: names of dimensions (ordered list)
-- `dims::Vector{Int}`: sizes of dimensions (ordered list)
-- `coords::Vector{Vector{Float64}}`: attached cell-centre coordinates for each dimension (ordered list)
-- `coords_edges::Vector{Vector{Float64}}`: attached cell-edge coordinates for each dimension (ordered list)
+- `dimensions::Vector{PB.NamedDimensions}`: names and sizes of cartesian spatial dimensions (ordered list)
+- `coordinates::Dict{String, Vector{String}}`: optional attached coordinates
 """
 Base.@kwdef mutable struct CartesianLinearGrid{N} <: PB.AbstractMesh
     
@@ -591,11 +594,9 @@ _extra_dimensions(grid::CartesianLinearGrid) = grid.dimensions_extra
 nD grid with netcdf CF1.0 coordinates, using n-dimensional Arrays for PALEO internal representation of Variables
 
 # Fields
-- `ncells::Int64`: number of cells in Domain = `length(linear_index)` (may be subset of total points in `prod(dims)`)
-- `dimnames::Vector{String}`: names of dimensions (ordered list)
-- `dims::Vector{Int}`: sizes of dimensions (ordered list)
-- `coords::Vector{Vector{Float64}}`: attached cell-centre coordinates for each dimension (ordered list)
-- `coords_edges::Vector{Vector{Float64}}`: attached cell-edge coordinates for each dimension (ordered list)
+- `ncells::Int64`: number of cells in Domain = product of cartesian dimension sizes
+- `dimensions::Vector{PB.NamedDimensions}`: names and sizes of cartesian spatial dimensions (ordered list)
+- `coordinates::Dict{String, Vector{String}}`: optional attached coordinates
 """
 Base.@kwdef mutable struct CartesianArrayGrid{N} <: PB.AbstractMesh
     
