@@ -14,23 +14,23 @@ Base.@kwdef mutable struct Domain <: AbstractDomain
     name::String
     ID::Int
     data_dims::Vector{NamedDimension}       = Vector{NamedDimension}()
+    data_dims_coordinates::Dict{String, Vector{String}} = Dict{String, Vector{String}}()
     parameters::Dict{String, Any}
-    grid::Union{Nothing, AbstractMesh}      = nothing
-    
+    grid::Union{Nothing, AbstractMesh}      = nothing    
     reactions::Vector{AbstractReaction}     = Vector{AbstractReaction}()    
     variables::Dict{String, VariableDomain} = Dict{String, VariableDomain}()
 end
 
 """
-    set_data_dimension!(domain::Domain, dim::NamedDimension; allow_exists=false)
+    set_data_dimension!(domain::Domain, dim::NamedDimension [, coordinates], ; allow_exists=false)
 
-Define a Domain data dimension as a [`NamedDimension`](@ref)
+Define a Domain data dimension as a [`NamedDimension`](@ref), optionally attaching a Vector of coordinate names.
 
 Variables may then specify data dimensions as a list of names using the `:data_dims` Variable Attribute.
 """
-function set_data_dimension!(domain::Domain, dim::NamedDimension; allow_exists=false)
+function set_data_dimension!(domain::Domain, dim::NamedDimension, coordinates::Vector{String} = String[]; allow_exists=false)
 
-    @info "set_data_dimension!:  setting Domain '$(domain.name)' data dimension '$dim'"
+    @info "set_data_dimension!:  setting Domain '$(domain.name)' data dimension '$dim' coordinates $coordinates"
 
     idx = findfirst(d -> d.name==dim.name, domain.data_dims)
 
@@ -44,17 +44,40 @@ function set_data_dimension!(domain::Domain, dim::NamedDimension; allow_exists=f
         domain.data_dims[idx] = dim
     end
 
+    delete!(domain.data_dims_coordinates, dim.name)
+    if !isempty(coordinates)
+        domain.data_dims_coordinates[dim.name] = coordinates
+    end
+
     return nothing
 end
-
-has_data_dimension(domain::Domain, dimname::AbstractString) =
-    !isnothing(findfirst(d -> d.name==dimname, domain.data_dims))
 
 function get_data_dimension(domain::Domain, dimname::AbstractString)
     idx = findfirst(d -> d.name==dimname, domain.data_dims)
     !isnothing(idx) ||
-            error("Domain $(domain.name) has no dimension='$dimname' (available dimensions: $(domain.data_dims)")
+            error("Domain $(domain.name) has no data_dimension='$dimname' (available data_dimensions: $(domain.data_dims)")
     return domain.data_dims[idx]
+end
+
+
+function get_dimensions(domain::Domain)
+    spatial_dims = isnothing(domain.grid) ? NamedDimension[] : get_dimensions(domain.grid)
+    return vcat(spatial_dims, domain.data_dims)
+end
+
+function get_dimension(domain::Domain, dimname::AbstractString)
+    ad = get_dimensions(domain)
+    idx = findfirst(d -> d.name==dimname, ad)
+    !isnothing(idx) ||
+            error("Domain $(domain.name) has no dimension='$dimname' (available dimensions: $ad")
+    return ad[idx]
+end
+
+function set_coordinates!(domain::Domain, dimname, coordinates::Vector{String})
+    idx = findfirst(nd -> nd.name == dimname, domain.data_dims)
+    !isnothing(idx) || error("set_coordinates! domain $(domain.name) has no data dimension $dimname")
+    domain.data_dims_coordinates[dimname] = coordinates
+    return nothing
 end
 
 function get_length(domain::Domain)
@@ -64,6 +87,7 @@ function get_length(domain::Domain)
         return domain.grid.ncells::Int
     end
 end
+
 
 "Get number of Domain variables"
 function get_num_variables(domain::Domain)
@@ -536,28 +560,46 @@ end
 # Pretty printing
 ############################'
 
-"compact form"
+ # compact form
 function Base.show(io::IO, domain::Domain)
     print(io, "Domain(name='", domain.name, "')")
 end
-"multiline form"
-function Base.show(io::IO, ::MIME"text/plain", domain::Domain)
+# multiline form
+function Base.show(io::IO, ::MIME"text/plain", domain::Domain; show_reactions=true, show_variables=true)
     println(io, "Domain")
     println(io, "  name='$(domain.name)'")
     println(io, "  ID=$(domain.ID)")
-    println(io, "  data_dims=", domain.data_dims)
-    println(io, "  grid=", isnothing(domain.grid) ? "<nothing>" : domain.grid)
-    println(io, "  reactions:")
-    for r in domain.reactions
-        println(io, "    ", r)
+    println(io, "  data_dims:")
+    for nd in domain.data_dims
+        println(io, "    ", nd)
+        if haskey(domain.data_dims_coordinates, nd.name)
+            println(io, "      coordinates: ", domain.data_dims_coordinates[nd.name])
+        end
     end
-    println(io, "  variables (VariableDomPropDep):")
-    for var in sort(get_variables(domain, v -> v isa VariableDomPropDep), by = v -> v.name)
-        println(io, "    ", var)
+    println(io, "  grid:")
+    if !isnothing(domain.grid)
+        iogrid = IOBuffer()
+        show(iogrid, MIME"text/plain"(), domain.grid)
+        seekstart(iogrid)
+        for line in eachline(iogrid)
+            println(io, "    ", line)
+        end
     end
-    println(io, "  variables (VariableDomContribTarget):")
-    for var in sort(get_variables(domain, v -> v isa VariableDomContribTarget), by = v -> v.name)
-        println(io, "    ", var)
+    if show_reactions
+        println(io, "  reactions:")
+        for r in domain.reactions
+            println(io, "    ", r)
+        end
+    end
+    if show_variables
+        println(io, "  variables (VariableDomPropDep):")
+        for var in sort(get_variables(domain, v -> v isa VariableDomPropDep), by = v -> v.name)
+            println(io, "    ", var)
+        end
+        println(io, "  variables (VariableDomContribTarget):")
+        for var in sort(get_variables(domain, v -> v isa VariableDomContribTarget), by = v -> v.name)
+            println(io, "    ", var)
+        end
     end
 end
 
@@ -575,7 +617,7 @@ Show table of Domain Variables. Optionally get variable links, data.
 """
 function show_variables(
     domain::Domain; 
-    attributes=[:units, :vfunction, :space, :field_data, :description],
+    attributes=[:units, :vfunction, :space, :data_dims, :field_data, :description],
     filter = attrb->true, 
     showlinks=false,
     modeldata=nothing

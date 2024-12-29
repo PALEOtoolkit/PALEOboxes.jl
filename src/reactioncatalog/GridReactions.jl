@@ -63,7 +63,13 @@ function PB.set_model_geometry(rj::ReactionCartesianGrid, model::PB.Model)
 
     grid = PB.Grids.CartesianGrid(
         PB.Grids.CartesianArrayGrid,
-        rj.pars.dimnames.v, rj.pars.dims.v
+        [
+            PB.NamedDimension(name, sz) 
+            for (name, sz) in PB.IteratorUtils.zipstrict(
+                rj.pars.dimnames.v, rj.pars.dims.v; 
+                errmsg="parameters 'dimnames' and 'dims' are not the same length"
+            )
+        ]
     )
     
     rj.domain.grid = grid
@@ -111,13 +117,15 @@ Base.@kwdef mutable struct ReactionGrid2DNetCDF{P} <: PB.AbstractReaction
             description="radius to calculate cell area from spherical geometry (if area_var = \"\")"),
     )
    
+    coord_varnames_values = nothing
+    coord_edges_varnames_values = nothing
 end
    
 function PB.set_model_geometry(rj::ReactionGrid2DNetCDF, model::PB.Model)
     @info "set_model_geometry $(PB.fullname(rj))"
 
     @info "  reading 2D grid from $(rj.pars.grid_file[])"
-    grid2D = PB.Grids.CartesianGrid(
+    grid2D, rj.coord_varnames_values, rj.coord_edges_varnames_values = PB.Grids.CartesianGrid(
         rj.pars.grid_type[],
         rj.pars.grid_file[], rj.pars.coordinate_names.v,
         equalspacededges=rj.pars.equalspacededges[]
@@ -125,8 +133,8 @@ function PB.set_model_geometry(rj::ReactionGrid2DNetCDF, model::PB.Model)
 
     if rj.pars.grid_type[] == PB.Grids.CartesianLinearGrid
         # define a linear index including every cell, in column-major order (first indices are consecutive in memory)
-        v_i = vec([i for i=1:grid2D.dims[1], j=1:grid2D.dims[2]])
-        v_j = vec([j for i=1:grid2D.dims[1], j=1:grid2D.dims[2]])
+        v_i = vec([i for i=1:grid2D.dimensions[1].size, j=1:grid2D.dimensions[2].size])
+        v_j = vec([j for i=1:grid2D.dimensions[1].size, j=1:grid2D.dimensions[2].size])
         PB.Grids.set_linear_index(grid2D, v_i, v_j)
     end
     
@@ -145,10 +153,22 @@ function PB.register_methods!(rj::ReactionGrid2DNetCDF)
         PB.VarPropScalarStateIndep("Asurf_total",  "m^2",  "total horizontal area of surface"),
     ]
 
+    coord_vars = [
+        PB.VarPropScalarStateIndep(coord_name,  "",  "coordinate variable"; 
+            attributes=(:field_data=>PB.ArrayScalarData, :data_dims=>(coord_name,), ))
+        for (coord_name, _) in rj.coord_varnames_values
+    ]
+
+    coord_edges_vars = [
+        PB.VarPropScalarStateIndep(coord_name,  "",  "coordinate edge variable";
+            attributes=(:field_data=>PB.ArrayScalarData, :data_dims=>(coord_name,), ))
+        for (coord_name, _) in rj.coord_edges_varnames_values
+    ]
+
     PB.add_method_setup!(
         rj,
         setup_grid_2DNetCDF,
-        (PB.VarList_namedtuple(grid_vars),)
+        (PB.VarList_namedtuple(grid_vars), PB.VarList_vector(coord_vars), PB.VarList_vector(coord_edges_vars))
     )
 
     return nothing
@@ -157,7 +177,7 @@ end
 function setup_grid_2DNetCDF(
     m::PB.ReactionMethod,
     pars,
-    (grid_vars, ),
+    (grid_vars, coord_vars, coord_edges_vars),
     cellrange::PB.AbstractCellRange,
     attribute_name
 )
@@ -172,20 +192,32 @@ function setup_grid_2DNetCDF(
     length(cellrange.indices) == grid2D.ncells ||
         error("tiled cellrange not supported")
 
+    for (coord_var, (coord_name, coord_values)) in PB.IteratorUtils.zipstrict(coord_vars, rj.coord_varnames_values)
+        coord_var .= coord_values
+    end
+
+    for (coord_edge_var, (coord_edge_name, coord_edge_values)) in PB.IteratorUtils.zipstrict(coord_edges_vars, rj.coord_edges_varnames_values)
+        coord_edge_var .= coord_edge_values
+    end
+
     if !isempty(pars.area_var[])
         NCDatasets.Dataset(pars.grid_file[]) do ds
             area2D = Array(ds[pars.area_var[]][:, :, 1])
-            grid_vars.Asurf .= cartesian_to_internal(rj.domain.grid, area2D)
+            grid_vars.Asurf .= PB.Grids.cartesian_to_internal(rj.domain.grid, area2D)
         end
-    else        
-        for i in cellrange.indices
-            lon_edges = PB.Grids.get_lon_edges(grid2D, i)
-            lat_edges = PB.Grids.get_lat_edges(grid2D, i)
+    elseif !isempty(coord_edges_vars)
+        lonedgevar, latedgevar = coord_edges_vars[[grid2D.londim, grid2D.latdim]]
+        for idx in cellrange.indices
+            lonidx = PB.Grids.get_lon_idx(grid2D, idx)
+            latidx = PB.Grids.get_lat_idx(grid2D, idx)
+            lon_edges = lonedgevar[lonidx:lonidx+1]
+            lat_edges = latedgevar[latidx:latidx+1]
             area = calc_spherical_area(pars.planet_radius[], lon_edges, lat_edges)
-            grid_vars.Asurf[i] = area
+            grid_vars.Asurf[idx] = area
         end
+    else
+        @warn "no area_var or coords edges specified, not calculating Asurf"
     end
-
     
     grid_vars.Asurf_total[] = sum(grid_vars.Asurf)
 
