@@ -924,9 +924,18 @@ end
 # multiline form
 function Base.show(io::IO, ::MIME"text/plain", model::Model)
     println(io, "Model")
-    println(io, "\tname='", model.name,"'")
-    println(io, "\tconfig_files='", model.config_files,"'")  
-    println(io, "\tdomains=", model.domains)
+    println(io, "  name: '", model.name,"'")
+    println(io, "  config_files: '", model.config_files,"'")  
+    println(io, "  domains:")
+    for dom in model.domains
+        iodom = IOBuffer()
+        show(iodom, MIME"text/plain"(), dom; show_reactions=false, show_variables=false)
+        seekstart(iodom)
+        for line in eachline(iodom)
+            println(io, "    ", line)
+        end
+    end
+    return nothing
 end
 
 """

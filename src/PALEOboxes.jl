@@ -203,7 +203,7 @@ end
     rdict = find_all_reactions()
     reactionlist = [
         "ReactionFluxTransfer", "ReactionReservoirScalar", "ReactionFluxPerturb", "ReactionReservoir",
-        "ReactionReservoirForced", "ReactionSum", "ReactionFluxTarget", "ReactionForceInterp", "ReactionGrid2DNetCDF",
+        "ReactionReservoirForced", "ReactionSum", "ReactionFluxTarget", "ReactionForceInterp",
         "ReactionAreaVolumeValInRange", "ReactionReservoirWellMixed", "ReactionForceGrid", "ReactionConst", 
         "ReactionRestore", "ReactionScalarConst", "ReactionVectorSum", "ReactionWeightedMean",
         "ReactionReservoirTotal", "ReactionUnstructuredVectorGrid", "ReactionCartesianGrid", "ReactionReservoirConst",

@@ -21,6 +21,25 @@ CurrentModule = PALEOboxes
 Domain
 ```
 
+### Dimensions and Coordinates
+
+PALEO approximately follows the [Common Data Model](https://docs.unidata.ucar.edu/netcdf-c/current/netcdf_data_model.html) used by NetCDF and other geoscience data formats.
+
+Domains provide named dimensions, to which coordinate variables may be attached (these are just normal PALEO variables).
+- Domain spatial dimensions are provided by the Domain grid (see `Grids`)
+- Additional Domain data dimensions (eg a wavelength grid) may be set by Reactions (see [`set_data_dimension!`](@ref)).
+
+```@meta
+CurrentModule = PALEOboxes
+```
+```@docs
+NamedDimension
+get_dimensions
+get_dimension
+get_coordinates
+set_coordinates!
+```
+
 ### Grids
 ```@meta
 CurrentModule = PALEOboxes
@@ -28,8 +47,12 @@ CurrentModule = PALEOboxes
 ```@docs
 AbstractMesh
 
+Grids.available_spaces
+has_internal_cartesian
 internal_size
 cartesian_size
+Grids.cartesian_to_internal
+Grids.internal_to_cartesian
 ```
 ```@meta
 CurrentModule = PALEOboxes.Grids
@@ -59,23 +82,6 @@ BoundarySubdomain
 InteriorSubdomain
 subdomain_view
 subdomain_indices
-```
-
-#### Regions, Dimensions and Coordinates
-```@meta
-CurrentModule = PALEOboxes.Grids
-```
-```@docs
-get_region
-```
-
-Grids may define name dimensions and attach coordinates for the convenience of output visualisation. Any coordinate information required by Reactions should be supplied as Variables.
-```@meta
-CurrentModule = PALEOboxes
-```
-```@docs
-NamedDimension
-FixedCoord
 ```
 
 ## Variables
@@ -148,7 +154,6 @@ Examples:
 ```@docs
 Field
 get_field
-wrap_field
 ```
 
 ## Spaces

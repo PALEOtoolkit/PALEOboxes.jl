@@ -170,7 +170,7 @@ function _prepare_data(rj::ReactionForceGrid, ds)
 
     # NB: A PALEO Cartesian Grid may define an internal_size for model Variables that has different dimensions (eg a linear Vector)
     # to the n-D cartesian_size of the forcings read from the NetCDF file 
-    ncartesiandims = length(PB.cartesian_size(rj.domain.grid))  # as read from NetCDF
+    ncartesiandims = length(PB.cartesian_size(PB.CellSpace, rj.domain.grid))  # as read from NetCDF
     cartesiancolons = fill(Colon(), ncartesiandims)
     ninternaldims = length(PB.internal_size(PB.CellSpace, rj.domain.grid)) # PALEO array layout
     internalcolons = fill(Colon(), ninternaldims)

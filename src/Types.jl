@@ -100,6 +100,8 @@ end
 abstract type AbstractMesh
 end
 
+const AbstractMeshOrNothing = Union{AbstractMesh, Nothing}
+
 """
     function get_mesh(obj, ...)
 
@@ -154,6 +156,7 @@ end
 Return a Tables.jl data table view for PALEO object `obj`
 """
 function get_table end
+
 
 #############################################
 # ReactionMethodDispatchList

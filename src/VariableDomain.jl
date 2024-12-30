@@ -101,6 +101,14 @@ function host_dependent(var::VariableDomContribTarget)
     return isnothing(var.var_target)
 end
 
+function get_dimensions(v::VariableDomain; expand_cartesian=false)
+    dims = NamedDimension[]
+    append!(dims, PB.get_dimensions(v.domain.grid, v.attributes[:space]))
+    for ddn in v.attributes[:data_dims]
+        append!(get_data_dimension(v.domain, ddn))
+    end
+    return dims
+end
 
 ################################################
 # Field and data access
@@ -123,15 +131,13 @@ end
 """
     set_data!(var::VariableDomain, modeldata, arrays_idx::Int, data)
  
-Set [`VariableDomain`](@ref) to a Field containing `data`.
-
-Calls [`wrap_field`](@ref) to create a new [`Field`](@ref).
+Set [`VariableDomain`](@ref) to a newly-created [`Field`](@ref) containing `data`.
 """
 function set_data!(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int, data)
 
     variable_data = get_domaindata(modeldata, var.domain, arrays_idx).variable_data
 
-    variable_data[var.ID] =  wrap_field(
+    variable_data[var.ID] =  Field(
         data,
         get_attribute(var, :field_data),
         Tuple(get_data_dimension(domain, dn) for dn in get_attribute(var, :data_dims)),
@@ -253,7 +259,7 @@ function allocate_variables!(
         check_units(v; check_units_opt)
 
         data_dims = Tuple(
-            get_data_dimension(v.domain, dimname) 
+            get_dimension(v.domain, dimname) 
             for dimname in get_attribute(v, :data_dims)
         )
     
@@ -290,7 +296,7 @@ function allocate_variables!(
             v_field = get_field(v, modeldata, 1)
         else
             # allocate new field array
-            v_field = allocate_field(
+            v_field = Field(
                 field_data, data_dims, mdeltype, space, v.domain.grid;
                 allocatenans=modeldata.allocatenans
             )
