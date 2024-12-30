@@ -30,9 +30,16 @@ TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
+[weakdeps]
+CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
+
+[extensions]
+CommonDataModelExt = "CommonDataModel"
+
 [compat]
 Atomix = "0.1, 1.0"
 BenchmarkTools = "1.0"
+CommonDataModel = "0.3.7"
 DataFrames = "1.1"
 DocStringExtensions = "0.8, 0.9"
 Documenter = "1"
@@ -52,12 +59,13 @@ StructArrays = "0.6, 0.7"
 TestEnv = "1.0"
 TimerOutputs = "0.5"
 YAML = "0.4.7"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
+CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Documenter", "Logging", "Test"]
+test = ["CommonDataModel", "Documenter", "Logging", "Test"]
