@@ -30,16 +30,9 @@ TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
-[weakdeps]
-CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
-
-[extensions]
-CommonDataModelExt = "CommonDataModel"
-
 [compat]
 Atomix = "0.1, 1.0"
 BenchmarkTools = "1.0"
-CommonDataModel = "0.3.7"
 DataFrames = "1.1"
 DocStringExtensions = "0.8, 0.9"
 Documenter = "1"
