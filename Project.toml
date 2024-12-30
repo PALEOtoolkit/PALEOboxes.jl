@@ -52,13 +52,12 @@ StructArrays = "0.6, 0.7"
 TestEnv = "1.0"
 TimerOutputs = "0.5"
 YAML = "0.4.7"
-julia = "1.10"
+julia = "1.6"
 
 [extras]
-CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["CommonDataModel", "Documenter", "Logging", "Test"]
+test = ["Documenter", "Logging", "Test"]
