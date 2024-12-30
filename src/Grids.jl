@@ -684,24 +684,25 @@ function CartesianGrid(
 end
   
 """
-    CartesianGrid(GridType, ncfilename::AbstractString, dimnames::Vector{<:AbstractString}; equalspacededges=false) -
-        > grid::GridType, coord_vars, coord_edges_vars
+    CartesianGrid(GridType, ncfilename::AbstractString, dimnames::Vector{<:AbstractString};
+        equalspacededges=false, convert_edges_to_bounds=false) -> grid::GridType, coord_vars, coord_edges_bounds_vars
 
 Read a netcdf file with CF1.0 coordinates, and create corresponding a CartesianLinearGrid or CartesianArrayGrid from dimensions `dimnames`.
-`coord_vars` and optional `coord_edges_vars` are Vectors of `coorddimname=>values` for creating coordinate variables.
+`coord_vars` and optional `coord_edges_bounds_vars` are Vectors of `coorddimname => values` for creating coordinate variables.
 """
 function CartesianGrid(
     GridType::Type{<:Union{CartesianLinearGrid, CartesianArrayGrid}},
     ncfilename::AbstractString, 
     dimnames::Vector{<:AbstractString};
-    equalspacededges=false
+    equalspacededges=false,
+    convert_edges_to_bounds=false,
 )   
     @info "CartesianGrid creating $GridType{$(length(dimnames))} from dimnames=$dimnames in netcdf file $(ncfilename)"
 
     grid = GridType{length(dimnames)}()
 
     coord_vars = []
-    coord_edges_vars = []
+    coord_edges_bounds_vars = []
 
     NCDatasets.Dataset(ncfilename) do ds
         # read dimensions and coordinates
@@ -713,20 +714,43 @@ function CartesianGrid(
             grid.dimensions[i] = PB.NamedDimension(dimname, dim)
             v_cf = ds[dimname]
             coord_vals = Array(v_cf)
+            @assert ndims(coord_vals) == 1
+            coord_vals = [cv for cv in coord_vals] # narrow type to eliminate unnecessary Missing
             push!(coord_vars, dimname=>coord_vals)
             if haskey(v_cf.attrib, "edges")
                 edgesname = v_cf.attrib["edges"]
-                edgesdim = ds.dim[edgesname]
+                edgesdim = ds.dim[edgesname]            
                 @info "  reading coordinate edges from $edgesname = $edgesdim"
-                push!(grid.dimensions_extra,  PB.NamedDimension(edgesname, edgesdim))
-                push!(coord_edges_vars, edgesname=>Array(ds[edgesname]))
+                edges_vals = Array(ds[edgesname])              
+                @assert size(edges_vals) == (edgesdim, )
+                edges_vals = [ev for ev in edges_vals]
+                if convert_edges_to_bounds
+                    boundsname = dimname*"_bnds"
+                    @info "    converting edges to bounds $boundsname"
+                    coord_bounds = similar(coord_vals, eltype(coord_vals), 2, length(coord_vals))
+                    coord_bounds[1, :] = edges_vals[1:end-1]
+                    coord_bounds[2, :] = edges_vals[2:end]
+                    push!(coord_edges_bounds_vars, boundsname => coord_bounds)
+                else
+                    push!(grid.dimensions_extra,  PB.NamedDimension(edgesname, edgesdim))
+                    push!(coord_edges_bounds_vars, edgesname => edges_vals)
+                end
             elseif equalspacededges
-                edgesname = dimname*"_edges"
                 ew = coord_vals[2] - coord_vals[1]
-                edgesvals = [coord_vals .- ew/2.0; coord_vals[end] + ew/2.0 ]
-                @info "  assuming equal spacing $ew to calculate coordinate edges $edgesname"
-                push!(grid.dimensions_extra,  PB.NamedDimension(edgesname, dim+1))
-                push!(coord_edges_vars, edgesname=>edgesvals)
+                if convert_edges_to_bounds
+                    boundsname = dimname*"_bnds"
+                    @info "  assuming equal spacing $ew to calculate coordinate bounds $boundsname"
+                    coord_bounds = similar(coord_vals, eltype(coord_vals), 2, length(coord_vals))
+                    coord_bounds[1, :] = coord_vals .- ew/2.0
+                    coord_bounds[2, :] = coord_vals .+ ew/2.0
+                    push!(coord_edges_bounds_vars, boundsname => coord_bounds)
+                else
+                    edgesname = dimname*"_edges"
+                    @info "  assuming equal spacing $ew to calculate coordinate edges $edgesname"
+                    edges_vals = [coord_vals .- ew/2.0; coord_vals[end] + ew/2.0 ]
+                    push!(grid.dimensions_extra,  PB.NamedDimension(edgesname, dim + 1))
+                    push!(coord_edges_bounds_vars, edgesname => edges_vals)
+                end
             else
                 @info "   no edges attribute and equalspacededges=false"
             end
@@ -760,7 +784,7 @@ function CartesianGrid(
         grid.ncells = prod(grid_size)
     end
 
-    return grid, coord_vars, coord_edges_vars
+    return grid, coord_vars, coord_edges_bounds_vars
 end
 
 """

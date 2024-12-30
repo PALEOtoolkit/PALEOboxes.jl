@@ -2,6 +2,17 @@
 const PaleoArrayType = Array
 
 ################################
+# CommonDataModel adaptor
+################################
+
+"""
+    CDModel(x)
+
+Create a CommonDataModel adaptor for PALEO object x
+"""
+function CDModel end
+
+################################
 # Parameters
 ###############################
 

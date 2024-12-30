@@ -16,7 +16,11 @@ struct NamedDimension
 end
 
 function Base.show(io::IO, nd::NamedDimension)
-    print(io, "NamedDimension(name=", nd.name, ", size=", nd.size, ")")
+    if get(io, :typeinfo, nothing) === NamedDimension
+        print(io, "(name=", nd.name, ", size=", nd.size, ")")
+    else
+        print(io, "NamedDimension(name=", nd.name, ", size=", nd.size, ")")
+    end
     return nothing
 end
 
