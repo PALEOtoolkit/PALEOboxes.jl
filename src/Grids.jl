@@ -321,12 +321,12 @@ function _show_subdomains_dimensions_coordinates(io, grid::PB.AbstractMesh)
 end
 
 # generic fallback for named cells 
-substitute_cell_names(grid::PB.AbstractMesh, cells) = cells
-substitute_cell_names(grid::PB.AbstractMesh, cells::Union{Number, Symbol}) =
+substitute_cell_names(grid::PB.AbstractMeshOrNothing, cells) = cells
+substitute_cell_names(grid::PB.AbstractMeshOrNothing, cells::Union{Number, Symbol}) =
     substitute_cell_names(grid, [cells])[]
 
 # generic fallback for column indices
-function column_indices(grid::PB.AbstractMesh, column)
+function column_indices(grid::PB.AbstractMeshOrNothing, column)
     throw(ArgumentError("grid $grid does not support column selection"))
 end
 
