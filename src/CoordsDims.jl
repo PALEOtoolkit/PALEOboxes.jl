@@ -50,7 +50,7 @@ PALEO convention is that where possible `coordinates` contains:
 function set_coordinates! end
 
 """
-    function get_coordinates(obj, dimname) -> coordinates::Vector{String}
+    function get_coordinates(obj, dimname) -> coordinates::Vector
 
 Get coordinates (if any) attached to `dimname` for PALEO object `obj`
 
