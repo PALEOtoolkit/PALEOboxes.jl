@@ -308,8 +308,8 @@ const USE_SLEEF = @Preferences.load_preference("USE_SLEEF", false)
     sleeflog10(v::FP32P4_d)   = ccall((:Sleef_log10f4_u10, SLEEF_jll.libsleef), FP32P4_d, (FP32P4_d,), v)
     Base.log10(v::FP32P4)     = SIMD.Vec(sleeflog10(v.data))
 else
-    @info "$(@__MODULE__) Using defaults (probably slow scalar fallbacks) for SIMD log, exp, log10 functions"*
-        " - to enable Sleef library, set USE_SLEEF = true in LocalPreferences.toml and restart your Julia session"
+    # @info "$(@__MODULE__) Using defaults (probably slow scalar fallbacks) for SIMD log, exp, log10 functions"*
+    #    " - to enable Sleef library, set USE_SLEEF = true in LocalPreferences.toml and restart your Julia session"
 end
 
 end # module
