@@ -6,6 +6,11 @@ Helper functions to pack and unpack vector data to enable use of SIMD instructio
 """
 module SIMDutils
 
+using ...PALEOboxes: @public
+
+@public FP64P2, FP64P4, FP32P4, FP32P8
+@public SIMDIter, vgatherind, vscatterind!, vaddind!
+
 import SLEEF_jll
 import SIMD
 import Preferences

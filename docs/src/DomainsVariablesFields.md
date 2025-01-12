@@ -182,8 +182,6 @@ allocate_values
 check_values
 zero_values!
 dof_values
-get_values_output
-
 
 init_values!
 copyfieldto!

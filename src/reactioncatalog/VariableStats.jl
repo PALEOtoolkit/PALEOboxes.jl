@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 module VariableStats
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
 using ..DocStrings
-
-import Infiltrator # Julia debugger
 
 
 """

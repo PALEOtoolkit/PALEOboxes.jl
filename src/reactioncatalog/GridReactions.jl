@@ -1,10 +1,10 @@
 module GridReactions
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 using ..DocStrings
 
-import Infiltrator # Julia debugger
-
+@public ReactionUnstructuredVectorGrid, ReactionCartesianGrid, ReactionGrid2DNetCDF
 
 """
     ReactionUnstructuredVectorGrid

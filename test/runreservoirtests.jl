@@ -4,7 +4,6 @@ using Logging
 
 import PALEOboxes as PB
 
-import Infiltrator
 
 include("ReactionReservoirFlux.jl")
 

@@ -22,8 +22,6 @@ Derived types should implement [`register_methods!`](@ref), and may optionally i
 [`set_model_geometry`](@ref), [`check_configuration`](@ref), [`register_dynamic_methods!`](@ref).
 
 Methods should be registered using [`add_method_setup!`](@ref), [`add_method_initialize!`](@ref), [`add_method_do!`](@ref).
-
-Any parameters not included in `pars` should be added explicitly with [`add_par`](@ref) (this is rarely needed).
 """
 AbstractReaction
 
@@ -46,8 +44,6 @@ Base.@kwdef mutable struct ReactionBase
     classname::String
     "external parameters and values supplied from Model or Domain"
     external_parameters::Dict{String, Any}          = Dict{String, Any}()
-    "Reaction parameters"
-    parameters::Vector{AbstractParameter}           = Vector{AbstractParameter}()
 
     methods_setup::Vector{AbstractReactionMethod}   = Vector{AbstractReactionMethod}()
     methods_initialize::Vector{AbstractReactionMethod}=Vector{AbstractReactionMethod}()
@@ -101,20 +97,29 @@ end
 ##########################################################
 
 "Get all parameters"
-get_parameters(@nospecialize(reaction::AbstractReaction)) = reaction.base.parameters
+function get_parameters(@nospecialize(reaction::AbstractReaction))
+    if hasfield(typeof(reaction), :pars)
+        all_parameters = AbstractParameter[v for v in getfield(reaction, :pars)::NamedTuple]
+    else
+        all_parameters = AbstractParameter[]
+    end
+
+    return all_parameters
+end
 
 "Get parameter by name"
-function get_parameter(@nospecialize(reaction::AbstractReaction), parname::AbstractString; allow_not_found=false)
-    matchpars = filter(p -> p.name==parname, reaction.base.parameters)
-    
-    length(matchpars) <= 1 ||
-        error("coding error: duplicate parameter name '$(name)' for Reaction: ", reaction)
-    
-    !isempty(matchpars) || allow_not_found ||
-        error("configuration error, Reaction $(fullname(reaction)) $(reaction)\n",
-            "has no parameter name='$(parname)' (available parameters $([p.name for p in get_parameters(reaction)]))")
+function get_parameter(reaction::AbstractReaction, parname::AbstractString; allow_not_found=false)
 
-    return isempty(matchpars) ? nothing : matchpars[1]
+    if hasfield(typeof(reaction), :pars) && hasfield(typeof(reaction.pars), Symbol(parname))
+        par = getfield(reaction.pars, Symbol(parname))
+    else
+        allow_not_found ||
+            error("configuration error, Reaction $(fullname(reaction)) $(reaction)\n",
+                "has no parameter name='$(parname)' (available parameters $([p.name for p in get_parameters(reaction)]))")
+        par = nothing
+    end
+
+    return par
 end
 
 set_parameter_value!(@nospecialize(reaction::AbstractReaction), parname::AbstractString, value) = 
@@ -247,34 +252,6 @@ end
 ########################################################################################
 # Helper functions to allow a Reaction implementation to populate Parameter and ReactionMethod lists
 #########################################################################################
-
-"""
-    add_par(reaction::AbstractReaction, par::AbstractParameter)
-    add_par(reaction::AbstractReaction, objectwithpars)
-
-Add a single parameter or parameters from fields of `objectwithpars` to a new Reaction.
-
-Not usually needed: Parameters in `pars::ParametersTuple`` will be added automatically, only needed if there are additional
-Parameters that are not members of `pars`.
-"""
-function add_par(@nospecialize(reaction::AbstractReaction), par::AbstractParameter)
-    
-    if isnothing(get_parameter(reaction, par.name, allow_not_found=true))
-        push!(reaction.base.parameters, par)
-    else
-        error("attempt to add duplicate parameter name=''", par.name, "'' to reaction", reaction)
-    end
-
-    return nothing
-end
-
-function add_par(@nospecialize(reaction::AbstractReaction), objectwithpars)
-    for f in fieldnames(typeof(objectwithpars))
-        if getfield(objectwithpars, f) isa AbstractParameter
-            add_par(reaction, getfield(objectwithpars, f))
-        end
-    end
-end
 
 
 """

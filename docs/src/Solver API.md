@@ -115,5 +115,4 @@ CurrentModule = PALEOboxes
 ```@docs
 set_data!
 get_data
-get_data_output
 ```

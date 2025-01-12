@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 module Reservoirs
 
-import PALEOboxes as PB
-
-import Infiltrator # Julia debugger
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 
 using ..DocStrings
+
+@public ReactionReservoirScalar, ReactionReservoir, ReactionReservoirTotal, ReactionReservoirConst, 
+    ReactionReservoirForced, ReactionReservoirWellMixed, ReactionConst, ReactionScalarConst
 
 """
     ReactionReservoirScalar

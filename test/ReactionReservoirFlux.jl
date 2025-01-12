@@ -1,4 +1,4 @@
-module ReactionRateStoichMockModule
+module ReactionReservoirFluxModule
 
 import PALEOboxes as PB
 

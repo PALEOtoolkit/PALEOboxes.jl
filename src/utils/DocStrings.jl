@@ -14,7 +14,7 @@ so may fail if this call fails with default parameters.
 """
 module DocStrings
     import DocStringExtensions as DSE
-    import PALEOboxes as PB
+    import ...PALEOboxes as PB
 
     struct Pars <: DSE.Abbreviation end
 
@@ -29,9 +29,7 @@ module DocStrings
 
         try
             rj = PB.create_reaction(object, PB.ReactionBase(name="test", classname="test", external_parameters=Dict{String, Any}()))
-            if hasproperty(rj, :pars)
-                PB.add_par(rj, rj.pars)
-            end
+
             # println(buf, "$object  $(length(PB.get_parameters(rj))) Parameters" )
             for p in PB.get_parameters(rj)
                 md = "- `$(p.name)["
@@ -67,9 +65,6 @@ module DocStrings
             # println(buf, "PARS binding $binding object $object")
 
             rj = PB.create_reaction(object, PB.ReactionBase(name="test", classname="test", external_parameters=Dict{String, Any}()))
-            if hasproperty(rj, :pars)
-                PB.add_par(rj, rj.pars)
-            end
             
             d = PB.Domain(name="test", ID=1, parameters=Dict{String, Any}())
             rj.base.domain = d

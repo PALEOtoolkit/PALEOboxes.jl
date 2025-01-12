@@ -1,9 +1,11 @@
 module FluxPerturb
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 
 using ..DocStrings
 
+@public ReactionFluxPerturb, ReactionRestore
 
 """
     ReactionFluxPerturb

@@ -35,13 +35,17 @@ Naming conventions for Earth system fluxes:
 """
 module Fluxes
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
+
 import SparseArrays
 import LinearAlgebra # for I
 
-import Infiltrator # Julia debugger
-
 using ..DocStrings
+
+@public ReactionFluxTarget, ReactionFluxTransfer
+@public FluxContrib, FluxContribScalar, FluxTarget, FluxTargetScalar
+
 """
     FluxContrib(
         fluxprefix::AbstractString, flux_list;

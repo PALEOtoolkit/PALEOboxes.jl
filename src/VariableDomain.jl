@@ -174,15 +174,7 @@ Get Variable `var` data array from [`Field`](@ref).values
 get_data(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) = get_field(var, modeldata, arrays_idx).values
 get_data(var::VariableDomain, domaindata::AbstractDomainData) = get_field(var, domaindata).values
 
-"""
-    get_data_output(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int) -> get_values_output(field.values)
-    get_data_output(var::VariableDomain, domaindata::AbstractDomainData) -> get_values_output(field.values)
 
-Get a sanitized version of Variable `var` data array for storing as output
-from [`get_values_output`]@ref)`(`[`Field`](@ref).values`)`
-"""
-get_data_output(var::VariableDomain, modeldata::AbstractModelData, arrays_idx::Int=1) = get_values_output(get_field(var, modeldata, arrays_idx))
-get_data_output(var::VariableDomain, domaindata::AbstractDomainData) = get_values_output(get_field(var, domaindata))
 
 ####################################################################
 # Create and add to Domain
