@@ -61,7 +61,7 @@ end
 
 @public AbstractCellRange, create_default_cellrange, CellRange, CellRangeColumns
 
-@public Reservoirs, Fluxes, FluxPerturb, Forcings, GridForcings, GridReactions
+@public Reservoirs, Fluxes, FluxPerturb, Forcings, GridForcings, GridReactions, VariableStats
 
 @public AbstractReaction, ReactionBase, get_reaction, set_model_geometry, register_methods!, register_dynamic_methods!,
     add_method_setup!, add_method_initialize!, add_method_do!, create_reaction
@@ -91,7 +91,7 @@ end
 @public AbstractReactionMethod, ReactionMethod
 @public add_method_setup_initialvalue_vars_default!, add_method_initialize_zero_vars_default!, add_method_do_totals_default!
 @public RateStoich, create_ratestoich_method, parse_number_name
-@public LinInterp, interp, value_ad, zero_ad
+@public LinInterp, interp, value_ad, zero_ad, smoothstepcubic
 
 @public AbstractField, Field, get_field, add_field!
 

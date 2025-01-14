@@ -2,8 +2,10 @@
 module VariableStats
 
 import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 using ..DocStrings
 
+@public ReactionSum, ReactionVectorSum, ReactionWeightedMean, ReactionAreaVolumeValInRange
 
 """
     ReactionSum, ReactionVectorSum

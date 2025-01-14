@@ -39,7 +39,7 @@ import ...PALEOboxes as PB
 using ...PALEOboxes: @public
 
 import SparseArrays
-import LinearAlgebra # for I
+using LinearAlgebra: I
 
 using ..DocStrings
 
@@ -432,7 +432,7 @@ function prepare_do_transfer(m::PB.ReactionMethod, (input_vardata, output_vardat
         elseif rj.pars.transfer_matrix[] == "Identity"
             input_length == output_length || 
                 PB.infoerror(io, "$(PB.fullname(m)) Identity transfer_matrix but Variable lengths don't match (input, output) $(input_length) != $(output_length)")
-            rj.transfer_matrix_tr = SparseArrays.sparse(LinearAlgebra.I, input_length, output_length).*rj.pars.transfer_multiplier[]
+            rj.transfer_matrix_tr = SparseArrays.sparse(I, input_length, output_length).*rj.pars.transfer_multiplier[]
             println(io, "    using Identity transfer matrix * $(rj.pars.transfer_multiplier[])")
         elseif rj.pars.transfer_matrix[] == "Distribute"
             rj.transfer_matrix_tr = SparseArrays.sparse(ones(input_length, output_length)./output_length.*rj.pars.transfer_multiplier[])
