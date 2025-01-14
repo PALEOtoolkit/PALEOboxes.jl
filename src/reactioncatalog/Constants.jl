@@ -35,7 +35,7 @@ const k_SurfAreaEarth = 5.101e14
 
 "ppm pre-industrial pCO2"
 const pCO2atm0        = 280e-6
-# const k16_PANtoO      = 3.762      #
+const k16_PANtoO      = 3.762      #
 "COPSE kg Ocean total mass"
 const k18_oceanmass   = 1.397e21
 "COPSE Moles in 1 atm"
