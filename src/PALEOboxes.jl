@@ -32,6 +32,84 @@ import Atomix
 import PrecompileTools
 import TimerOutputs: @timeit, @timeit_debug
 
+# https://discourse.julialang.org/t/is-compat-jl-worth-it-for-the-public-keyword/119041/22
+# define @public for backwards compatibility with Julia < v1.11
+macro public(ex)
+    if VERSION >= v"1.11"
+        args = ex isa Symbol ? (ex,) : Base.isexpr(ex, :tuple) ? ex.args : error("@public parse error")
+        esc(Expr(:public, args...))
+    else
+        nothing
+    end
+end
+
+@public DocStrings
+
+@public AbstractModel, Model, create_model_from_config, check_variable_links, check_ready, initialize_reactiondata!
+@public DispatchMethodLists, dispatch_setup, create_dispatch_methodlists, do_deriv, dispatch_methodlist
+@public get_num_domains, show_methods_setup, show_methods_initialize, show_methods_do, show_variables, show_links, show_parameters
+@public get_data, get_table
+
+@public AbstractDomain, get_domain, AbstractSubdomain, set_data_dimension!, get_data_dimension
+
+@public VariableDomain, VariableDomPropDep, VariableDomContribTarget, set_data!, allocate_variables!
+@public VariableAggregator, VariableAggregatorNamed, ParameterAggregator
+
+@public NamedDimension, get_dimensions, get_dimension, set_coordinates!, get_coordinates
+
+@public AbstractMesh, AbstractMeshOrNothing, AbstractSubdomain, get_mesh, has_internal_cartesian, internal_size, cartesian_size, Grids
+
+@public AbstractCellRange, create_default_cellrange, CellRange, CellRangeColumns
+
+@public Reservoirs, Fluxes, FluxPerturb, Forcings, GridForcings, GridReactions, VariableStats
+
+@public AbstractReaction, ReactionBase, get_reaction, set_model_geometry, register_methods!, register_dynamic_methods!,
+    add_method_setup!, add_method_initialize!, add_method_do!, create_reaction
+@public show_all_reactions, doc_reaction
+
+@public AbstractParameter, Parameter, ParametersTuple, 
+    ParBool, ParDouble, ParInt, ParString, ParEnum, ParDoubleVec, ParDoubleVecVec, ParIntVec, ParStringVec,
+    setvalue!, setvalueanddefault!, setfrozen!, set_parameter_value!, get_parameter_value
+
+@public VariableBase, show_variable, get_variable, get_variables, has_variable, get_reaction_variables
+@public VariableType, VariableFunction, VariablePhase
+@public Attribute, StandardAttributes, get_attribute, set_attribute!, has_attribute, set_variable_attribute!, get_variable_attribute
+@public VariableReaction, 
+    VarProp, VarPropScalar, VarPropStateIndep, VarPropScalarStateIndep,
+    VarDep, VarDepColumn, VarDepScalar, VarDepStateIndep, VarDepColumnStateIndep, VarDepScalarStateIndep,
+    VarTarget, VarTargetScalar,
+    VarContrib, VarContribColumn, VarContribScalar,
+    VarStateExplicit, VarStateExplicitScalar,
+    VarTotal, VarTotalScalar,
+    VarStateTotal, VarStateTotalScalar,
+    VarDeriv, VarDerivScalar,
+    VarState, VarStateScalar,
+    VarConstraint, VarConstraintScalar
+@public AbstractVarList, Varlist_single, VarList_namedtuple, VarList_namedtuple_fields, VarList_components, VarList_tuple, VarList_vector,
+    VarList_ttuple, VarList_vvector, VarList_nothing, VarList_tuple_nothing, VarList_fields
+
+@public AbstractReactionMethod, ReactionMethod
+@public add_method_setup_initialvalue_vars_default!, add_method_initialize_zero_vars_default!, add_method_do_totals_default!
+@public RateStoich, create_ratestoich_method, parse_number_name
+@public LinInterp, interp, value_ad, zero_ad, smoothstepcubic
+
+@public AbstractField, Field, get_field, add_field!
+
+@public AbstractSpace, ScalarSpace, CellSpace, ColumnSpace
+
+@public AbstractData, allocate_values, check_values, check_data_type, init_values!, zero_values!, dof_values!, 
+    copyfieldto!, copytofield!, add_field_vec!, num_components, get_components
+@public UndefinedData, ScalarData, AbstractIsotopeScalar, IsotopeLinear, ArrayScalarData
+@public isotope_totaldelta, get_total, get_delta
+
+@public AbstractModelData, ModelData, create_modeldata, add_arrays_data!
+
+@public Constants, TestUtils, IteratorUtils, ChemistryUtils, DocStrings, SIMDutils
+
+@public collate_markdown, precompile_reaction, run_model
+
+
+
 include("utils/DocStrings.jl")
 
 include("Types.jl")
@@ -47,7 +125,7 @@ include("VariableReaction.jl")
 include("VariableDomain.jl")
 
 include("Parameter.jl")
-include("ParameterAggregator.jl")
+include("variableaggregators/ParameterAggregator.jl")
 
 include("ReactionMethodSorting.jl")
 include("Model.jl")
@@ -76,20 +154,8 @@ include("variableaggregators/VariableAggregator.jl")
 
 include("reactioncatalog/Reactions.jl")
 
-# Deprecated functions
-"""
-    get_statevar
+include("deprecated.jl")
 
-DEPRECATED - moved to PALEOmodel
-"""
-function get_statevar end
-
-"""
-    get_statevar_norm
-
-DEPRECATED - moved to PALEOmodel
-"""
-function get_statevar_norm end
 
 #####################################################
 # Precompilation

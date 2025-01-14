@@ -23,7 +23,6 @@ Parameter
 VecParameter
 VecVecParameter
 ParametersTuple
-add_par
 setvalue!
 ```
 

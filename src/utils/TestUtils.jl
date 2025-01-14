@@ -9,7 +9,10 @@ module TestUtils
 using BenchmarkTools
 using InteractiveUtils
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
+
+@public bench_method, bench_model, check_round, check_true
 
 "repeatedly call `dispatch_methodlist` `N` times to generate a long-duration run for profiling"
 function profile_dispatchlist(dispatchlist, N, deltat::Float64=0.0)

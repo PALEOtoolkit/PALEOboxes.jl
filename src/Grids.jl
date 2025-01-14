@@ -1,9 +1,14 @@
 module Grids
 
 import NCDatasets
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 
-import Infiltrator # Julia debugger
+@public available_spaces
+@public create_default_cellrange, get_tiled_cellranges
+@public BoundarySubdomains, InteriorSubdomain, set_subdomain!, get_subdomain
+@public UnstructuredVectorGrid, UnstructuredColumnGrid, CartesianLinearGrid, CartesianArrayGrid
+@public cartesian_to_internal, internal_to_cartesian, substitute_cell_names, column_indices
 
 ###########################
 # Subdomains

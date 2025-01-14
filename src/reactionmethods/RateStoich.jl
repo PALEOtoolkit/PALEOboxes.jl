@@ -1,4 +1,4 @@
-import Infiltrator
+
 """
     RateStoich(
         ratevartemplate, stoich_statevarname;

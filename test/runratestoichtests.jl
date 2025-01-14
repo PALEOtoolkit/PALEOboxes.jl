@@ -1,7 +1,6 @@
 import PALEOboxes as PB
 using Test
 
-# import Infiltrator
 include("ReactionRateStoichMock.jl")
 
 

@@ -1,8 +1,11 @@
 module Forcings
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 
 using ..DocStrings
+
+@public ReactionForceInterp
 
 """
     ReactionForceInterp

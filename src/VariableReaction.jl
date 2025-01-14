@@ -1,4 +1,3 @@
-# import Infiltrator
 
 #############################################
 # VariableReaction

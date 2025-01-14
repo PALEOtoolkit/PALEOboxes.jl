@@ -99,7 +99,7 @@ end
 
 Create and configure a reaction.
 
-Sets `ReactionBase` with name, classname, external_parameters, and list of `Parameters` from `pars` field (if present)
+Sets `ReactionBase` with name, classname, external_parameters
 """ 
 function create_reaction(
     ReactionType::Type{<:AbstractReaction}, name::String, external_parameters::Dict{String, Any};
@@ -107,10 +107,7 @@ function create_reaction(
 )
     base=ReactionBase(;name, classname, external_parameters)
     rj = create_reaction(ReactionType, base)
-    # Add parameters from pars field
-    if hasproperty(rj, :pars)
-        add_par(rj, rj.pars)
-    end
+
     return rj
 end
 
@@ -125,10 +122,6 @@ function create_reaction(
     end
 end
 
-
-function add_reaction_factory(ReactionType::Type{<:AbstractReaction})
-    Base.depwarn("call to deprecated add_reaction_factory($ReactionType), this does nothing and can be removed", :add_reaction_factory, force=true)
-end
 
 """
     show_all_reactions(classfilter="", typenamefilter="")

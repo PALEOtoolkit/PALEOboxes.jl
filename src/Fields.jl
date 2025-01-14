@@ -109,8 +109,7 @@ Defines a Data type that can be composed with an [`AbstractSpace`](@ref) to form
 
 Concrete subtypes should implement:
 
-[`allocate_values`](@ref), [`check_values`](@ref), [`zero_values!`](@ref), [`dof_values`](@ref),
-[`get_values_output`](@ref)
+[`allocate_values`](@ref), [`check_values`](@ref), [`zero_values!`](@ref), [`dof_values`](@ref)
 
 If the subtype needs to provide values for a numerical solver (eg as a state variable), it also needs to implement:
 
@@ -326,10 +325,6 @@ Convert Field `values` to a Vector of components
 """
 function get_components(values, FieldData::Type{<:AbstractData}) end
 
-"Optional: sanitize `values` for storing as model output.
-Default implementation is usually OK - only implement for custom types that should be converted to standard types for storage"
-get_values_output(values, data_type::Type{<:AbstractData}, data_dims::Tuple{Vararg{NamedDimension}}, Space, mesh) = values
-
 
 
 ################################################################
@@ -470,10 +465,6 @@ function add_field_vec!(dest::Field{FieldData, Space, V, N, Mesh}, a, cellrange,
     return add_field_vec!(dest.values, FieldData, dest.data_dims, Space, a, cellrange, srcvalues, soff)
 end
 
-"sanitized version of `values`, suitable for storing as output"
-function get_values_output(field::Field{FieldData, Space, V, N, Mesh}) where {FieldData, Space, V, N, Mesh}
-    return get_values_output(field.values, FieldData, field.data_dims, Space, field.mesh)
-end
 
 
 # get values from `linkvar_field`, optionally applying view defined by `linksubdomain`

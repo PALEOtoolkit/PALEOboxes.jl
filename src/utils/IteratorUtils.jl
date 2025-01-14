@@ -1,5 +1,9 @@
 module IteratorUtils
 
+using ...PALEOboxes: @public
+
+@public zipstrict, check_lengths_equal, foreach_tuple, foreach_tuple_p, foreach_longtuple, foreach_longtuple_p
+
 """
     check_lengths_equal(it1, it2)
     check_lengths_equal(it1, it2, it3)

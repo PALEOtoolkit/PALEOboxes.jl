@@ -1,7 +1,10 @@
 module ChemistryUtils
 
-import PALEOboxes as PB
+import ...PALEOboxes as PB
+using ...PALEOboxes: @public
 import OrderedCollections
+
+@public parse_chemical_formula, calc_molar_mass
 
 """
     parse_chemical_formula(formula::AbstractString) -> element_counts::OrderedDict{Symbol, Float64}
