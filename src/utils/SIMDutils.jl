@@ -6,7 +6,6 @@ Helper functions to pack and unpack vector data to enable use of SIMD instructio
 """
 module SIMDutils
 
-import SLEEF_jll
 import SIMD
 import Preferences
 
@@ -276,6 +275,9 @@ const USE_SLEEF = @Preferences.load_preference("USE_SLEEF", false)
 @static if USE_SLEEF
     @info "$(@__MODULE__) defining Vectorized SIMD functions log, exp, log10 functions from Sleef library $(SLEEF_jll.libsleef)"*
         " - to disable Sleef, set USE_SLEEF = false in LocalPreferences.toml and restart your Julia session"
+
+    import SLEEF_jll    
+
     # exp Sleef Vectorized double/single precision base-e exponential functions functions with 1.0 ULP error bound
     sleefexp(v::FP64P4_d)   = ccall((:Sleef_expd4_u10, SLEEF_jll.libsleef), FP64P4_d, (FP64P4_d,), v)
     Base.exp(v::FP64P4)     = SIMD.Vec(sleefexp(v.data))
